@@ -52,6 +52,8 @@ export class FishboneTimelineView extends ItemView {
   private showRelations = true;
   private showHiddenMainlines = false;
   private expandedClusters = new Set<string>();
+  private renderGeneration = 0;
+  private persistViewStateTimer: number | null = null;
   private panDrag: { pointerId: number; x: number; y: number } | null = null;
   private suppressNextMainlineClick = false;
   private suppressNextTaskClick = false;
@@ -108,15 +110,19 @@ export class FishboneTimelineView extends ItemView {
   }
 
   async render(): Promise<void> {
+    const renderId = ++this.renderGeneration;
     const container = this.containerEl.children[1];
-    container.empty();
-    container.addClass("fishbone-timeline-view");
 
     try {
       const [mainlines, tasks] = await Promise.all([
         this.plugin.mainlineRepository.listMainlines(),
         this.plugin.taskRepository.listTasks()
       ]);
+      if (renderId !== this.renderGeneration) return;
+
+      container.empty();
+      container.addClass("fishbone-timeline-view");
+
       const layout = buildFishboneCanvasLayout(tasks, mainlines, this.viewport, {
         showHiddenMainlines: this.showHiddenMainlines,
         expandedClusters: this.expandedClusters
@@ -152,6 +158,9 @@ export class FishboneTimelineView extends ItemView {
 
       this.renderCanvas(container, layout, mainlines, tasks);
     } catch (error) {
+      if (renderId !== this.renderGeneration) return;
+      container.empty();
+      container.addClass("fishbone-timeline-view");
       console.error("Fishbone Planner: timeline render failed", error);
       await this.renderDiagnostics(container, error);
     }
@@ -577,15 +586,18 @@ export class FishboneTimelineView extends ItemView {
       const lane = (event.target as HTMLElement | null)?.closest(".fishbone-canvas-lane, .fishbone-task-node, .fishbone-canvas-lane-label") as HTMLElement | null;
       if (event.ctrlKey && lane?.dataset.laneId) {
         this.viewport = zoomLane(this.viewport, lane.dataset.laneId, event.deltaY);
+        await this.persistViewState();
+        await this.render();
       } else {
         const rect = canvas.getBoundingClientRect();
         this.viewport = zoomCanvasViewport(this.viewport, event.deltaY, {
           x: event.clientX - rect.left,
           y: event.clientY - rect.top
         });
+        this.applyCanvasTransform(canvas);
+        this.updateViewportReadouts();
+        this.queuePersistViewState();
       }
-      await this.persistViewState();
-      await this.render();
     }, { passive: false });
 
     canvas.addEventListener("dragover", (event) => {
@@ -654,6 +666,23 @@ export class FishboneTimelineView extends ItemView {
       const spineY = Number(label.dataset.laneSpineY ?? 0);
       label.style.top = `${this.viewport.panY + spineY * this.viewport.canvasZoom}px`;
     });
+  }
+
+  private updateViewportReadouts(): void {
+    const readout = this.containerEl.querySelector(".fishbone-zoom-readout");
+    const spans = readout?.querySelectorAll("span");
+    if (spans?.[0]) spans[0].setText(formatPercent(this.viewport.canvasZoom));
+    if (spans?.[1]) spans[1].setText(`${Math.round(this.viewport.timeScale)}px/天`);
+  }
+
+  private queuePersistViewState(): void {
+    if (this.persistViewStateTimer !== null) {
+      window.clearTimeout(this.persistViewStateTimer);
+    }
+    this.persistViewStateTimer = window.setTimeout(() => {
+      this.persistViewStateTimer = null;
+      void this.persistViewState();
+    }, 180);
   }
 
   private renderCanvasLane(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[]): void {
