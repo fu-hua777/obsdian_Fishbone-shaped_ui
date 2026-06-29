@@ -150,3 +150,5 @@ M3 未做：
 - 将关系按钮文本更新和关系层 class 切换改为原生 DOM API，避免 Obsidian/Electron 重启后扩展方法兼容性导致按钮事件中断。
 - 关系层隐藏从 `display: none` 改为 `opacity + visibility + pointer-events`，避免 SVG layer 隐藏影响后续画布层渲染。
 - 已在测试 Vault 重置鱼骨视图状态到默认视角，主线与任务数据未修改。
+- 修复 SVG relation 分组 class 添加方式，避免把 `fishbone-relation is-dependency` 作为单个 token 导致 `DOMTokenList.add` 抛错。
+- 增加鱼骨视图诊断/降级渲染，渲染异常时显示真实错误、数据路径和主线文件状态，避免整页空白。

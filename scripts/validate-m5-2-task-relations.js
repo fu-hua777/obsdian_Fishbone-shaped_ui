@@ -61,6 +61,8 @@ function main() {
     "showRelations",
     "renderRelationLayer",
     "fishbone-relation-layer",
+    "group.addClass(\"fishbone-relation\")",
+    "group.addClass(line.className)",
     "bindTaskDrag",
     "taskPointerDrag",
     "fishbone-task-dragging",
@@ -95,6 +97,10 @@ function main() {
     assert(!combined.includes(`name: "${name}"`), `M5.2 代码疑似写死默认主线: ${name}`);
     assert(!combined.includes(`text: "${name}"`), `M5.2 代码疑似显示默认主线: ${name}`);
   }
+  assert(
+    !combined.includes("fishbone-relation ${line.className}"),
+    "关系线 SVG class 不能把多个 class 作为一个 DOMTokenList token 添加"
+  );
 
   console.log("M5.2 task interaction and relation validation passed.");
 }

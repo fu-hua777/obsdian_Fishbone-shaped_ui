@@ -102,40 +102,46 @@ export class FishboneTimelineView extends ItemView {
     container.empty();
     container.addClass("fishbone-timeline-view");
 
-    const [mainlines, tasks] = await Promise.all([
-      this.plugin.mainlineRepository.listMainlines(),
-      this.plugin.taskRepository.listTasks()
-    ]);
-    const layout = buildFishboneCanvasLayout(tasks, mainlines, this.viewport, {
-      showHiddenMainlines: this.showHiddenMainlines,
-      expandedClusters: this.expandedClusters
-    });
-    const dateRange = getDateRangeFromValues(tasks.map((task) => task.date));
-
-    const toolbar = container.createDiv({ cls: "fishbone-timeline-toolbar" });
-    const titleGroup = toolbar.createDiv({ cls: "fishbone-title-group" });
-    titleGroup.createDiv({ cls: "fishbone-timeline-title", text: "鱼骨画布视图" });
-    titleGroup.createDiv({ cls: "fishbone-toolbar-subtitle", text: `${formatMode(this.viewport.timeAxisMode)} · 中心 ${this.viewport.centerDate}` });
-    this.renderViewportControls(toolbar, tasks, dateRange);
-    this.renderMainlineControls(toolbar);
-
-    const summary = container.createDiv({ cls: "fishbone-timeline-summary" });
-    summary.createSpan({ text: `任务 ${tasks.length}` });
-    summary.createSpan({ text: `主线 ${mainlines.length}` });
-    summary.createSpan({ text: `关系 ${layout.relationLines.length}` });
-    summary.createSpan({ text: `聚合 ${layout.clusters.length}` });
-    summary.createSpan({ text: `范围 ${formatDateRange(dateRange)}` });
-    summary.createSpan({ text: `画布 ${formatPercent(this.viewport.canvasZoom)}` });
-    summary.createSpan({ text: `时间 ${Math.round(this.viewport.timeScale)}px/天` });
-
-    if (mainlines.length === 0) {
-      container.createDiv({
-        cls: "fishbone-timeline-warning",
-        text: "当前没有用户主线。系统不会创建默认主线；未分配任务会显示在临时泳道中。"
+    try {
+      const [mainlines, tasks] = await Promise.all([
+        this.plugin.mainlineRepository.listMainlines(),
+        this.plugin.taskRepository.listTasks()
+      ]);
+      const layout = buildFishboneCanvasLayout(tasks, mainlines, this.viewport, {
+        showHiddenMainlines: this.showHiddenMainlines,
+        expandedClusters: this.expandedClusters
       });
-    }
+      const dateRange = getDateRangeFromValues(tasks.map((task) => task.date));
 
-    this.renderCanvas(container, layout, mainlines, tasks);
+      const toolbar = container.createDiv({ cls: "fishbone-timeline-toolbar" });
+      const titleGroup = toolbar.createDiv({ cls: "fishbone-title-group" });
+      titleGroup.createDiv({ cls: "fishbone-timeline-title", text: "鱼骨画布视图" });
+      titleGroup.createDiv({ cls: "fishbone-toolbar-subtitle", text: `${formatMode(this.viewport.timeAxisMode)} · 中心 ${this.viewport.centerDate}` });
+      this.renderViewportControls(toolbar, tasks, dateRange);
+      this.renderMainlineControls(toolbar);
+
+      const summary = container.createDiv({ cls: "fishbone-timeline-summary" });
+      summary.createSpan({ text: `任务 ${tasks.length}` });
+      summary.createSpan({ text: `主线 ${mainlines.length}` });
+      summary.createSpan({ text: `泳道 ${layout.lanes.length}` });
+      summary.createSpan({ text: `关系 ${layout.relationLines.length}` });
+      summary.createSpan({ text: `聚合 ${layout.clusters.length}` });
+      summary.createSpan({ text: `范围 ${formatDateRange(dateRange)}` });
+      summary.createSpan({ text: `画布 ${formatPercent(this.viewport.canvasZoom)}` });
+      summary.createSpan({ text: `时间 ${Math.round(this.viewport.timeScale)}px/天` });
+
+      if (mainlines.length === 0) {
+        container.createDiv({
+          cls: "fishbone-timeline-warning",
+          text: "当前没有用户主线。系统不会创建默认主线；未分配任务会显示在临时泳道中。"
+        });
+      }
+
+      this.renderCanvas(container, layout, mainlines, tasks);
+    } catch (error) {
+      console.error("Fishbone Planner: timeline render failed", error);
+      await this.renderDiagnostics(container, error);
+    }
   }
 
   private renderViewportControls(toolbar: HTMLElement, tasks: PlanningTask[], dateRange: DateRange): void {
@@ -217,7 +223,12 @@ export class FishboneTimelineView extends ItemView {
         name: "",
         color: "#4f8cff",
         onSubmit: async (name, color) => {
-          await this.plugin.mainlineRepository.createMainline(name, color);
+          try {
+            await this.plugin.mainlineRepository.createMainline(name, color);
+          } catch (error) {
+            this.renderInlineError(this.containerEl.children[1], error);
+            throw error;
+          }
           new Notice(`已创建主线：${name.trim()}`);
           await this.render();
         }
@@ -236,6 +247,43 @@ export class FishboneTimelineView extends ItemView {
       void onClick();
     });
     return button;
+  }
+
+  private async renderDiagnostics(container: Element, error: unknown): Promise<void> {
+    const panel = container.createDiv({ cls: "fishbone-diagnostic-panel" });
+    panel.createDiv({ cls: "fishbone-diagnostic-title", text: "Fishbone Planner 诊断" });
+    panel.createDiv({ text: `错误：${formatError(error)}` });
+    panel.createDiv({ text: `PlanningSystem 路径：${this.plugin.settings.planningSystemPath}` });
+
+    const mainlinesPath = `${this.plugin.settings.planningSystemPath}/Mainlines/mainlines.json`;
+    const tasksPath = `${this.plugin.settings.planningSystemPath}/Tasks`;
+    try {
+      const mainlinesExists = await this.plugin.app.vault.adapter.exists(mainlinesPath);
+      const tasksExists = await this.plugin.app.vault.adapter.exists(tasksPath);
+      panel.createDiv({ text: `主线文件：${mainlinesPath} · ${mainlinesExists ? "存在" : "不存在"}` });
+      panel.createDiv({ text: `任务目录：${tasksPath} · ${tasksExists ? "存在" : "不存在"}` });
+      if (mainlinesExists) {
+        const raw = await this.plugin.app.vault.adapter.read(mainlinesPath);
+        const parsed = JSON.parse(raw) as { mainlines?: unknown[] };
+        panel.createDiv({ text: `主线数量：${Array.isArray(parsed.mainlines) ? parsed.mainlines.length : 0}` });
+      }
+    } catch (diagnosticError) {
+      panel.createDiv({ text: `诊断读取失败：${formatError(diagnosticError)}` });
+    }
+
+    this.createToolbarButton(panel, "重置视图状态", async () => {
+      this.viewport = createDefaultFishboneCanvasViewport();
+      this.showRelations = true;
+      this.showHiddenMainlines = false;
+      this.expandedClusters.clear();
+      await this.persistViewState();
+      await this.render();
+    });
+  }
+
+  private renderInlineError(container: Element, error: unknown): void {
+    const panel = container.createDiv({ cls: "fishbone-inline-error" });
+    panel.createSpan({ text: `Fishbone Planner 错误：${formatError(error)}` });
   }
 
   private renderCanvas(container: Element, layout: FishboneCanvasLayout, mainlines: Mainline[], tasks: PlanningTask[]): void {
@@ -267,24 +315,44 @@ export class FishboneTimelineView extends ItemView {
       tickEl.createDiv({ cls: "fishbone-date-detail", text: tick.detail });
     }
 
-    this.renderRelationLayer(stage, layout.relationLines);
-
     const laneLayer = stage.createDiv({ cls: "fishbone-mainline-layer" });
     for (const lane of layout.lanes) {
-      this.renderCanvasLane(laneLayer, lane, mainlines);
+      try {
+        this.renderCanvasLane(laneLayer, lane, mainlines);
+      } catch (error) {
+        console.error("Fishbone Planner: failed to render lane", lane, error);
+      }
     }
 
     const taskLayer = stage.createDiv({ cls: "fishbone-task-layer" });
     for (const taskNode of layout.tasks) {
-      this.renderCanvasTaskNode(taskLayer, taskNode, mainlines, layout);
+      try {
+        this.renderCanvasTaskNode(taskLayer, taskNode, mainlines, layout);
+      } catch (error) {
+        console.error("Fishbone Planner: failed to render task", taskNode.task.taskId, error);
+      }
     }
     for (const cluster of layout.clusters) {
-      this.renderTaskCluster(taskLayer, cluster);
+      try {
+        this.renderTaskCluster(taskLayer, cluster);
+      } catch (error) {
+        console.error("Fishbone Planner: failed to render cluster", cluster.id, error);
+      }
     }
 
     const labelLayer = canvas.createDiv({ cls: "fishbone-canvas-label-layer" });
     for (const lane of layout.lanes) {
-      this.renderCanvasLaneLabel(labelLayer, lane, mainlines, layout);
+      try {
+        this.renderCanvasLaneLabel(labelLayer, lane, mainlines, layout);
+      } catch (error) {
+        console.error("Fishbone Planner: failed to render lane label", lane.id, error);
+      }
+    }
+    try {
+      this.renderRelationLayer(stage, layout.relationLines);
+    } catch (error) {
+      console.error("Fishbone Planner: failed to render relation layer", error);
+      this.renderInlineError(container, error);
     }
     canvas.createDiv({ cls: "fishbone-task-drop-hint" });
     this.applyCanvasTransform(canvas);
@@ -318,7 +386,8 @@ export class FishboneTimelineView extends ItemView {
 
     for (const line of relationLines) {
       const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      group.addClass(`fishbone-relation ${line.className}`);
+      group.addClass("fishbone-relation");
+      group.addClass(line.className);
       group.setAttribute("data-relation-id", line.id);
       group.setAttribute("data-source-task-id", line.sourceTaskId);
       group.setAttribute("data-target-task-id", line.targetTaskId);
@@ -1285,6 +1354,13 @@ function formatDateRange(range: DateRange): string {
   if (!range.start || !range.end) return "无日期";
   if (range.start === range.end) return range.start;
   return `${range.start} - ${range.end}`;
+}
+
+function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
