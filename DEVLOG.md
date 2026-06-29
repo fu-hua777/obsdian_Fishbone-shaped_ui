@@ -58,3 +58,13 @@ M3 未做：
 - 当前默认无主线时显示 `未分配` 泳道，不创建默认主线。
 - 新增 `scripts/validate-m4-fishbone.js`。
 - 新增 M4 手动验证清单。
+
+### M5：鱼骨主视图基础交互版
+
+- 在鱼骨时间视图工具栏新增用户主线创建控件。
+- 新增 `MainlineRepository.createMainline()`，通过 Obsidian Vault API 写入 `mainlines.json`。
+- 主线创建禁止空名称和重复名称，不创建任何默认主线。
+- 任务节点新增 checkbox，支持勾选为 `done`、取消勾选恢复为 `todo`。
+- 任务节点新增主线选择框，支持将当前任务分配到用户创建的主线。
+- 新增 `TaskRepository.setTaskMainline()` 和 `TaskRepository.setTaskDone()`，只更新当前任务 md 的 frontmatter。
+- 新增 `PLANS/M5-fishbone-interaction.md`、`scripts/validate-m5-interaction.js` 和 M5 手动验证清单。

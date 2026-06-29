@@ -89,6 +89,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .fishbone-timeline-title {
@@ -102,6 +103,24 @@
   gap: 8px;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.fishbone-mainline-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.fishbone-mainline-form input[type="text"] {
+  width: 140px;
+  min-width: 120px;
+}
+
+.fishbone-mainline-form input[type="color"] {
+  width: 34px;
+  height: 28px;
+  padding: 2px;
 }
 
 .fishbone-timeline-warning {
@@ -215,6 +234,19 @@
   border-color: var(--lane-color);
 }
 
+.fishbone-task-header {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.fishbone-task-header input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
 .fishbone-task-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -226,6 +258,12 @@
 .fishbone-task-meta {
   margin-top: 3px;
   color: var(--text-muted);
+  font-size: 11px;
+}
+
+.fishbone-task-mainline-select {
+  width: 100%;
+  margin-top: 6px;
   font-size: 11px;
 }
 

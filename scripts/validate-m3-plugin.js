@@ -58,7 +58,8 @@ function validatePluginProject() {
   ]);
   requireText("plugin/src/data/mainlineRepository.ts", [
     "mainlines.json",
-    "return []"
+    "readMainlinesFile",
+    "mainlines: []"
   ]);
   requireText("plugin/src/views/TaskListView.ts", [
     "未分配",

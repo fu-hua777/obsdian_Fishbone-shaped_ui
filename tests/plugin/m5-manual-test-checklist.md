@@ -1,0 +1,37 @@
+# M5 手动验证清单
+
+测试 Vault：
+
+```text
+E:\主线规划\主线规划
+```
+
+## 前置条件
+
+- `npm run build` 已通过。
+- `node scripts/install-m3-plugin.js` 已执行。
+- Obsidian 已重载。
+- `Fishbone Planner` 插件已启用。
+- `Local REST API with MCP` 插件已启用。
+
+## 验证步骤
+
+1. 打开命令面板。
+2. 运行 `Fishbone Planner: 打开鱼骨时间视图`。
+3. 确认工具栏出现 `主线名称` 输入框、颜色选择器和 `新建主线`。
+4. 输入一个用户主线名称，例如 `测试主线`，点击 `新建主线`。
+5. 确认鱼骨图出现 `测试主线` 泳道。
+6. 打开 `PlanningSystem/Mainlines/mainlines.json`，确认只新增用户创建的主线。
+7. 在示例任务节点的主线选择框中选择 `测试主线`。
+8. 打开示例任务 md，确认 `mainline` 更新为 `测试主线`。
+9. 勾选任务节点 checkbox。
+10. 确认示例任务 md 的 `status` 更新为 `done`。
+11. 取消勾选任务节点 checkbox。
+12. 确认示例任务 md 的 `status` 更新为 `todo`。
+
+## 不应出现
+
+- 不应自动创建健康、学习、事业、生活、财务等默认主线。
+- 不应批量修改多个任务 md。
+- 不应扫描或修改旧笔记。
+- 不应出现拖拽、缩放、右侧仪表盘或底部看板。

@@ -57,6 +57,34 @@ export class TaskRepository {
     return status;
   }
 
+  async setTaskMainline(task: PlanningTask, mainline: string | null): Promise<void> {
+    const file = this.getTaskFile(task.path);
+    if (!file) {
+      new Notice(`找不到任务文件：${task.path}`);
+      return;
+    }
+
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      frontmatter.mainline = mainline;
+      frontmatter.updated = formatLocalDateTime(new Date());
+    });
+  }
+
+  async setTaskDone(task: PlanningTask, done: boolean): Promise<TaskStatus | null> {
+    const file = this.getTaskFile(task.path);
+    if (!file) {
+      new Notice(`找不到任务文件：${task.path}`);
+      return null;
+    }
+
+    const status: TaskStatus = done ? "done" : "todo";
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      frontmatter.status = status;
+      frontmatter.updated = formatLocalDateTime(new Date());
+    });
+    return status;
+  }
+
   private getTaskFile(filePath: string): TFile | null {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     return file instanceof TFile ? file : null;
