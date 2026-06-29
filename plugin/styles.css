@@ -177,6 +177,13 @@
   pointer-events: none;
 }
 
+.fishbone-canvas-label-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+
 .fishbone-date-tick {
   position: absolute;
   min-width: 64px;
@@ -216,19 +223,50 @@
   pointer-events: auto;
 }
 
-.fishbone-canvas-lane-label {
-  position: sticky;
+.fishbone-mainline-layer .fishbone-canvas-lane-label {
+  display: none;
+}
+
+.fishbone-canvas-label-layer .fishbone-canvas-lane-label {
+  position: absolute;
   left: 16px;
-  z-index: 4;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  max-width: 150px;
-  padding: 7px 10px;
+  min-width: 132px;
+  max-width: 190px;
+  padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--lane-color) 45%, var(--background-modifier-border));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--background-secondary) 92%, var(--lane-color));
+  background: color-mix(in srgb, var(--background-secondary) 88%, var(--lane-color));
   box-shadow: 0 2px 12px color-mix(in srgb, var(--background-modifier-box-shadow) 22%, transparent);
+  pointer-events: auto;
+}
+
+.fishbone-canvas-label-layer .fishbone-canvas-lane-label.is-unassigned {
+  opacity: 0.9;
+  border-style: dashed;
+}
+
+.fishbone-lane-text {
+  min-width: 0;
+}
+
+.fishbone-lane-name {
+  overflow: hidden;
+  color: var(--text-normal);
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-lane-kind {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.1;
 }
 
 .fishbone-canvas-spine {

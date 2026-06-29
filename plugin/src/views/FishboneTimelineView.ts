@@ -144,6 +144,12 @@ export class FishboneTimelineView extends ItemView {
     for (const taskNode of layout.tasks) {
       this.renderCanvasTaskNode(taskLayer, taskNode, mainlines);
     }
+
+    const labelLayer = canvas.createDiv({ cls: "fishbone-canvas-label-layer" });
+    for (const lane of layout.lanes) {
+      this.renderCanvasLaneLabel(labelLayer, lane, mainlines);
+    }
+    this.applyCanvasTransform(canvas);
   }
 
   private bindCanvasViewport(canvas: HTMLElement): void {
@@ -168,8 +174,7 @@ export class FishboneTimelineView extends ItemView {
         y: event.clientY
       };
       this.viewport = panCanvasViewport(this.viewport, deltaX, deltaY);
-      const stage = canvas.querySelector(".fishbone-canvas-stage") as HTMLElement | null;
-      if (stage) this.applyStageTransform(stage);
+      this.applyCanvasTransform(canvas);
     });
 
     const endPan = (event: PointerEvent) => {
@@ -184,7 +189,7 @@ export class FishboneTimelineView extends ItemView {
     canvas.addEventListener("wheel", async (event) => {
       if (!event.ctrlKey && !event.altKey) return;
       event.preventDefault();
-      const lane = (event.target as HTMLElement | null)?.closest(".fishbone-canvas-lane, .fishbone-task-node") as HTMLElement | null;
+      const lane = (event.target as HTMLElement | null)?.closest(".fishbone-canvas-lane, .fishbone-task-node, .fishbone-canvas-lane-label") as HTMLElement | null;
       const axis = (event.target as HTMLElement | null)?.closest(".fishbone-date-tick");
       if (event.altKey || axis) {
         this.viewport = zoomTimeScale(this.viewport, event.deltaY);
@@ -203,6 +208,17 @@ export class FishboneTimelineView extends ItemView {
 
   private applyStageTransform(stage: HTMLElement): void {
     stage.style.transform = `translate(${this.viewport.panX}px, ${this.viewport.panY}px) scale(${this.viewport.canvasZoom})`;
+  }
+
+  private applyCanvasTransform(canvas: HTMLElement): void {
+    const stage = canvas.querySelector(".fishbone-canvas-stage") as HTMLElement | null;
+    if (stage) this.applyStageTransform(stage);
+
+    const labels = canvas.querySelectorAll<HTMLElement>(".fishbone-canvas-lane-label");
+    labels.forEach((label) => {
+      const spineY = Number(label.dataset.laneSpineY ?? 0);
+      label.style.top = `${this.viewport.panY + spineY * this.viewport.canvasZoom}px`;
+    });
   }
 
   private renderCanvasLane(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[]): void {
@@ -227,6 +243,30 @@ export class FishboneTimelineView extends ItemView {
     label.createDiv({ cls: "fishbone-lane-dot" });
     const mainline = mainlines.find((item) => item.id === lane.id);
     const name = label.createDiv({ cls: "fishbone-lane-name", text: lane.name });
+    if (mainline) {
+      label.addClass("fishbone-lane-label-interactive");
+      name.setAttr("title", "点击修改；右键删除；长按拖动排序");
+      name.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.openEditMainlineModal(mainline);
+      });
+      this.bindMainlineContextMenu(label, mainline);
+      this.bindMainlineDrag(label, mainline);
+    }
+  }
+
+  private renderCanvasLaneLabel(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[]): void {
+    const label = layer.createDiv({ cls: `fishbone-canvas-lane-label${lane.isUnassigned ? " is-unassigned" : ""}` });
+    label.style.setProperty("--lane-color", lane.color);
+    label.setAttr("data-lane-id", lane.id);
+    label.setAttr("data-lane-spine-y", String(lane.spineY));
+    label.createDiv({ cls: "fishbone-lane-dot" });
+
+    const text = label.createDiv({ cls: "fishbone-lane-text" });
+    const name = text.createDiv({ cls: "fishbone-lane-name", text: lane.name });
+    text.createDiv({ cls: "fishbone-lane-kind", text: lane.isUnassigned ? "未分配任务" : "用户主线" });
+
+    const mainline = mainlines.find((item) => item.id === lane.id);
     if (mainline) {
       label.addClass("fishbone-lane-label-interactive");
       name.setAttr("title", "点击修改；右键删除；长按拖动排序");
