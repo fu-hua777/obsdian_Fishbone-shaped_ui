@@ -115,6 +115,7 @@ export interface FishboneCanvasBranchMainline {
   isCollapsed: boolean;
   startDate: string;
   endDate: string;
+  branchOffset: number;
 }
 
 export interface FishboneCanvasTaskCluster {
@@ -222,6 +223,20 @@ export function canvasPointToMainline(lanes: FishboneCanvasLane[], point: Canvas
   const lane = getCanvasLaneAtY(lanes, point.y);
   if (!lane) return undefined;
   return lane.isUnassigned ? null : lane.name;
+}
+
+export function canvasPointToBranchMainline(branchMainlines: FishboneCanvasBranchMainline[], point: CanvasPoint): FishboneCanvasBranchMainline | null {
+  let nearest: FishboneCanvasBranchMainline | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const branch of branchMainlines) {
+    const withinX = point.x >= branch.xStart - 36 && point.x <= branch.xEnd + 36;
+    const distance = Math.abs(point.y - branch.y);
+    if (withinX && distance <= 42 && distance < nearestDistance) {
+      nearest = branch;
+      nearestDistance = distance;
+    }
+  }
+  return nearest;
 }
 
 export function getCanvasLaneAtY(lanes: FishboneCanvasLane[], y: number): FishboneCanvasLane | null {
@@ -387,7 +402,8 @@ function buildCanvasBranchMainlines(
         const normalizedEnd = startDate <= endDate ? endDate : startDate;
         const side = index % 2 === 0 ? -1 : 1;
         const stack = Math.floor(index / 2);
-        const y = parentLane.spineY + side * (58 + stack * 42);
+        const branchOffset = branch.branchOffset ?? 0;
+        const y = parentLane.spineY + side * (58 + stack * 42) + branchOffset;
         const xStart = dateToCanvasXWithScale(normalizedStart, viewport, dateScale);
         const xEnd = dateToCanvasXWithScale(normalizedEnd, viewport, dateScale);
         result.push({
@@ -403,7 +419,8 @@ function buildCanvasBranchMainlines(
           taskCount: tasks.filter((task) => task.branchMainlineId === branch.id || task.branchMainline === branch.name).length,
           isCollapsed: branch.collapsed,
           startDate: normalizedStart,
-          endDate: normalizedEnd
+          endDate: normalizedEnd,
+          branchOffset
         });
       });
   }

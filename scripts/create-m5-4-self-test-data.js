@@ -29,7 +29,8 @@ const mainlinesToEnsure = [
     pinned: false,
     parent_mainline_id: "m5-4-project",
     start_date: "2026-07-01",
-    end_date: "2026-07-07"
+    end_date: "2026-07-07",
+    branch_offset: 32
   }
 ];
 
@@ -76,6 +77,17 @@ const tasks = [
     branchMainline: "M5.4短期分支",
     status: "todo",
     priority: "low",
+    relations: []
+  },
+  {
+    id: "task_m54_005",
+    title: "M5.4 分支主线：普通任务拖入分支",
+    date: "2026-07-04",
+    mainline: "M5.4项目",
+    branchMainlineId: null,
+    branchMainline: null,
+    status: "todo",
+    priority: "medium",
     relations: []
   }
 ];
@@ -131,8 +143,8 @@ function writeTask(task) {
     `title: ${task.title}\n` +
     `date: ${task.date}\n` +
     `mainline: ${task.mainline}\n` +
-    `branch_mainline_id: ${task.branchMainlineId}\n` +
-    `branch_mainline: ${task.branchMainline}\n` +
+    `branch_mainline_id: ${task.branchMainlineId === null ? "null" : task.branchMainlineId}\n` +
+    `branch_mainline: ${task.branchMainline === null ? "null" : task.branchMainline}\n` +
     `status: ${task.status}\n` +
     `priority: ${task.priority}\n` +
     `source_type: m5_4_self_test\n` +

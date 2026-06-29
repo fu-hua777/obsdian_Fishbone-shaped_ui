@@ -424,6 +424,20 @@
   height: 34px;
   transform: translateY(-50%);
   pointer-events: auto;
+  cursor: pointer;
+}
+
+.fishbone-branch-mainline:hover .fishbone-branch-mainline-line,
+.fishbone-branch-mainline.fishbone-branch-dragging .fishbone-branch-mainline-line {
+  height: 4px;
+  background: color-mix(in srgb, var(--lane-color) 82%, var(--background-modifier-border));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--lane-color) 44%, transparent);
+}
+
+.fishbone-branch-mainline.fishbone-branch-dragging {
+  z-index: 6;
+  opacity: 0.78;
+  cursor: grabbing;
 }
 
 .fishbone-branch-mainline-line {
@@ -522,6 +536,11 @@
 
 .fishbone-task-drop-hint.is-visible {
   display: block;
+}
+
+.fishbone-task-drop-hint.is-branch-target {
+  border-color: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-secondary) 88%, var(--interactive-accent));
 }
 
 .fishbone-timeline-scroller {

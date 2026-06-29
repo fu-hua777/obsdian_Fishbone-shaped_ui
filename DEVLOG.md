@@ -172,3 +172,12 @@ M3 未做：
 - 动态日期槽宽统计纳入分支任务夹取后的显示日期，避免同日分支任务挤压。
 - 新增 `scripts/create-m5-4-self-test-data.js`、`scripts/validate-m5-4-branch-mainlines.js`、`tests/plugin/m5-4-branch-mainline-fixture.json` 和 M5.4 手动验收清单。
 - 本阶段尚不做分支主线 UI 创建/编辑、拖拽调整端点、从普通任务转换为分支主线、分支删除与子任务解除挂载，这些进入 M5.4.4-M5.4.6。
+
+### M5.4.4-M5.4.6：分支主线编辑、拖拽与验收
+- 扩展 `MainlineRepository`，新增 `createBranchMainline()`、`updateBranchMainline()` 和 `updateBranchMainlineOffset()`，支持分支主线创建、编辑和垂直偏移保存。
+- 扩展 `TaskRepository.updateTaskFields()`，可写回 `branch_mainline_id` 与 `branch_mainline`，并正确等待 metadata cache 更新。
+- 任务右键菜单新增 `转换为分支主线` 和 `移出分支主线`；任务属性弹窗新增分支主线选择。
+- 分支主线支持点击编辑、右键折叠/展开、删除并确认是否解除子任务挂载。
+- 分支主线支持长按后上下拖动保存垂直位置；日期端点仍由起止日期控制。
+- 任务拖拽支持拖入分支写入分支字段、从分支拖回普通主线时清除分支字段；分支内横向拖动日期会被限制在分支起止范围内。
+- 补充分支 hover/拖动视觉、分支拖拽目标提示、自测 fixture、M5.4 校验脚本和手动验收清单。

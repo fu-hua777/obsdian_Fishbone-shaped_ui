@@ -46,6 +46,7 @@ export interface Mainline {
   parentMainlineId: string | null;
   startDate: string | null;
   endDate: string | null;
+  branchOffset: number;
 }
 
 export interface MainlinesFile {

@@ -4,6 +4,7 @@ import { TaskFieldPatch } from "../data/taskRepository";
 import { Mainline, PlanningTask, TaskPriority, TaskStatus } from "../data/taskTypes";
 import {
   buildFishboneCanvasLayout,
+  canvasPointToBranchMainline,
   canvasPointToDate,
   canvasPointToLane,
   canvasPointToMainline,
@@ -55,6 +56,7 @@ export class FishboneTimelineView extends ItemView {
   private panDrag: { pointerId: number; x: number; y: number } | null = null;
   private suppressNextMainlineClick = false;
   private suppressNextTaskClick = false;
+  private suppressNextBranchClick = false;
   private mainlinePointerDrag: {
     sourceId: string;
     pointerId: number;
@@ -72,6 +74,14 @@ export class FishboneTimelineView extends ItemView {
     active: boolean;
     layout: FishboneCanvasLayout;
     mainlines: Mainline[];
+    canvas: HTMLElement;
+    element: HTMLElement;
+  } | null = null;
+  private branchPointerDrag: {
+    branch: FishboneCanvasBranchMainline;
+    pointerId: number;
+    timer: number | null;
+    active: boolean;
     canvas: HTMLElement;
     element: HTMLElement;
   } | null = null;
@@ -331,7 +341,7 @@ export class FishboneTimelineView extends ItemView {
     const branchMainlineLayer = stage.createDiv({ cls: "fishbone-branch-mainline-layer" });
     for (const branch of layout.branchMainlines) {
       try {
-        this.renderCanvasBranchMainline(branchMainlineLayer, branch);
+        this.renderCanvasBranchMainline(branchMainlineLayer, branch, mainlines, tasks);
       } catch (error) {
         console.error("Fishbone Planner: failed to render branch mainline", branch.id, error);
       }
@@ -398,7 +408,8 @@ export class FishboneTimelineView extends ItemView {
     line.style.height = `${height}px`;
   }
 
-  private renderCanvasBranchMainline(parent: HTMLElement, branch: FishboneCanvasBranchMainline): void {
+  private renderCanvasBranchMainline(parent: HTMLElement, branch: FishboneCanvasBranchMainline, mainlines: Mainline[], tasks: PlanningTask[]): void {
+    const branchMainline = mainlines.find((mainline) => mainline.id === branch.id);
     const connector = parent.createDiv({ cls: "fishbone-branch-mainline-connector" });
     connector.style.setProperty("--lane-color", branch.color);
     connector.style.left = `${branch.xStart}px`;
@@ -416,11 +427,22 @@ export class FishboneTimelineView extends ItemView {
     spine.style.top = `${branch.y}px`;
     spine.style.width = `${Math.max(80, branch.xEnd - branch.xStart)}px`;
     spine.setAttr("data-branch-mainline-id", branch.id);
+    spine.setAttr("title", `${branch.name}\n${branch.startDate} - ${branch.endDate}`);
     spine.createDiv({ cls: "fishbone-branch-mainline-line" });
 
     const label = spine.createDiv({ cls: "fishbone-branch-mainline-label" });
     label.createSpan({ cls: "fishbone-branch-mainline-name", text: branch.name });
     label.createSpan({ cls: "fishbone-branch-mainline-meta", text: `${branch.startDate} - ${branch.endDate} · ${branch.taskCount}` });
+    if (branchMainline) {
+      spine.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (this.suppressNextBranchClick) return;
+        this.openEditBranchMainlineModal(branchMainline, mainlines);
+      });
+      this.bindBranchMainlineContextMenu(spine, branchMainline, mainlines, tasks);
+      this.bindBranchMainlineDrag(spine, branch);
+    }
   }
 
   private renderRelationLayer(stage: HTMLElement, relationLines: FishboneCanvasRelationLine[]): void {
@@ -844,6 +866,22 @@ export class FishboneTimelineView extends ItemView {
           }).open();
         });
       });
+      menu.addItem((item) => {
+        item.setTitle("转换为分支主线").setIcon("git-branch").onClick(() => {
+          this.openCreateBranchFromTaskModal(task, mainlines);
+        });
+      });
+      if (task.branchMainlineId || task.branchMainline) {
+        menu.addItem((item) => {
+          item.setTitle("移出分支主线").setIcon("unlink").onClick(async () => {
+            await this.plugin.taskRepository.updateTaskFields(task, {
+              branchMainlineId: null,
+              branchMainline: null
+            });
+            await this.render();
+          });
+        });
+      }
       for (const status of TASK_STATUSES) {
         menu.addItem((item) => {
           item.setTitle(`状态：${status}`).onClick(async () => {
@@ -913,6 +951,22 @@ export class FishboneTimelineView extends ItemView {
       }, 250);
 
       const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
+      const targetBranch = canvasPointToBranchMainline(drag.layout.branchMainlines, point);
+      if (targetBranch) {
+        const targetBranchMainline = drag.mainlines.find((mainline) => mainline.id === targetBranch.id);
+        const parentMainline = drag.mainlines.find((mainline) => mainline.id === targetBranch.parentMainlineId);
+        const candidateDate = canvasPointToDate(point, this.viewport) ?? drag.taskNode.task.date ?? targetBranch.startDate;
+        const targetDate = clampIsoDate(candidateDate, targetBranch.startDate, targetBranch.endDate);
+        await this.plugin.taskRepository.updateTaskFields(drag.taskNode.task, {
+          date: targetDate,
+          mainline: parentMainline?.name ?? drag.taskNode.task.mainline,
+          branchMainlineId: targetBranch.id,
+          branchMainline: targetBranchMainline?.name ?? targetBranch.name
+        });
+        await this.render();
+        return;
+      }
+
       const targetDate = drag.taskNode.task.date;
       const targetMainline = canvasPointToMainline(drag.layout.lanes, point);
       if (typeof targetMainline === "undefined") {
@@ -921,7 +975,9 @@ export class FishboneTimelineView extends ItemView {
       }
       await this.plugin.taskRepository.updateTaskFields(drag.taskNode.task, {
         date: targetDate,
-        mainline: targetMainline
+        mainline: targetMainline,
+        branchMainlineId: null,
+        branchMainline: null
       });
       await this.render();
     };
@@ -960,7 +1016,7 @@ export class FishboneTimelineView extends ItemView {
       const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
       node.style.left = `${point.x}px`;
       node.style.top = `${point.y}px`;
-        this.updateTaskDropHint(drag.canvas, drag.layout, point, drag.taskNode.task.date);
+      this.updateTaskDropHint(drag.canvas, drag.layout, point, drag.taskNode.task.date);
       });
 
     node.addEventListener("pointerup", (event) => {
@@ -974,16 +1030,27 @@ export class FishboneTimelineView extends ItemView {
   private updateTaskDropHint(canvas: HTMLElement, layout: FishboneCanvasLayout, point: { x: number; y: number }, lockedDate?: string | null): void {
     const hint = canvas.querySelector<HTMLElement>(".fishbone-task-drop-hint");
     if (!hint) return;
+    const branch = canvasPointToBranchMainline(layout.branchMainlines, point);
+    if (branch) {
+      const candidateDate = canvasPointToDate(point, this.viewport) ?? lockedDate ?? branch.startDate;
+      const date = clampIsoDate(candidateDate, branch.startDate, branch.endDate);
+      hint.setText(`${date} · 分支 ${branch.name}`);
+      hint.addClass("is-visible");
+      hint.addClass("is-branch-target");
+      return;
+    }
     const lane = canvasPointToLane(layout.lanes, point);
     const date = lockedDate ?? canvasPointToDate(point, this.viewport);
     hint.setText(`${date ?? "无日期"} · ${lane?.name ?? "无主线"}`);
     hint.addClass("is-visible");
+    hint.removeClass("is-branch-target");
   }
 
   private hideTaskDropHint(canvas: HTMLElement): void {
     const hint = canvas.querySelector<HTMLElement>(".fishbone-task-drop-hint");
     if (!hint) return;
     hint.removeClass("is-visible");
+    hint.removeClass("is-branch-target");
   }
 
   private highlightTaskRelations(stage: HTMLElement, sourceTaskId: string, targetTaskId?: string): void {
@@ -1021,6 +1088,177 @@ export class FishboneTimelineView extends ItemView {
         await this.render();
       }
     }).open();
+  }
+
+  private openCreateBranchFromTaskModal(task: PlanningTask, mainlines: Mainline[]): void {
+    const rootMainlines = mainlines.filter((mainline) => mainline.type !== "branch");
+    if (rootMainlines.length === 0) {
+      new Notice("请先创建一条普通主线，再转换为分支主线");
+      return;
+    }
+    const parent = rootMainlines.find((mainline) => mainline.name === task.mainline) ?? rootMainlines[0];
+    const startDate = task.date && parseDateString(task.date) ? task.date : getLocalDateString(new Date());
+    const endDate = addDaysToIsoDate(startDate, 6);
+    new BranchMainlineEditorModal(this.plugin, {
+      title: "转换为分支主线",
+      submitText: "创建分支",
+      rootMainlines,
+      name: task.title,
+      color: parent.color,
+      parentMainlineId: parent.id,
+      startDate,
+      endDate,
+      onSubmit: async (values) => {
+        const branch = await this.plugin.mainlineRepository.createBranchMainline(values);
+        const branchParent = rootMainlines.find((mainline) => mainline.id === branch.parentMainlineId) ?? parent;
+        await this.plugin.taskRepository.updateTaskFields(task, {
+          mainline: branchParent.name,
+          branchMainlineId: branch.id,
+          branchMainline: branch.name
+        });
+        new Notice(`已创建分支主线：${branch.name}`);
+        await this.render();
+      }
+    }).open();
+  }
+
+  private openEditBranchMainlineModal(branch: Mainline, mainlines: Mainline[]): void {
+    const rootMainlines = mainlines.filter((mainline) => mainline.type !== "branch");
+    new BranchMainlineEditorModal(this.plugin, {
+      title: "修改分支主线",
+      submitText: "保存",
+      rootMainlines,
+      name: branch.name,
+      color: branch.color,
+      parentMainlineId: branch.parentMainlineId ?? rootMainlines[0]?.id ?? "",
+      startDate: branch.startDate ?? getLocalDateString(new Date()),
+      endDate: branch.endDate ?? getLocalDateString(new Date()),
+      onSubmit: async (values) => {
+        const updated = await this.plugin.mainlineRepository.updateBranchMainline(branch.id, values);
+        new Notice(`已修改分支主线：${updated.name}`);
+        await this.render();
+      }
+    }).open();
+  }
+
+  private bindBranchMainlineContextMenu(node: HTMLElement, branch: Mainline, mainlines: Mainline[], tasks: PlanningTask[]): void {
+    node.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const branchTasks = tasks.filter((task) => task.branchMainlineId === branch.id || task.branchMainline === branch.name);
+      const menu = new Menu();
+      menu.addItem((item) => {
+        item
+          .setTitle("修改分支主线")
+          .setIcon("pencil")
+          .onClick(() => this.openEditBranchMainlineModal(branch, mainlines));
+      });
+      menu.addItem((item) => {
+        item
+          .setTitle(branch.collapsed ? "展开分支" : "折叠分支")
+          .setIcon(branch.collapsed ? "chevrons-down" : "chevrons-up")
+          .onClick(async () => {
+            await this.plugin.mainlineRepository.updateMainlineFlags(branch.id, { collapsed: !branch.collapsed });
+            await this.render();
+          });
+      });
+      menu.addItem((item) => {
+        item
+          .setTitle("删除分支主线")
+          .setIcon("trash")
+          .onClick(async () => {
+            const confirmed = window.confirm(`删除分支主线「${branch.name}」？`);
+            if (!confirmed) return;
+            const clearChildren = branchTasks.length > 0 && window.confirm(`找到 ${branchTasks.length} 个分支任务。是否同时解除这些任务的分支挂载？`);
+            const deleted = await this.plugin.mainlineRepository.deleteMainline(branch.id);
+            if (deleted && clearChildren) {
+              await Promise.all(branchTasks.map((task) => this.plugin.taskRepository.updateTaskFields(task, {
+                branchMainlineId: null,
+                branchMainline: null
+              })));
+            }
+            if (deleted) {
+              new Notice(`已删除分支主线：${deleted.name}`);
+              await this.render();
+            }
+          });
+      });
+      menu.showAtMouseEvent(event);
+    });
+  }
+
+  private bindBranchMainlineDrag(node: HTMLElement, branch: FishboneCanvasBranchMainline): void {
+    let timer: number | null = null;
+    const clearTimer = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const finishBranchDrag = async (event: PointerEvent) => {
+      const drag = this.branchPointerDrag;
+      if (!drag || drag.pointerId !== event.pointerId) {
+        clearTimer();
+        return;
+      }
+      clearTimer();
+      this.branchPointerDrag = null;
+      if (node.hasPointerCapture(event.pointerId)) {
+        node.releasePointerCapture(event.pointerId);
+      }
+      node.removeClass("fishbone-branch-dragging");
+      if (!drag.active) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      this.suppressNextBranchClick = true;
+      window.setTimeout(() => {
+        this.suppressNextBranchClick = false;
+      }, 250);
+
+      const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
+      const nextOffset = drag.branch.branchOffset + (point.y - drag.branch.y);
+      await this.plugin.mainlineRepository.updateBranchMainlineOffset(drag.branch.id, nextOffset);
+      await this.render();
+    };
+
+    node.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || isFormTarget(event.target)) return;
+      event.stopPropagation();
+      clearTimer();
+      const canvas = node.closest(".fishbone-canvas-viewport") as HTMLElement | null;
+      if (!canvas) return;
+      node.setPointerCapture(event.pointerId);
+      this.branchPointerDrag = {
+        branch,
+        pointerId: event.pointerId,
+        timer: null,
+        active: false,
+        canvas,
+        element: node
+      };
+      timer = window.setTimeout(() => {
+        if (!this.branchPointerDrag || this.branchPointerDrag.pointerId !== event.pointerId) return;
+        this.branchPointerDrag.active = true;
+        node.addClass("fishbone-branch-dragging");
+      }, 220);
+    });
+
+    node.addEventListener("pointermove", (event) => {
+      const drag = this.branchPointerDrag;
+      if (!drag || drag.pointerId !== event.pointerId || !drag.active) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
+      node.style.top = `${point.y}px`;
+    });
+    node.addEventListener("pointerup", (event) => {
+      void finishBranchDrag(event);
+    });
+    node.addEventListener("pointercancel", (event) => {
+      void finishBranchDrag(event);
+    });
   }
 
   private bindMainlineContextMenu(label: HTMLElement, mainline: Mainline): void {
@@ -1288,12 +1526,131 @@ class MainlineEditorModal extends Modal {
   }
 }
 
+interface BranchMainlineEditorValues {
+  name: string;
+  color: string;
+  parentMainlineId: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface BranchMainlineEditorOptions extends BranchMainlineEditorValues {
+  title: string;
+  submitText: string;
+  rootMainlines: Mainline[];
+  onSubmit: (values: BranchMainlineEditorValues) => Promise<void>;
+}
+
+class BranchMainlineEditorModal extends Modal {
+  private options: BranchMainlineEditorOptions;
+  private values: BranchMainlineEditorValues;
+
+  constructor(plugin: FishbonePlannerPlugin, options: BranchMainlineEditorOptions) {
+    super(plugin.app);
+    this.options = options;
+    this.values = {
+      name: options.name,
+      color: options.color,
+      parentMainlineId: options.parentMainlineId,
+      startDate: options.startDate,
+      endDate: options.endDate
+    };
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: this.options.title });
+
+    new Setting(contentEl)
+      .setName("分支名称")
+      .addText((text) => {
+        text
+          .setPlaceholder("例如：M5.4 短期攻坚")
+          .setValue(this.values.name)
+          .onChange((value) => {
+            this.values.name = value;
+          });
+        window.setTimeout(() => text.inputEl.focus(), 0);
+      });
+
+    new Setting(contentEl)
+      .setName("父主线")
+      .addDropdown((dropdown) => {
+        for (const mainline of this.options.rootMainlines) {
+          dropdown.addOption(mainline.id, mainline.name);
+        }
+        dropdown.setValue(this.values.parentMainlineId).onChange((value) => {
+          this.values.parentMainlineId = value;
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("起始日期")
+      .addText((text) => {
+        text.setPlaceholder("YYYY-MM-DD").setValue(this.values.startDate).onChange((value) => {
+          this.values.startDate = value.trim();
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("结束日期")
+      .addText((text) => {
+        text.setPlaceholder("YYYY-MM-DD").setValue(this.values.endDate).onChange((value) => {
+          this.values.endDate = value.trim();
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("颜色")
+      .addColorPicker((picker) => {
+        picker.setValue(this.values.color).onChange((value) => {
+          this.values.color = value;
+        });
+      });
+
+    new Setting(contentEl)
+      .addButton((button) => {
+        button.setButtonText("取消").onClick(() => this.close());
+      })
+      .addButton((button) => {
+        button
+          .setButtonText(this.options.submitText)
+          .setCta()
+          .onClick(async () => {
+            if (!this.values.name.trim()) {
+              new Notice("分支名称不能为空");
+              return;
+            }
+            if (!parseDateString(this.values.startDate) || !parseDateString(this.values.endDate)) {
+              new Notice("日期必须使用 YYYY-MM-DD");
+              return;
+            }
+            try {
+              await this.options.onSubmit({
+                ...this.values,
+                name: this.values.name.trim()
+              });
+              this.close();
+            } catch (error) {
+              new Notice(error instanceof Error ? error.message : "保存分支主线失败");
+            }
+          });
+      });
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+}
+
 class TaskEditorModal extends Modal {
   private mainlines: Mainline[];
   private onSubmit: (patch: TaskFieldPatch) => Promise<void>;
   private title: string;
   private date: string;
   private mainline: string;
+  private branchMainlineId: string;
   private status: TaskStatus;
   private priority: TaskPriority;
 
@@ -1309,6 +1666,7 @@ class TaskEditorModal extends Modal {
     this.title = task.title;
     this.date = task.date ?? "";
     this.mainline = task.mainline ?? "";
+    this.branchMainlineId = task.branchMainlineId ?? "";
     this.status = task.status;
     this.priority = task.priority;
   }
@@ -1338,11 +1696,24 @@ class TaskEditorModal extends Modal {
       .setName("主线")
       .addDropdown((dropdown) => {
         dropdown.addOption("", "未分配");
-        for (const mainline of this.mainlines) {
+        for (const mainline of this.mainlines.filter((item) => item.type !== "branch")) {
           dropdown.addOption(mainline.name, mainline.name);
         }
         dropdown.setValue(this.mainline).onChange((value) => {
           this.mainline = value;
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("分支主线")
+      .setDesc("选择后任务会挂载到对应短期分支，并自动使用其父主线。")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("", "无分支");
+        for (const branch of this.mainlines.filter((item) => item.type === "branch")) {
+          dropdown.addOption(branch.id, branch.name);
+        }
+        dropdown.setValue(this.branchMainlineId).onChange((value) => {
+          this.branchMainlineId = value;
         });
       });
 
@@ -1382,10 +1753,14 @@ class TaskEditorModal extends Modal {
               new Notice("任务标题不能为空");
               return;
             }
+            const branch = this.mainlines.find((mainline) => mainline.id === this.branchMainlineId && mainline.type === "branch");
+            const parent = branch ? this.mainlines.find((mainline) => mainline.id === branch.parentMainlineId) : null;
             await this.onSubmit({
               title,
               date: this.date.length > 0 ? this.date : null,
-              mainline: this.mainline.length > 0 ? this.mainline : null,
+              mainline: branch ? parent?.name ?? this.mainline : this.mainline.length > 0 ? this.mainline : null,
+              branchMainlineId: branch?.id ?? null,
+              branchMainline: branch?.name ?? null,
               status: this.status,
               priority: this.priority
             });
@@ -1438,8 +1813,23 @@ function formatError(error: unknown): string {
   return String(error);
 }
 
+function clampIsoDate(date: string, startDate: string, endDate: string): string {
+  if (!parseDateString(date)) {
+    return startDate;
+  }
+  if (date < startDate) return startDate;
+  if (date > endDate) return endDate;
+  return date;
+}
+
+function addDaysToIsoDate(date: string, days: number): string {
+  const parsed = parseDateString(date) ?? new Date();
+  parsed.setDate(parsed.getDate() + days);
+  return getLocalDateString(parsed);
+}
+
 function isInteractiveTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && Boolean(target.closest("button, input, select, textarea, .fishbone-task-node, .fishbone-task-cluster, .fishbone-canvas-lane-label"));
+  return target instanceof HTMLElement && Boolean(target.closest("button, input, select, textarea, .fishbone-task-node, .fishbone-task-cluster, .fishbone-canvas-lane-label, .fishbone-branch-mainline"));
 }
 
 function isFormTarget(target: EventTarget | null): boolean {

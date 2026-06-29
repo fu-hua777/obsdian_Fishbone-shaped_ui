@@ -5,10 +5,20 @@ type RawMainline = Partial<Omit<Mainline, "parentMainlineId" | "startDate" | "en
   parent_mainline_id?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  branch_offset?: number | null;
   parentMainlineId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  branchOffset?: number | null;
 };
+
+export interface BranchMainlineInput {
+  name: string;
+  color: string;
+  parentMainlineId: string;
+  startDate: string;
+  endDate: string;
+}
 
 export class MainlineRepository {
   private app: App;
@@ -50,12 +60,85 @@ export class MainlineRepository {
       pinned: false,
       parentMainlineId: null,
       startDate: null,
-      endDate: null
+      endDate: null,
+      branchOffset: 0
     };
 
     file.mainlines.push(mainline);
     await this.writeMainlinesFile(file);
     return mainline;
+  }
+
+  async createBranchMainline(input: BranchMainlineInput): Promise<Mainline> {
+    const file = await this.readMainlinesFile();
+    const normalized = normalizeBranchMainlineInput(input, file.mainlines);
+    const hasDuplicate = file.mainlines.some((mainline) => mainline.name === normalized.name);
+    if (hasDuplicate) {
+      throw new Error(`主线已存在：${normalized.name}`);
+    }
+
+    const nextOrder = file.mainlines.reduce((max, mainline) => Math.max(max, mainline.order), 0) + 1;
+    const branch: Mainline = {
+      id: createMainlineId(normalized.name),
+      type: "branch",
+      name: normalized.name,
+      color: normalized.color,
+      icon: "git-branch",
+      order: nextOrder,
+      visible: true,
+      collapsed: false,
+      pinned: false,
+      parentMainlineId: normalized.parentMainlineId,
+      startDate: normalized.startDate,
+      endDate: normalized.endDate,
+      branchOffset: 0
+    };
+
+    file.mainlines.push(branch);
+    await this.writeMainlinesFile(file);
+    return branch;
+  }
+
+  async updateBranchMainline(id: string, input: BranchMainlineInput): Promise<Mainline> {
+    const file = await this.readMainlinesFile();
+    const index = file.mainlines.findIndex((mainline) => mainline.id === id && mainline.type === "branch");
+    if (index < 0) {
+      throw new Error("找不到要修改的分支主线");
+    }
+
+    const normalized = normalizeBranchMainlineInput(input, file.mainlines);
+    const hasDuplicate = file.mainlines.some((mainline) => mainline.id !== id && mainline.name === normalized.name);
+    if (hasDuplicate) {
+      throw new Error(`主线已存在：${normalized.name}`);
+    }
+
+    const updated: Mainline = {
+      ...file.mainlines[index],
+      name: normalized.name,
+      color: normalized.color,
+      parentMainlineId: normalized.parentMainlineId,
+      startDate: normalized.startDate,
+      endDate: normalized.endDate
+    };
+    file.mainlines[index] = updated;
+    await this.writeMainlinesFile(file);
+    return updated;
+  }
+
+  async updateBranchMainlineOffset(id: string, branchOffset: number): Promise<Mainline | null> {
+    const file = await this.readMainlinesFile();
+    const index = file.mainlines.findIndex((mainline) => mainline.id === id && mainline.type === "branch");
+    if (index < 0) {
+      return null;
+    }
+
+    const updated: Mainline = {
+      ...file.mainlines[index],
+      branchOffset: clampBranchOffset(branchOffset)
+    };
+    file.mainlines[index] = updated;
+    await this.writeMainlinesFile(file);
+    return updated;
   }
 
   async updateMainline(id: string, name: string, color: string): Promise<Mainline> {
@@ -188,7 +271,8 @@ function normalizeMainline(value: RawMainline): Mainline {
     pinned: value.pinned === true,
     parentMainlineId: asNullableString(value.parent_mainline_id ?? value.parentMainlineId),
     startDate: asNullableString(value.start_date ?? value.startDate),
-    endDate: asNullableString(value.end_date ?? value.endDate)
+    endDate: asNullableString(value.end_date ?? value.endDate),
+    branchOffset: clampBranchOffset(asNumber(value.branch_offset ?? value.branchOffset))
   };
 }
 
@@ -211,14 +295,50 @@ function serializeMainlinesFile(file: MainlinesFile): { version: string; mainlin
         serialized.parent_mainline_id = mainline.parentMainlineId;
         serialized.start_date = mainline.startDate;
         serialized.end_date = mainline.endDate;
+        serialized.branch_offset = mainline.branchOffset;
       }
       return serialized;
     })
   };
 }
 
+function normalizeBranchMainlineInput(input: BranchMainlineInput, mainlines: Mainline[]): BranchMainlineInput {
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("分支主线名称不能为空");
+  }
+  const parent = mainlines.find((mainline) => mainline.id === input.parentMainlineId && mainline.type !== "branch");
+  if (!parent) {
+    throw new Error("分支主线必须选择一条普通主线作为父主线");
+  }
+  if (!isIsoDate(input.startDate) || !isIsoDate(input.endDate)) {
+    throw new Error("分支主线日期必须使用 YYYY-MM-DD");
+  }
+  const startDate = input.startDate <= input.endDate ? input.startDate : input.endDate;
+  const endDate = input.startDate <= input.endDate ? input.endDate : input.startDate;
+  return {
+    name,
+    color: normalizeColor(input.color),
+    parentMainlineId: parent.id,
+    startDate,
+    endDate
+  };
+}
+
 function asNullableString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function clampBranchOffset(value: number): number {
+  return Math.max(-220, Math.min(220, Math.round(value)));
+}
+
+function isIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function normalizeColor(color: string): string {

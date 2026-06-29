@@ -23,7 +23,8 @@
       "pinned": false,
       "parent_mainline_id": "m5-4-project",
       "start_date": "2026-07-01",
-      "end_date": "2026-07-07"
+      "end_date": "2026-07-07",
+      "branch_offset": 32
     }
   ],
   "tasks": [
@@ -46,6 +47,16 @@
       "branch_mainline": "M5.4短期分支",
       "status": "todo",
       "priority": "medium"
+    },
+    {
+      "task_id": "task_m54_003",
+      "title": "M5.4 分支主线：普通任务拖入分支",
+      "date": "2026-07-03",
+      "mainline": "M5.4项目",
+      "branch_mainline_id": null,
+      "branch_mainline": null,
+      "status": "todo",
+      "priority": "low"
     }
   ]
 }

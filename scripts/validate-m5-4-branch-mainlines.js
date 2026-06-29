@@ -43,8 +43,9 @@ function validateFixture() {
   assert(/^\d{4}-\d{2}-\d{2}$/.test(branch.start_date), "分支主线 start_date 非法");
   assert(/^\d{4}-\d{2}-\d{2}$/.test(branch.end_date), "分支主线 end_date 非法");
   assert(branch.start_date <= branch.end_date, "分支主线日期范围应为正向");
+  assert(typeof branch.branch_offset === "number", "分支主线需要 branch_offset 用于保存垂直偏移");
 
-  for (const task of tasks) {
+  for (const task of tasks.filter((item) => item.branch_mainline_id)) {
     assert(task.branch_mainline_id === branch.id, `${task.task_id} 未挂载到分支主线 id`);
     assert(task.branch_mainline === branch.name, `${task.task_id} 未保留分支主线名称`);
   }
@@ -61,7 +62,8 @@ function main() {
     "type: \"mainline\" | \"branch\"",
     "parentMainlineId",
     "startDate",
-    "endDate"
+    "endDate",
+    "branchOffset"
   ]);
 
   requireText("plugin/src/data/taskParser.ts", [
@@ -76,12 +78,25 @@ function main() {
     "parent_mainline_id",
     "start_date",
     "end_date",
+    "branch_offset",
+    "createBranchMainline",
+    "updateBranchMainline",
+    "updateBranchMainlineOffset",
     "value.type === \"branch\" ? \"branch\" : \"mainline\""
+  ]);
+
+  requireText("plugin/src/data/taskRepository.ts", [
+    "branchMainline",
+    "branchMainlineId",
+    "branch_mainline",
+    "branch_mainline_id",
+    "frontmatterKeyForPatch"
   ]);
 
   requireText("plugin/src/views/fishboneCanvasLayout.ts", [
     "FishboneCanvasBranchMainline",
     "branchMainlines",
+    "canvasPointToBranchMainline",
     "buildCanvasBranchMainlines",
     "resolveTaskBranch",
     "resolveTaskBranchMainline",
@@ -92,6 +107,13 @@ function main() {
   ]);
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
+    "openCreateBranchFromTaskModal",
+    "openEditBranchMainlineModal",
+    "bindBranchMainlineContextMenu",
+    "bindBranchMainlineDrag",
+    "BranchMainlineEditorModal",
+    "转换为分支主线",
+    "移出分支主线",
     "renderCanvasBranchMainline",
     "fishbone-branch-mainline-layer",
     "is-branch-task",
@@ -105,7 +127,9 @@ function main() {
     ".fishbone-branch-mainline",
     ".fishbone-branch-mainline-line",
     ".fishbone-branch-mainline-label",
-    ".fishbone-task-node.is-branch-task"
+    ".fishbone-task-node.is-branch-task",
+    ".fishbone-branch-mainline.fishbone-branch-dragging",
+    ".fishbone-task-drop-hint.is-branch-target"
   ]);
 
   const sampleMainlines = readJson("sample-vault/PlanningSystem/Mainlines/mainlines.json");

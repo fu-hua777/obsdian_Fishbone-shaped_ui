@@ -6,6 +6,8 @@ export interface TaskFieldPatch {
   title?: string;
   date?: string | null;
   mainline?: string | null;
+  branchMainline?: string | null;
+  branchMainlineId?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
 }
@@ -95,6 +97,12 @@ export class TaskRepository {
       if (typeof patch.mainline !== "undefined") {
         frontmatter.mainline = patch.mainline;
       }
+      if (typeof patch.branchMainline !== "undefined") {
+        frontmatter.branch_mainline = patch.branchMainline;
+      }
+      if (typeof patch.branchMainlineId !== "undefined") {
+        frontmatter.branch_mainline_id = patch.branchMainlineId;
+      }
       if (typeof patch.status !== "undefined") {
         frontmatter.status = patch.status;
       }
@@ -105,7 +113,7 @@ export class TaskRepository {
     });
 
     await this.waitForFrontmatter(file, (frontmatter) => {
-      return Object.entries(patch).every(([key, value]) => frontmatter[key] === value);
+      return Object.entries(patch).every(([key, value]) => frontmatter[frontmatterKeyForPatch(key)] === value);
     });
   }
 
@@ -125,6 +133,17 @@ export class TaskRepository {
       }
       await sleep(100);
     }
+  }
+}
+
+function frontmatterKeyForPatch(key: string): string {
+  switch (key) {
+    case "branchMainline":
+      return "branch_mainline";
+    case "branchMainlineId":
+      return "branch_mainline_id";
+    default:
+      return key;
   }
 }
 
