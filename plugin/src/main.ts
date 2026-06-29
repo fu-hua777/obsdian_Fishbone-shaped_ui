@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, FishbonePlannerSettingTab, FishbonePlannerSettings, n
 import { MainlineRepository } from "./data/mainlineRepository";
 import { TaskRepository } from "./data/taskRepository";
 import { TASK_LIST_VIEW_TYPE, TaskListView } from "./views/TaskListView";
+import { FISHBONE_TIMELINE_VIEW_TYPE, FishboneTimelineView } from "./views/FishboneTimelineView";
 
 export default class FishbonePlannerPlugin extends Plugin {
   settings: FishbonePlannerSettings;
@@ -14,9 +15,14 @@ export default class FishbonePlannerPlugin extends Plugin {
     this.rebuildRepositories();
 
     this.registerView(TASK_LIST_VIEW_TYPE, (leaf: WorkspaceLeaf) => new TaskListView(leaf, this));
+    this.registerView(FISHBONE_TIMELINE_VIEW_TYPE, (leaf: WorkspaceLeaf) => new FishboneTimelineView(leaf, this));
 
     this.addRibbonIcon("list-checks", "打开 Fishbone Planner 任务列表", () => {
       void this.activateTaskListView();
+    });
+
+    this.addRibbonIcon("git-fork", "打开 Fishbone Planner 鱼骨时间视图", () => {
+      void this.activateTimelineView();
     });
 
     this.addCommand({
@@ -44,6 +50,30 @@ export default class FishbonePlannerPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "open-fishbone-timeline",
+      name: "打开鱼骨时间视图",
+      callback: () => {
+        void this.activateTimelineView();
+      }
+    });
+
+    this.addCommand({
+      id: "refresh-fishbone-timeline",
+      name: "刷新鱼骨时间视图",
+      callback: async () => {
+        this.rebuildRepositories();
+        const leaves = this.app.workspace.getLeavesOfType(FISHBONE_TIMELINE_VIEW_TYPE);
+        for (const leaf of leaves) {
+          const view = leaf.view;
+          if (view instanceof FishboneTimelineView) {
+            await view.render();
+          }
+        }
+        new Notice("Fishbone Planner 鱼骨时间视图已刷新");
+      }
+    });
+
+    this.addCommand({
       id: "cycle-first-fishbone-task-status",
       name: "切换第一条任务状态（M3 验证）",
       callback: async () => {
@@ -65,6 +95,7 @@ export default class FishbonePlannerPlugin extends Plugin {
 
   onunload(): void {
     this.app.workspace.detachLeavesOfType(TASK_LIST_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(FISHBONE_TIMELINE_VIEW_TYPE);
   }
 
   async loadSettings(): Promise<void> {
@@ -100,6 +131,18 @@ export default class FishbonePlannerPlugin extends Plugin {
       return;
     }
     await leaf.setViewState({ type: TASK_LIST_VIEW_TYPE, active: true });
+    this.app.workspace.revealLeaf(leaf);
+  }
+
+  async activateTimelineView(): Promise<void> {
+    const existing = this.app.workspace.getLeavesOfType(FISHBONE_TIMELINE_VIEW_TYPE);
+    if (existing.length > 0) {
+      this.app.workspace.revealLeaf(existing[0]);
+      return;
+    }
+
+    const leaf = this.app.workspace.getLeaf(true);
+    await leaf.setViewState({ type: FISHBONE_TIMELINE_VIEW_TYPE, active: true });
     this.app.workspace.revealLeaf(leaf);
   }
 }

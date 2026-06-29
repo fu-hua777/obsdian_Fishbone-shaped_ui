@@ -47,3 +47,14 @@ M3 未做：
 - 未实现 relation 线、拖拽、缩放、右侧栏或底部看板。
 - 未扫描或修改旧笔记。
 - 未启用插件；需要用户在 Obsidian 中手动启用 `Fishbone Planner`。
+
+### M4：鱼骨主视图静态版
+
+- 新增 `FishboneTimelineView` 静态视图。
+- 新增 `fishboneLayout.ts`，将任务和用户主线转换为鱼骨布局。
+- 新增 `fishboneRenderTypes.ts`，定义鱼骨布局渲染结构。
+- 新增命令：`Fishbone Planner: 打开鱼骨时间视图`。
+- 新增命令：`Fishbone Planner: 刷新鱼骨时间视图`。
+- 当前默认无主线时显示 `未分配` 泳道，不创建默认主线。
+- 新增 `scripts/validate-m4-fishbone.js`。
+- 新增 M4 手动验证清单。
