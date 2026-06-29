@@ -74,6 +74,34 @@ export class MainlineRepository {
     return updated;
   }
 
+  async updateMainlineFlags(
+    id: string,
+    patch: Partial<Pick<Mainline, "visible" | "collapsed" | "pinned">>
+  ): Promise<Mainline | null> {
+    const file = await this.readMainlinesFile();
+    const index = file.mainlines.findIndex((mainline) => mainline.id === id);
+    if (index < 0) {
+      return null;
+    }
+
+    const updated: Mainline = {
+      ...file.mainlines[index],
+      ...patch
+    };
+    file.mainlines[index] = updated;
+    await this.writeMainlinesFile(file);
+    return updated;
+  }
+
+  async showAllMainlines(): Promise<void> {
+    const file = await this.readMainlinesFile();
+    file.mainlines = file.mainlines.map((mainline) => ({
+      ...mainline,
+      visible: true
+    }));
+    await this.writeMainlinesFile(file);
+  }
+
   async deleteMainline(id: string): Promise<Mainline | null> {
     const file = await this.readMainlinesFile();
     const index = file.mainlines.findIndex((mainline) => mainline.id === id);

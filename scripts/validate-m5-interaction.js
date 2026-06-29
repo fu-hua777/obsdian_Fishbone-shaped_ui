@@ -56,16 +56,16 @@ function main() {
   ]);
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
-    "renderMainlineCreator",
+    "renderMainlineControls",
     "MainlineEditorModal",
     "主线名称",
     "新建主线",
     "openEditMainlineModal",
     "contextmenu",
-    "dragstart",
-    "getDropPlacement",
-    "fishbone-lane-drop-before",
-    "fishbone-lane-drop-after",
+    "bindMainlineDrag",
+    "moveMainlineByClientY",
+    "fishbone-lane-drag-ready",
+    "fishbone-lane-dragging",
     "type: \"checkbox\"",
     "pointerdown",
     "setTaskDone",
@@ -77,8 +77,7 @@ function main() {
     ".fishbone-toolbar-actions",
     ".fishbone-lane-label-interactive",
     ".fishbone-lane-drag-ready",
-    ".fishbone-lane-drop-before",
-    ".fishbone-lane-drop-after",
+    ".fishbone-lane-dragging",
     ".fishbone-task-header",
     ".fishbone-task-mainline-select"
   ]);

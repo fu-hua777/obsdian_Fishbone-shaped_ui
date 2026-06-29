@@ -664,3 +664,318 @@
   padding-left: 8px;
   margin: 4px 0;
 }
+
+/* M5.3 canvas polish */
+.fishbone-timeline-view {
+  gap: 8px;
+  padding: 10px 12px;
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--interactive-accent) 10%, transparent), transparent 30%),
+    var(--background-primary);
+}
+
+.fishbone-timeline-toolbar {
+  gap: 10px;
+  padding: 2px 0 4px;
+}
+
+.fishbone-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 170px;
+}
+
+.fishbone-timeline-title {
+  color: var(--text-normal);
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.fishbone-toolbar-subtitle {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.fishbone-viewport-controls,
+.fishbone-toolbar-actions {
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+}
+
+.fishbone-viewport-controls button,
+.fishbone-toolbar-actions button,
+.fishbone-segmented-control button {
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fishbone-segmented-control {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: var(--background-primary);
+}
+
+.fishbone-segmented-control button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.fishbone-segmented-control button.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+  color: var(--text-accent);
+}
+
+.fishbone-zoom-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.fishbone-zoom-readout span {
+  min-width: 50px;
+  padding: 3px 7px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.fishbone-timeline-summary {
+  gap: 6px;
+  font-size: 12px;
+}
+
+.fishbone-timeline-summary span {
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-secondary) 68%, transparent);
+}
+
+.fishbone-canvas-viewport {
+  border-color: color-mix(in srgb, var(--background-modifier-border) 86%, var(--interactive-accent));
+  background:
+    linear-gradient(color-mix(in srgb, var(--background-modifier-border) 18%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--background-modifier-border) 14%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 68%, transparent), var(--background-primary));
+  background-size: 60px 60px, 60px 60px, auto;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-faint) 10%, transparent);
+}
+
+.fishbone-canvas-viewport:focus {
+  outline: 1px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  outline-offset: -2px;
+}
+
+.fishbone-date-tick {
+  min-width: 74px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--background-secondary) 50%, transparent);
+}
+
+.fishbone-date-tick.is-major {
+  color: var(--text-normal);
+}
+
+.fishbone-date-tick.is-center-date {
+  border-color: color-mix(in srgb, var(--interactive-accent) 48%, var(--background-modifier-border));
+}
+
+.fishbone-date-tick.is-today {
+  border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--interactive-accent) 22%, var(--background-secondary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+}
+
+.fishbone-date-tick::after {
+  height: 820px;
+  background: color-mix(in srgb, var(--background-modifier-border) 32%, transparent);
+}
+
+.fishbone-date-label {
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.fishbone-date-detail {
+  font-size: 11px;
+}
+
+.fishbone-canvas-spine {
+  height: 4px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--lane-color) 30%, transparent),
+    color-mix(in srgb, var(--lane-color) 92%, var(--background-modifier-border)),
+    color-mix(in srgb, var(--lane-color) 30%, transparent));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--lane-color) 18%, transparent),
+    0 0 12px color-mix(in srgb, var(--lane-color) 30%, transparent);
+}
+
+.fishbone-canvas-lane.is-collapsed .fishbone-canvas-spine {
+  opacity: 0.72;
+  height: 3px;
+}
+
+.fishbone-canvas-lane.is-hidden-mainline {
+  opacity: 0.55;
+}
+
+.fishbone-canvas-label-layer .fishbone-canvas-lane-label {
+  min-width: 162px;
+  max-width: 230px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--background-secondary) 92%, var(--lane-color)),
+    color-mix(in srgb, var(--background-primary) 88%, var(--lane-color)));
+}
+
+.fishbone-canvas-lane-label.is-pinned {
+  border-color: color-mix(in srgb, var(--lane-color) 70%, var(--interactive-accent));
+}
+
+.fishbone-canvas-lane-label.is-hidden-mainline {
+  opacity: 0.7;
+}
+
+.fishbone-lane-topline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.fishbone-lane-chip {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lane-color) 18%, var(--background-modifier-border));
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.fishbone-lane-dot {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--lane-color) 55%, transparent);
+}
+
+.fishbone-task-node {
+  border-radius: 8px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--background-secondary) 92%, var(--lane-color)),
+    color-mix(in srgb, var(--background-primary) 92%, var(--lane-color)));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--lane-color) 22%, transparent),
+    0 6px 16px color-mix(in srgb, var(--background-modifier-box-shadow) 22%, transparent);
+}
+
+.fishbone-task-node:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--lane-color) 70%, transparent),
+    0 0 18px color-mix(in srgb, var(--lane-color) 30%, transparent);
+}
+
+.fishbone-task-node.is-compacted {
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.fishbone-task-header input[type="checkbox"] {
+  border-radius: 5px;
+}
+
+.fishbone-task-title {
+  font-size: 12px;
+}
+
+.fishbone-task-meta {
+  font-size: 10px;
+}
+
+.fishbone-task-mainline-select {
+  min-height: 24px;
+  border-radius: 6px;
+}
+
+.fishbone-task-cluster {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transform: translate(-50%, -50%);
+  min-width: 104px;
+  padding: 7px 9px;
+  border: 1px dashed color-mix(in srgb, var(--lane-color) 70%, var(--background-modifier-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-secondary) 82%, var(--lane-color));
+  color: var(--text-normal);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--lane-color) 18%, transparent);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.fishbone-task-cluster:hover {
+  border-style: solid;
+  box-shadow: 0 0 20px color-mix(in srgb, var(--lane-color) 32%, transparent);
+}
+
+.fishbone-task-cluster-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lane-color) 42%, var(--background-modifier-border));
+  font-weight: 750;
+}
+
+.fishbone-task-cluster-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fishbone-relation-path {
+  opacity: 0.54;
+}
+
+.fishbone-relation-label {
+  font-size: 10px;
+}
+
+.fishbone-relation.is-relation-highlight .fishbone-relation-path,
+.fishbone-relation:hover .fishbone-relation-path {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+@media (max-width: 900px) {
+  .fishbone-timeline-toolbar {
+    align-items: stretch;
+  }
+
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    width: 100%;
+  }
+
+  .fishbone-toolbar-actions {
+    margin-left: 0;
+  }
+}

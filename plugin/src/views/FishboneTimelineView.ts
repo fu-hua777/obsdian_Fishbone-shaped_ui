@@ -11,15 +11,25 @@ import {
   FishboneCanvasLane,
   FishboneCanvasLayout,
   FishboneCanvasRelationLine,
+  FishboneCanvasTaskCluster,
   FishboneCanvasTaskNode
 } from "./fishboneCanvasLayout";
 import {
   createDefaultFishboneCanvasViewport,
+  DateRange,
   FishboneCanvasViewport,
+  TimeAxisMode,
+  fitCanvasViewportToDateRange,
   formatPercent,
+  getDateRangeFromValues,
+  getLocalDateString,
+  normalizeFishboneCanvasViewport,
   panCanvasViewport,
+  parseDateString,
   resetCanvasViewport,
   setFocusedLane,
+  setTimeAxisMode,
+  setViewportCenterDate,
   zoomCanvasViewport,
   zoomLane,
   zoomTimeScale
@@ -28,11 +38,19 @@ import {
 export const FISHBONE_TIMELINE_VIEW_TYPE = "fishbone-planner-timeline";
 const TASK_STATUSES: TaskStatus[] = ["todo", "doing", "done", "blocked", "canceled", "inbox"];
 const TASK_PRIORITIES: TaskPriority[] = ["high", "medium", "low"];
+const TIME_AXIS_MODES: Array<{ id: TimeAxisMode; label: string }> = [
+  { id: "day", label: "日" },
+  { id: "week", label: "周" },
+  { id: "month", label: "月" },
+  { id: "overview", label: "总览" }
+];
 
 export class FishboneTimelineView extends ItemView {
   private plugin: FishbonePlannerPlugin;
   private viewport: FishboneCanvasViewport = createDefaultFishboneCanvasViewport();
   private showRelations = true;
+  private showHiddenMainlines = false;
+  private expandedClusters = new Set<string>();
   private panDrag: { pointerId: number; x: number; y: number } | null = null;
   private suppressNextMainlineClick = false;
   private suppressNextTaskClick = false;
@@ -60,6 +78,11 @@ export class FishboneTimelineView extends ItemView {
   constructor(leaf: WorkspaceLeaf, plugin: FishbonePlannerPlugin) {
     super(leaf);
     this.plugin = plugin;
+    const saved = plugin.settings.fishboneViewState ?? {};
+    this.viewport = normalizeFishboneCanvasViewport(saved);
+    this.showRelations = saved.showRelations !== false;
+    this.showHiddenMainlines = saved.showHiddenMainlines === true;
+    this.expandedClusters = new Set(saved.expandedClusters ?? []);
   }
 
   getViewType(): string {
@@ -83,30 +106,27 @@ export class FishboneTimelineView extends ItemView {
       this.plugin.mainlineRepository.listMainlines(),
       this.plugin.taskRepository.listTasks()
     ]);
-    const layout = buildFishboneCanvasLayout(tasks, mainlines, this.viewport);
+    const layout = buildFishboneCanvasLayout(tasks, mainlines, this.viewport, {
+      showHiddenMainlines: this.showHiddenMainlines,
+      expandedClusters: this.expandedClusters
+    });
+    const dateRange = getDateRangeFromValues(tasks.map((task) => task.date));
 
     const toolbar = container.createDiv({ cls: "fishbone-timeline-toolbar" });
-    toolbar.createDiv({ cls: "fishbone-timeline-title", text: "鱼骨画布视图" });
-    this.renderViewportControls(toolbar);
-    this.renderRelationControls(toolbar);
-    this.renderMainlineCreator(toolbar);
-
-    const refreshButton = toolbar.createEl("button", { text: "刷新" });
-    refreshButton.addEventListener("click", () => {
-      void this.render();
-    });
+    const titleGroup = toolbar.createDiv({ cls: "fishbone-title-group" });
+    titleGroup.createDiv({ cls: "fishbone-timeline-title", text: "鱼骨画布视图" });
+    titleGroup.createDiv({ cls: "fishbone-toolbar-subtitle", text: `${formatMode(this.viewport.timeAxisMode)} · 中心 ${this.viewport.centerDate}` });
+    this.renderViewportControls(toolbar, tasks, dateRange);
+    this.renderMainlineControls(toolbar);
 
     const summary = container.createDiv({ cls: "fishbone-timeline-summary" });
-    summary.createSpan({ text: `relations ${layout.relationLines.length}` });
     summary.createSpan({ text: `任务 ${tasks.length}` });
     summary.createSpan({ text: `主线 ${mainlines.length}` });
-    summary.createSpan({ text: `日期刻度 ${layout.dateTicks.length}` });
+    summary.createSpan({ text: `关系 ${layout.relationLines.length}` });
+    summary.createSpan({ text: `聚合 ${layout.clusters.length}` });
+    summary.createSpan({ text: `范围 ${formatDateRange(dateRange)}` });
     summary.createSpan({ text: `画布 ${formatPercent(this.viewport.canvasZoom)}` });
     summary.createSpan({ text: `时间 ${Math.round(this.viewport.timeScale)}px/天` });
-    if (this.viewport.focusedLaneId) {
-      const laneZoom = this.viewport.laneZooms[this.viewport.focusedLaneId] ?? 1;
-      summary.createSpan({ text: `主线 ${formatPercent(laneZoom)}` });
-    }
 
     if (mainlines.length === 0) {
       container.createDiv({
@@ -115,33 +135,79 @@ export class FishboneTimelineView extends ItemView {
       });
     }
 
-    this.renderCanvas(container, layout, mainlines);
+    this.renderCanvas(container, layout, mainlines, tasks);
   }
 
-  private renderViewportControls(toolbar: HTMLElement): void {
+  private renderViewportControls(toolbar: HTMLElement, tasks: PlanningTask[], dateRange: DateRange): void {
     const controls = toolbar.createDiv({ cls: "fishbone-viewport-controls" });
-    controls.createEl("button", { text: "重置视图" }).addEventListener("click", async () => {
+    const modeGroup = controls.createDiv({ cls: "fishbone-segmented-control" });
+    for (const mode of TIME_AXIS_MODES) {
+      const button = modeGroup.createEl("button", { text: mode.label });
+      button.toggleClass("is-active", this.viewport.timeAxisMode === mode.id);
+      button.addEventListener("click", async () => {
+        this.viewport = setTimeAxisMode(this.viewport, mode.id);
+        await this.persistViewState();
+        await this.render();
+      });
+    }
+
+    this.createToolbarButton(controls, "今天", async () => {
+      this.viewport = setViewportCenterDate(this.viewport, getLocalDateString(new Date()));
+      await this.persistViewState();
+      await this.render();
+    });
+    this.createToolbarButton(controls, "跳转", async () => {
+      const value = window.prompt("跳转到日期（YYYY-MM-DD）", this.viewport.centerDate);
+      if (!value) return;
+      if (!parseDateString(value.trim())) {
+        new Notice("日期格式应为 YYYY-MM-DD");
+        return;
+      }
+      this.viewport = setViewportCenterDate(this.viewport, value.trim());
+      await this.persistViewState();
+      await this.render();
+    });
+    this.createToolbarButton(controls, "适应窗口", async () => {
+      this.viewport = fitCanvasViewportToDateRange(this.viewport, dateRange, this.containerEl.clientWidth);
+      await this.persistViewState();
+      await this.render();
+    });
+    this.createToolbarButton(controls, "显示全部", async () => {
+      this.viewport = setTimeAxisMode(this.viewport, "overview");
+      this.viewport = fitCanvasViewportToDateRange(this.viewport, dateRange, this.containerEl.clientWidth);
+      await this.persistViewState();
+      await this.render();
+    });
+    this.createToolbarButton(controls, "重置", async () => {
       this.viewport = resetCanvasViewport(this.viewport);
+      await this.persistViewState();
       await this.render();
     });
-    controls.createDiv({ cls: "fishbone-viewport-label", text: `中心 ${this.viewport.centerDate}` });
-    controls.createDiv({ cls: "fishbone-zoom-label", text: formatPercent(this.viewport.canvasZoom) });
-    controls.createDiv({ cls: "fishbone-zoom-label", text: `${Math.round(this.viewport.timeScale)}px/天` });
-  }
-
-  private renderRelationControls(toolbar: HTMLElement): void {
-    const button = toolbar.createEl("button", { text: this.showRelations ? "隐藏关系" : "显示关系" });
-    button.addEventListener("click", async () => {
+    this.createToolbarButton(controls, this.showRelations ? "隐藏关系" : "显示关系", async () => {
       this.showRelations = !this.showRelations;
+      await this.persistViewState();
       await this.render();
     });
+
+    const zoomGroup = controls.createDiv({ cls: "fishbone-zoom-readout" });
+    zoomGroup.createSpan({ text: formatPercent(this.viewport.canvasZoom) });
+    zoomGroup.createSpan({ text: `${Math.round(this.viewport.timeScale)}px/天` });
   }
 
-  private renderMainlineCreator(toolbar: HTMLElement): void {
+  private renderMainlineControls(toolbar: HTMLElement): void {
     const actionGroup = toolbar.createDiv({ cls: "fishbone-toolbar-actions" });
-    const createButton = actionGroup.createEl("button", { text: "新建主线" });
-    createButton.addEventListener("click", async (event) => {
-      event.preventDefault();
+    this.createToolbarButton(actionGroup, this.showHiddenMainlines ? "隐藏已隐藏" : "管理隐藏", async () => {
+      this.showHiddenMainlines = !this.showHiddenMainlines;
+      await this.persistViewState();
+      await this.render();
+    });
+    this.createToolbarButton(actionGroup, "显示全部主线", async () => {
+      await this.plugin.mainlineRepository.showAllMainlines();
+      this.showHiddenMainlines = false;
+      await this.persistViewState();
+      await this.render();
+    });
+    this.createToolbarButton(actionGroup, "新建主线", async () => {
       new MainlineEditorModal(this.plugin, {
         title: "新建主线",
         submitText: "创建",
@@ -153,12 +219,28 @@ export class FishboneTimelineView extends ItemView {
           await this.render();
         }
       }).open();
+    }, true);
+    this.createToolbarButton(actionGroup, "刷新", async () => {
+      await this.render();
     });
   }
 
-  private renderCanvas(container: Element, layout: FishboneCanvasLayout, mainlines: Mainline[]): void {
+  private createToolbarButton(parent: HTMLElement, text: string, onClick: () => Promise<void>, cta = false): HTMLButtonElement {
+    const button = parent.createEl("button", { text });
+    if (cta) button.addClass("mod-cta");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      void onClick();
+    });
+    return button;
+  }
+
+  private renderCanvas(container: Element, layout: FishboneCanvasLayout, mainlines: Mainline[], tasks: PlanningTask[]): void {
     const canvas = container.createDiv({ cls: "fishbone-canvas-viewport" });
-    this.bindCanvasViewport(canvas, layout, mainlines);
+    canvas.tabIndex = 0;
+    canvas.setAttr("data-time-axis-mode", this.viewport.timeAxisMode);
+    this.bindCanvasViewport(canvas, layout, mainlines, tasks);
+    this.bindCanvasKeyboard(canvas, tasks);
 
     const stage = canvas.createDiv({ cls: "fishbone-canvas-stage" });
     stage.style.width = `${layout.stageWidth}px`;
@@ -168,7 +250,13 @@ export class FishboneTimelineView extends ItemView {
     const dateLayer = stage.createDiv({ cls: "fishbone-date-axis-layer" });
     for (const tick of layout.dateTicks) {
       const tickEl = dateLayer.createDiv({
-        cls: `fishbone-date-tick${tick.isToday ? " is-today" : ""}${tick.isWeekend ? " is-weekend" : ""}`
+        cls: [
+          "fishbone-date-tick",
+          tick.isToday ? "is-today" : "",
+          tick.isWeekend ? "is-weekend" : "",
+          tick.isMajor ? "is-major" : "",
+          tick.id === this.viewport.centerDate ? "is-center-date" : ""
+        ].filter(Boolean).join(" ")
       });
       tickEl.style.left = `${tick.x}px`;
       tickEl.style.top = `${tick.y}px`;
@@ -188,6 +276,9 @@ export class FishboneTimelineView extends ItemView {
     const taskLayer = stage.createDiv({ cls: "fishbone-task-layer" });
     for (const taskNode of layout.tasks) {
       this.renderCanvasTaskNode(taskLayer, taskNode, mainlines, layout);
+    }
+    for (const cluster of layout.clusters) {
+      this.renderTaskCluster(taskLayer, cluster);
     }
 
     const labelLayer = canvas.createDiv({ cls: "fishbone-canvas-label-layer" });
@@ -281,7 +372,7 @@ export class FishboneTimelineView extends ItemView {
     stage.appendChild(svg);
   }
 
-  private bindCanvasViewport(canvas: HTMLElement, layout: FishboneCanvasLayout, mainlines: Mainline[]): void {
+  private bindCanvasViewport(canvas: HTMLElement, layout: FishboneCanvasLayout, mainlines: Mainline[], tasks: PlanningTask[]): void {
     canvas.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || isInteractiveTarget(event.target)) return;
       canvas.setPointerCapture(event.pointerId);
@@ -291,6 +382,7 @@ export class FishboneTimelineView extends ItemView {
         y: event.clientY
       };
       canvas.addClass("is-panning");
+      canvas.focus();
     });
 
     canvas.addEventListener("pointermove", (event) => {
@@ -310,6 +402,7 @@ export class FishboneTimelineView extends ItemView {
       if (this.panDrag?.pointerId === event.pointerId) {
         this.panDrag = null;
         canvas.removeClass("is-panning");
+        void this.persistViewState();
       }
     };
     canvas.addEventListener("pointerup", endPan);
@@ -331,6 +424,7 @@ export class FishboneTimelineView extends ItemView {
           y: event.clientY - rect.top
         });
       }
+      await this.persistViewState();
       await this.render();
     }, { passive: false });
 
@@ -356,6 +450,34 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
+  private bindCanvasKeyboard(canvas: HTMLElement, tasks: PlanningTask[]): void {
+    canvas.addEventListener("keydown", async (event) => {
+      if (isFormTarget(event.target)) return;
+      const dateRange = getDateRangeFromValues(tasks.map((task) => task.date));
+      if (event.key === "t" || event.key === "T") {
+        event.preventDefault();
+        this.viewport = setViewportCenterDate(this.viewport, getLocalDateString(new Date()));
+      } else if (event.key === "0") {
+        event.preventDefault();
+        this.viewport = resetCanvasViewport(this.viewport);
+      } else if (event.key === "f" || event.key === "F") {
+        event.preventDefault();
+        this.viewport = fitCanvasViewportToDateRange(this.viewport, dateRange, canvas.clientWidth);
+      } else if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        this.showRelations = !this.showRelations;
+      } else if (["1", "2", "3", "4"].includes(event.key)) {
+        event.preventDefault();
+        const mode = TIME_AXIS_MODES[Number(event.key) - 1]?.id;
+        if (mode) this.viewport = setTimeAxisMode(this.viewport, mode);
+      } else {
+        return;
+      }
+      await this.persistViewState();
+      await this.render();
+    });
+  }
+
   private applyStageTransform(stage: HTMLElement): void {
     stage.style.transform = `translate(${this.viewport.panX}px, ${this.viewport.panY}px) scale(${this.viewport.canvasZoom})`;
   }
@@ -372,7 +494,15 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderCanvasLane(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[]): void {
-    const laneEl = layer.createDiv({ cls: `fishbone-canvas-lane${lane.isUnassigned ? " is-unassigned" : ""}` });
+    const laneEl = layer.createDiv({
+      cls: [
+        "fishbone-canvas-lane",
+        lane.isUnassigned ? "is-unassigned" : "",
+        lane.isCollapsed ? "is-collapsed" : "",
+        lane.isPinned ? "is-pinned" : "",
+        lane.isHidden ? "is-hidden-mainline" : ""
+      ].filter(Boolean).join(" ")
+    });
     laneEl.style.setProperty("--lane-color", lane.color);
     laneEl.style.left = "0px";
     laneEl.style.top = `${lane.y}px`;
@@ -389,41 +519,39 @@ export class FishboneTimelineView extends ItemView {
     const spine = laneEl.createDiv({ cls: "fishbone-canvas-spine" });
     spine.style.top = `${lane.height / 2}px`;
 
-    const label = laneEl.createDiv({ cls: "fishbone-canvas-lane-label" });
-    label.createDiv({ cls: "fishbone-lane-dot" });
     const mainline = mainlines.find((item) => item.id === lane.id);
-    const name = label.createDiv({ cls: "fishbone-lane-name", text: lane.name });
     if (mainline) {
-      label.addClass("fishbone-lane-label-interactive");
-      name.setAttr("title", "点击修改；右键删除；长按拖动排序");
-      name.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (this.suppressNextMainlineClick) {
-          event.preventDefault();
-          this.suppressNextMainlineClick = false;
-          return;
-        }
-        this.openEditMainlineModal(mainline);
-      });
-      this.bindMainlineContextMenu(label, mainline);
+      this.bindMainlineContextMenu(laneEl, mainline);
     }
   }
 
   private renderCanvasLaneLabel(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[], layout: FishboneCanvasLayout): void {
-    const label = layer.createDiv({ cls: `fishbone-canvas-lane-label${lane.isUnassigned ? " is-unassigned" : ""}` });
+    const label = layer.createDiv({
+      cls: [
+        "fishbone-canvas-lane-label",
+        lane.isUnassigned ? "is-unassigned" : "",
+        lane.isCollapsed ? "is-collapsed" : "",
+        lane.isPinned ? "is-pinned" : "",
+        lane.isHidden ? "is-hidden-mainline" : ""
+      ].filter(Boolean).join(" ")
+    });
     label.style.setProperty("--lane-color", lane.color);
     label.setAttr("data-lane-id", lane.id);
     label.setAttr("data-lane-spine-y", String(lane.spineY));
     label.createDiv({ cls: "fishbone-lane-dot" });
 
     const text = label.createDiv({ cls: "fishbone-lane-text" });
-    const name = text.createDiv({ cls: "fishbone-lane-name", text: lane.name });
-    text.createDiv({ cls: "fishbone-lane-kind", text: lane.isUnassigned ? "未分配任务" : "用户主线" });
+    const top = text.createDiv({ cls: "fishbone-lane-topline" });
+    const name = top.createDiv({ cls: "fishbone-lane-name", text: lane.name });
+    if (lane.isPinned) top.createSpan({ cls: "fishbone-lane-chip", text: "固定" });
+    if (lane.isCollapsed) top.createSpan({ cls: "fishbone-lane-chip", text: "折叠" });
+    if (lane.isHidden) top.createSpan({ cls: "fishbone-lane-chip", text: "隐藏" });
+    text.createDiv({ cls: "fishbone-lane-kind", text: lane.isUnassigned ? `未分配 · ${lane.taskCount}` : `用户主线 · ${lane.taskCount}` });
 
     const mainline = mainlines.find((item) => item.id === lane.id);
     if (mainline) {
       label.addClass("fishbone-lane-label-interactive");
-      name.setAttr("title", "点击修改；右键删除；长按拖动排序");
+      name.setAttr("title", "点击修改；右键显示更多；长按拖动排序");
       name.addEventListener("click", (event) => {
         event.stopPropagation();
         if (this.suppressNextMainlineClick) {
@@ -441,11 +569,18 @@ export class FishboneTimelineView extends ItemView {
   private renderCanvasTaskNode(parent: HTMLElement, taskNode: FishboneCanvasTaskNode, mainlines: Mainline[], layout: FishboneCanvasLayout): void {
     const task = taskNode.task;
     const node = parent.createDiv({
-      cls: `fishbone-task-node fishbone-task-${task.status} fishbone-priority-${task.priority} fishbone-branch-${taskNode.branchSide}`
+      cls: [
+        "fishbone-task-node",
+        `fishbone-task-${task.status}`,
+        `fishbone-priority-${task.priority}`,
+        `fishbone-branch-${taskNode.branchSide}`,
+        taskNode.isCompacted ? "is-compacted" : ""
+      ].filter(Boolean).join(" ")
     });
     node.style.setProperty("--lane-color", taskNode.color);
     node.setAttr("data-lane-id", taskNode.laneId);
     node.setAttr("data-task-id", task.taskId);
+    node.setAttr("data-cluster-id", taskNode.bucketId);
     node.style.left = `${taskNode.x}px`;
     node.style.top = `${taskNode.y}px`;
     node.style.width = `${taskNode.width}px`;
@@ -479,7 +614,6 @@ export class FishboneTimelineView extends ItemView {
     const meta = node.createDiv({ cls: "fishbone-task-meta" });
     meta.createSpan({ cls: "fishbone-task-status", text: task.status });
     meta.createSpan({ cls: "fishbone-task-priority", text: formatPriority(task.priority) });
-
     if (mainlines.length > 0) {
       const select = node.createEl("select", { cls: "fishbone-task-mainline-select" });
       select.createEl("option", { text: "未分配", value: "" });
@@ -522,6 +656,24 @@ export class FishboneTimelineView extends ItemView {
         return;
       }
       void this.plugin.taskRepository.openTask(task);
+    });
+  }
+
+  private renderTaskCluster(parent: HTMLElement, cluster: FishboneCanvasTaskCluster): void {
+    const node = parent.createDiv({ cls: "fishbone-task-cluster" });
+    node.style.setProperty("--lane-color", cluster.color);
+    node.style.left = `${cluster.x}px`;
+    node.style.top = `${cluster.y}px`;
+    node.setAttr("data-lane-id", cluster.laneId);
+    node.setAttr("data-cluster-id", cluster.id);
+    node.createSpan({ cls: "fishbone-task-cluster-count", text: `+${cluster.count}` });
+    node.createSpan({ cls: "fishbone-task-cluster-label", text: "展开任务" });
+    node.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.expandedClusters.add(cluster.id);
+      await this.persistViewState();
+      await this.render();
     });
   }
 
@@ -666,7 +818,7 @@ export class FishboneTimelineView extends ItemView {
         node.addClass("fishbone-task-dragging");
         canvas.addClass("is-task-drag-over");
         this.hideTaskTooltip(node);
-      }, 260);
+      }, 240);
     });
 
     node.addEventListener("pointermove", (event) => {
@@ -743,12 +895,40 @@ export class FishboneTimelineView extends ItemView {
   private bindMainlineContextMenu(label: HTMLElement, mainline: Mainline): void {
     label.addEventListener("contextmenu", (event) => {
       event.preventDefault();
+      event.stopPropagation();
       const menu = new Menu();
       menu.addItem((item) => {
         item
           .setTitle("修改主线")
           .setIcon("pencil")
           .onClick(() => this.openEditMainlineModal(mainline));
+      });
+      menu.addItem((item) => {
+        item
+          .setTitle(mainline.collapsed ? "展开主线" : "折叠主线")
+          .setIcon(mainline.collapsed ? "chevrons-down" : "chevrons-up")
+          .onClick(async () => {
+            await this.plugin.mainlineRepository.updateMainlineFlags(mainline.id, { collapsed: !mainline.collapsed });
+            await this.render();
+          });
+      });
+      menu.addItem((item) => {
+        item
+          .setTitle(mainline.pinned ? "取消固定" : "固定主线")
+          .setIcon("pin")
+          .onClick(async () => {
+            await this.plugin.mainlineRepository.updateMainlineFlags(mainline.id, { pinned: !mainline.pinned });
+            await this.render();
+          });
+      });
+      menu.addItem((item) => {
+        item
+          .setTitle(mainline.visible === false ? "显示主线" : "隐藏主线")
+          .setIcon(mainline.visible === false ? "eye" : "eye-off")
+          .onClick(async () => {
+            await this.plugin.mainlineRepository.updateMainlineFlags(mainline.id, { visible: mainline.visible === false });
+            await this.render();
+          });
       });
       menu.addItem((item) => {
         item
@@ -827,7 +1007,7 @@ export class FishboneTimelineView extends ItemView {
         label.addClass("fishbone-lane-drag-ready");
         label.addClass("fishbone-lane-dragging");
         canvas.addClass("is-mainline-drag-over");
-      }, 260);
+      }, 240);
     });
     label.addEventListener("pointermove", (event) => {
       const drag = this.mainlinePointerDrag;
@@ -841,42 +1021,6 @@ export class FishboneTimelineView extends ItemView {
     });
     label.addEventListener("pointercancel", (event) => {
       void finishPointerDrag(event);
-    });
-    label.addEventListener("dragstart", (event) => {
-      if (!label.draggable) {
-        event.preventDefault();
-        return;
-      }
-      event.dataTransfer?.setData("text/fishbone-mainline-id", mainline.id);
-      label.addClass("fishbone-lane-dragging");
-    });
-    label.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      label.removeClass("fishbone-lane-drop-before");
-      label.removeClass("fishbone-lane-drop-after");
-      label.addClass(getDropPlacement(label, event) === "before" ? "fishbone-lane-drop-before" : "fishbone-lane-drop-after");
-    });
-    label.addEventListener("dragleave", () => {
-      label.removeClass("fishbone-lane-drop-before");
-      label.removeClass("fishbone-lane-drop-after");
-    });
-    label.addEventListener("drop", async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const sourceId = event.dataTransfer?.getData("text/fishbone-mainline-id");
-      if (!sourceId || sourceId === mainline.id) return;
-      const placement = getDropPlacement(label, event);
-      await this.plugin.mainlineRepository.moveMainline(sourceId, mainline.id, placement);
-      new Notice("主线排序已更新");
-      await this.render();
-    });
-    label.addEventListener("dragend", () => {
-      clearTimer();
-      label.draggable = false;
-      label.removeClass("fishbone-lane-drag-ready");
-      label.removeClass("fishbone-lane-dragging");
-      label.removeClass("fishbone-lane-drop-before");
-      label.removeClass("fishbone-lane-drop-after");
     });
   }
 
@@ -923,6 +1067,16 @@ export class FishboneTimelineView extends ItemView {
     await this.plugin.mainlineRepository.moveMainline(sourceId, target.id, placement);
     new Notice("主线排序已更新");
     await this.render();
+  }
+
+  private async persistViewState(): Promise<void> {
+    this.plugin.settings.fishboneViewState = {
+      ...this.viewport,
+      showRelations: this.showRelations,
+      showHiddenMainlines: this.showHiddenMainlines,
+      expandedClusters: [...this.expandedClusters]
+    };
+    await this.plugin.saveSettings();
   }
 }
 
@@ -1000,7 +1154,6 @@ class MainlineEditorModal extends Modal {
 }
 
 class TaskEditorModal extends Modal {
-  private task: PlanningTask;
   private mainlines: Mainline[];
   private onSubmit: (patch: TaskFieldPatch) => Promise<void>;
   private title: string;
@@ -1016,7 +1169,6 @@ class TaskEditorModal extends Modal {
     onSubmit: (patch: TaskFieldPatch) => Promise<void>
   ) {
     super(plugin.app);
-    this.task = task;
     this.mainlines = mainlines;
     this.onSubmit = onSubmit;
     this.title = task.title;
@@ -1112,11 +1264,6 @@ class TaskEditorModal extends Modal {
   }
 }
 
-function getDropPlacement(target: HTMLElement, event: DragEvent): "before" | "after" {
-  const rect = target.getBoundingClientRect();
-  return event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-}
-
 function formatPriority(priority: PlanningTask["priority"]): string {
   switch (priority) {
     case "high":
@@ -1130,8 +1277,27 @@ function formatPriority(priority: PlanningTask["priority"]): string {
   }
 }
 
+function formatMode(mode: TimeAxisMode): string {
+  switch (mode) {
+    case "week":
+      return "周视图";
+    case "month":
+      return "月视图";
+    case "overview":
+      return "总览";
+    default:
+      return "日视图";
+  }
+}
+
+function formatDateRange(range: DateRange): string {
+  if (!range.start || !range.end) return "无日期";
+  if (range.start === range.end) return range.start;
+  return `${range.start} - ${range.end}`;
+}
+
 function isInteractiveTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && Boolean(target.closest("button, input, select, textarea, .fishbone-task-node, .fishbone-canvas-lane-label"));
+  return target instanceof HTMLElement && Boolean(target.closest("button, input, select, textarea, .fishbone-task-node, .fishbone-task-cluster, .fishbone-canvas-lane-label"));
 }
 
 function isFormTarget(target: EventTarget | null): boolean {

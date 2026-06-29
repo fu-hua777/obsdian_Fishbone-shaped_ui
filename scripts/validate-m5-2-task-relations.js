@@ -58,7 +58,7 @@ function main() {
   ]);
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
-    "renderRelationControls",
+    "showRelations",
     "renderRelationLayer",
     "fishbone-relation-layer",
     "bindTaskDrag",

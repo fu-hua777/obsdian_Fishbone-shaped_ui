@@ -3,10 +3,26 @@ import FishbonePlannerPlugin from "./main";
 
 export interface FishbonePlannerSettings {
   planningSystemPath: string;
+  fishboneViewState: FishbonePersistedViewState;
+}
+
+export interface FishbonePersistedViewState {
+  panX?: number;
+  panY?: number;
+  canvasZoom?: number;
+  timeScale?: number;
+  centerDate?: string;
+  timeAxisMode?: "day" | "week" | "month" | "overview";
+  showRelations?: boolean;
+  showHiddenMainlines?: boolean;
+  focusedLaneId?: string | null;
+  laneZooms?: Record<string, number>;
+  expandedClusters?: string[];
 }
 
 export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
-  planningSystemPath: "PlanningSystem"
+  planningSystemPath: "PlanningSystem",
+  fishboneViewState: {}
 };
 
 export class FishbonePlannerSettingTab extends PluginSettingTab {

@@ -124,3 +124,17 @@ M3 未做：
 - 新增 SVG relation layer，支持虚线、箭头、标签、显示开关、hover 高亮和右键打开来源/目标任务。
 - 新增 `scripts/validate-m5-2-task-relations.js` 和 `tests/plugin/m5-2-manual-test-checklist.md`。
 - 本阶段仍不做 relation 编辑器、拖拽创建 relation、task-index 同步和右侧工作台。
+
+### M5.3：画布导航、时间轴模式与概念图视觉打磨
+- 新增 `PLANS/M5.3-canvas-navigation-and-visual-polish.md`，明确 M5.3 继续聚焦鱼骨主画布，不进入右侧工作台。
+- 扩展 `fishboneCanvasViewport.ts`，新增 `TimeAxisMode`、日期范围、跳转日期、适应窗口、显示全部和视图状态校验能力。
+- 扩展 `fishboneCanvasLayout.ts`，支持隐藏/折叠/固定主线、任务计数、同日同主线任务聚合节点和总览日期 tick。
+- 扩展 `MainlineRepository`，支持 `updateMainlineFlags()` 和 `showAllMainlines()`。
+- 扩展插件 settings，持久化鱼骨画布视图状态，包括缩放、中心日期、时间轴模式、关系显示开关、隐藏主线管理和聚合展开状态。
+- 重建鱼骨顶部工具栏，新增日/周/月/总览、今天、跳转、适应窗口、显示全部、重置、隐藏关系、管理隐藏、显示全部主线等控件。
+- 主线右键菜单新增折叠/展开、隐藏/显示、固定/取消固定。
+- 新增画布快捷键：`T` 今天、`F` 适应窗口、`R` 关系开关、`0` 重置、`1/2/3/4` 切换时间轴模式。
+- 样式向概念图靠近：深色画布层次、紧凑工具栏、日期选中态、主线状态 chip、胶囊式任务节点、relation 弱化和 hover 高亮。
+- 新增 `scripts/create-m5-3-self-test-data.js`，已向测试 Vault 写入 8 个 M5.3 自测任务、5 条 relation，并形成同日同主线 5 任务密集桶。
+- 新增 `scripts/validate-m5-3-canvas-navigation.js` 和 `tests/plugin/m5-3-manual-test-checklist.md`。
+- 本阶段仍不做 relation 编辑器、拖拽创建 relation、快速笔记、每日总结和右侧工作台。

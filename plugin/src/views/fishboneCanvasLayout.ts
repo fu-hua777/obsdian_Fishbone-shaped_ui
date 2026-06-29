@@ -10,6 +10,9 @@ import {
   dateToCanvasX,
   formatCanvasDate,
   formatCanvasWeekday,
+  getDateRangeFromValues,
+  getDateTickRangePadding,
+  getDateTickStep,
   getLaneHeight,
   getLocalDateString,
   parseDateString
@@ -22,6 +25,15 @@ import {
 
 export const TASK_NODE_WIDTH = 156;
 export const TASK_NODE_HEIGHT = 86;
+export const TASK_CLUSTER_WIDTH = 116;
+export const TASK_CLUSTER_HEIGHT = 46;
+const COMPACT_BUCKET_THRESHOLD = 4;
+const COMPACT_BUCKET_VISIBLE_LIMIT = 2;
+
+export interface FishboneCanvasLayoutOptions {
+  showHiddenMainlines: boolean;
+  expandedClusters: Set<string>;
+}
 
 export interface FishboneCanvasLayout {
   stageWidth: number;
@@ -29,6 +41,7 @@ export interface FishboneCanvasLayout {
   dateTicks: FishboneCanvasDateTick[];
   lanes: FishboneCanvasLane[];
   tasks: FishboneCanvasTaskNode[];
+  clusters: FishboneCanvasTaskCluster[];
   relationLines: FishboneCanvasRelationLine[];
   taskNodeByTaskId: Map<string, FishboneCanvasTaskNode>;
   taskNodeByPath: Map<string, FishboneCanvasTaskNode>;
@@ -43,6 +56,7 @@ export interface FishboneCanvasDateTick {
   detail: string;
   isToday: boolean;
   isWeekend: boolean;
+  isMajor: boolean;
 }
 
 export interface FishboneCanvasLane {
@@ -53,6 +67,10 @@ export interface FishboneCanvasLane {
   height: number;
   spineY: number;
   isUnassigned: boolean;
+  isCollapsed: boolean;
+  isPinned: boolean;
+  isHidden: boolean;
+  taskCount: number;
 }
 
 export interface FishboneCanvasAnchor {
@@ -63,6 +81,7 @@ export interface FishboneCanvasAnchor {
 export interface FishboneCanvasTaskNode {
   task: PlanningTask;
   laneId: string;
+  bucketId: string;
   x: number;
   y: number;
   width: number;
@@ -74,6 +93,18 @@ export interface FishboneCanvasTaskNode {
   spineAnchor: FishboneCanvasAnchor;
   branchIndex: number;
   branchSide: "above" | "below";
+  color: string;
+  isCompacted: boolean;
+}
+
+export interface FishboneCanvasTaskCluster {
+  id: string;
+  laneId: string;
+  date: string | null;
+  x: number;
+  y: number;
+  count: number;
+  hiddenTaskIds: string[];
   color: string;
 }
 
@@ -100,16 +131,22 @@ export interface FishboneCanvasRelationLine {
 export function buildFishboneCanvasLayout(
   tasks: PlanningTask[],
   mainlines: Mainline[],
-  viewport: FishboneCanvasViewport
+  viewport: FishboneCanvasViewport,
+  options: FishboneCanvasLayoutOptions
 ): FishboneCanvasLayout {
-  const lanes = buildCanvasLanes(tasks, mainlines, viewport);
-  const taskNodes = buildCanvasTasks(tasks, lanes, mainlines, viewport);
+  const lanes = buildCanvasLanes(tasks, mainlines, viewport, options);
+  const { taskNodes, clusters } = buildCanvasTasks(tasks, lanes, mainlines, viewport, options);
   const taskNodeByTaskId = new Map(taskNodes.map((node) => [node.task.taskId, node]));
   const taskNodeByPath = new Map(taskNodes.map((node) => [node.task.path, node]));
   const taskNodeByTitle = new Map(taskNodes.map((node) => [node.task.title, node]));
   const relationLines = buildRelationLines(taskNodes, taskNodeByTaskId, taskNodeByPath, taskNodeByTitle);
   const dateTicks = buildDateTicks(tasks, viewport);
-  const stageWidth = Math.max(5200, ...dateTicks.map((tick) => tick.x + 420), ...taskNodes.map((node) => node.x + 420));
+  const stageWidth = Math.max(
+    5200,
+    ...dateTicks.map((tick) => tick.x + 420),
+    ...taskNodes.map((node) => node.x + 420),
+    ...clusters.map((cluster) => cluster.x + 420)
+  );
   const stageHeight = Math.max(900, ...lanes.map((lane) => lane.y + lane.height + 220));
 
   return {
@@ -118,6 +155,7 @@ export function buildFishboneCanvasLayout(
     dateTicks,
     lanes,
     tasks: taskNodes,
+    clusters,
     relationLines,
     taskNodeByTaskId,
     taskNodeByPath,
@@ -169,32 +207,46 @@ export function getCanvasLaneAtY(lanes: FishboneCanvasLane[], y: number): Fishbo
   return nearest;
 }
 
-function buildCanvasLanes(tasks: PlanningTask[], mainlines: Mainline[], viewport: FishboneCanvasViewport): FishboneCanvasLane[] {
+function buildCanvasLanes(
+  tasks: PlanningTask[],
+  mainlines: Mainline[],
+  viewport: FishboneCanvasViewport,
+  options: FishboneCanvasLayoutOptions
+): FishboneCanvasLane[] {
+  const allMainlineNames = new Set(mainlines.map((mainline) => mainline.name));
   const visibleMainlines = mainlines
-    .filter((mainline) => mainline.visible !== false)
-    .sort((a, b) => a.order - b.order);
+    .filter((mainline) => options.showHiddenMainlines || mainline.visible !== false)
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.order - b.order);
   const visibleNames = new Set(visibleMainlines.map((mainline) => mainline.name));
-  const hasUnassignedTask = mainlines.length === 0 || tasks.some((task) => !task.mainline || !visibleNames.has(task.mainline));
+  const hasUnassignedTask = mainlines.length === 0 || tasks.some((task) => !task.mainline || !allMainlineNames.has(task.mainline));
 
   const laneSources = visibleMainlines.map((mainline) => ({
     id: mainline.id,
     name: mainline.name,
     color: mainline.color,
-    isUnassigned: false
+    isUnassigned: false,
+    isCollapsed: mainline.collapsed === true,
+    isPinned: mainline.pinned === true,
+    isHidden: mainline.visible === false,
+    taskCount: tasks.filter((task) => task.mainline === mainline.name).length
   }));
   if (hasUnassignedTask) {
     laneSources.push({
       id: UNASSIGNED_LANE_ID,
       name: UNASSIGNED_LANE_NAME,
       color: UNASSIGNED_COLOR,
-      isUnassigned: true
+      isUnassigned: true,
+      isCollapsed: false,
+      isPinned: false,
+      isHidden: false,
+      taskCount: tasks.filter((task) => !task.mainline || !allMainlineNames.has(task.mainline)).length
     });
   }
 
   const lanes: FishboneCanvasLane[] = [];
   let y = CANVAS_LANE_START_Y;
   for (const source of laneSources) {
-    const height = getLaneHeight(viewport, source.id);
+    const height = getLaneHeight(viewport, source.id, source.isCollapsed);
     lanes.push({
       ...source,
       y,
@@ -210,9 +262,11 @@ function buildCanvasTasks(
   tasks: PlanningTask[],
   lanes: FishboneCanvasLane[],
   mainlines: Mainline[],
-  viewport: FishboneCanvasViewport
-): FishboneCanvasTaskNode[] {
+  viewport: FishboneCanvasViewport,
+  options: FishboneCanvasLayoutOptions
+): { taskNodes: FishboneCanvasTaskNode[]; clusters: FishboneCanvasTaskCluster[] } {
   const laneByName = new Map<string, FishboneCanvasLane>();
+  const allMainlineNames = new Set(mainlines.map((mainline) => mainline.name));
   for (const mainline of mainlines) {
     const lane = lanes.find((item) => item.id === mainline.id);
     if (lane) {
@@ -220,38 +274,93 @@ function buildCanvasTasks(
     }
   }
   const unassignedLane = lanes.find((lane) => lane.id === UNASSIGNED_LANE_ID) ?? lanes[0];
-  if (!unassignedLane) return [];
+  if (!unassignedLane) return { taskNodes: [], clusters: [] };
 
-  const bucketCounts = new Map<string, number>();
-  return tasks.map((task) => {
-    const lane = task.mainline ? laneByName.get(task.mainline) ?? unassignedLane : unassignedLane;
-    const x = dateToCanvasX(task.date, viewport);
-    const bucket = `${lane.id}:${task.date ?? "__undated__"}`;
-    const index = bucketCounts.get(bucket) ?? 0;
-    bucketCounts.set(bucket, index + 1);
-    const branchSide = index % 2 === 0 ? "above" : "below";
-    const branchIndex = Math.floor(index / 2);
-    const branchOffset = 44 + branchIndex * 52;
-    const y = branchSide === "above" ? lane.spineY - branchOffset : lane.spineY + branchOffset;
-    return createTaskNode(task, lane.id, x, y, branchIndex, branchSide, lane.color, lane.spineY);
-  });
+  const bucketTasks = new Map<string, { lane: FishboneCanvasLane; date: string | null; tasks: PlanningTask[] }>();
+  for (const task of tasks) {
+    const lane = resolveTaskLane(task, laneByName, allMainlineNames, unassignedLane);
+    if (!lane || lane.isCollapsed) continue;
+    const bucketId = buildBucketId(lane.id, task.date);
+    const bucket = bucketTasks.get(bucketId) ?? { lane, date: task.date, tasks: [] };
+    bucket.tasks.push(task);
+    bucketTasks.set(bucketId, bucket);
+  }
+
+  const taskNodes: FishboneCanvasTaskNode[] = [];
+  const clusters: FishboneCanvasTaskCluster[] = [];
+  for (const [bucketId, bucket] of bucketTasks) {
+    const expanded = options.expandedClusters.has(bucketId);
+    const compacted = bucket.tasks.length >= COMPACT_BUCKET_THRESHOLD && !expanded;
+    const visibleTasks = compacted ? bucket.tasks.slice(0, COMPACT_BUCKET_VISIBLE_LIMIT) : bucket.tasks;
+    visibleTasks.forEach((task, index) => {
+      taskNodes.push(createTaskNodeForBucket(task, bucket.lane, bucket.date, index, viewport, bucketId, compacted));
+    });
+
+    if (compacted) {
+      const hiddenTasks = bucket.tasks.slice(COMPACT_BUCKET_VISIBLE_LIMIT);
+      clusters.push({
+        id: bucketId,
+        laneId: bucket.lane.id,
+        date: bucket.date,
+        x: dateToCanvasX(bucket.date, viewport),
+        y: bucket.lane.spineY + 78,
+        count: hiddenTasks.length,
+        hiddenTaskIds: hiddenTasks.map((task) => task.taskId),
+        color: bucket.lane.color
+      });
+    }
+  }
+
+  return { taskNodes, clusters };
+}
+
+function resolveTaskLane(
+  task: PlanningTask,
+  laneByName: Map<string, FishboneCanvasLane>,
+  allMainlineNames: Set<string>,
+  unassignedLane: FishboneCanvasLane
+): FishboneCanvasLane | null {
+  if (!task.mainline) return unassignedLane;
+  const lane = laneByName.get(task.mainline);
+  if (lane) return lane;
+  return allMainlineNames.has(task.mainline) ? null : unassignedLane;
+}
+
+function createTaskNodeForBucket(
+  task: PlanningTask,
+  lane: FishboneCanvasLane,
+  date: string | null,
+  index: number,
+  viewport: FishboneCanvasViewport,
+  bucketId: string,
+  isCompacted: boolean
+): FishboneCanvasTaskNode {
+  const x = dateToCanvasX(date, viewport);
+  const branchSide = index % 2 === 0 ? "above" : "below";
+  const branchIndex = Math.floor(index / 2);
+  const branchOffset = isCompacted ? 38 + branchIndex * 38 : 44 + branchIndex * 52;
+  const y = branchSide === "above" ? lane.spineY - branchOffset : lane.spineY + branchOffset;
+  return createTaskNode(task, lane.id, bucketId, x, y, branchIndex, branchSide, lane.color, lane.spineY, isCompacted);
 }
 
 function createTaskNode(
   task: PlanningTask,
   laneId: string,
+  bucketId: string,
   x: number,
   y: number,
   branchIndex: number,
   branchSide: "above" | "below",
   color: string,
-  spineY: number
+  spineY: number,
+  isCompacted: boolean
 ): FishboneCanvasTaskNode {
   const halfWidth = TASK_NODE_WIDTH / 2;
   const halfHeight = TASK_NODE_HEIGHT / 2;
   return {
     task,
     laneId,
+    bucketId,
     x,
     y,
     width: TASK_NODE_WIDTH,
@@ -263,7 +372,8 @@ function createTaskNode(
     spineAnchor: { x, y: spineY },
     branchIndex,
     branchSide,
-    color
+    color,
+    isCompacted
   };
 }
 
@@ -353,25 +463,29 @@ function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport)
   const taskDates = tasks
     .map((task) => task.date)
     .filter((value): value is string => Boolean(value && parseDateString(value)));
-  const minOffset = Math.min(-21, ...taskDates.map((date) => dateDiff(viewport.centerDate, date)));
-  const maxOffset = Math.max(21, ...taskDates.map((date) => dateDiff(viewport.centerDate, date)));
+  const taskRange = getDateRangeFromValues(taskDates);
+  const padding = getDateTickRangePadding(viewport.timeAxisMode);
+  const minOffset = Math.min(-padding, ...taskDates.map((date) => dateDiff(viewport.centerDate, date)));
+  const maxOffset = Math.max(padding, ...taskDates.map((date) => dateDiff(viewport.centerDate, date)));
   const center = parseDateString(viewport.centerDate) ?? new Date();
   const ticks: FishboneCanvasDateTick[] = [];
 
-  for (let offset = minOffset; offset <= maxOffset; offset++) {
-    const date = new Date(center.getFullYear(), center.getMonth(), center.getDate());
-    date.setDate(center.getDate() + offset);
-    const id = getLocalDateString(date);
-    const day = date.getDay();
-    ticks.push({
-      id,
-      x: dateToCanvasX(id, viewport),
-      y: CANVAS_AXIS_Y,
-      label: formatCanvasDate(id),
-      detail: formatCanvasWeekday(id),
-      isToday: id === today,
-      isWeekend: day === 0 || day === 6
-    });
+  if (viewport.timeAxisMode === "overview" && taskDates.length > 0) {
+    const keyDates = new Set([...taskDates, today, taskRange.start, taskRange.end].filter((value): value is string => Boolean(value)));
+    for (const id of [...keyDates].sort()) {
+      const date = parseDateString(id);
+      if (!date) continue;
+      ticks.push(createDateTick(id, date, today, viewport));
+    }
+  } else {
+    const step = getDateTickStep(viewport.timeAxisMode);
+    const startOffset = Math.floor(minOffset / step) * step;
+    for (let offset = startOffset; offset <= maxOffset; offset += step) {
+      const date = new Date(center.getFullYear(), center.getMonth(), center.getDate());
+      date.setDate(center.getDate() + offset);
+      const id = getLocalDateString(date);
+      ticks.push(createDateTick(id, date, today, viewport));
+    }
   }
 
   ticks.unshift({
@@ -381,10 +495,29 @@ function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport)
     label: "无日期",
     detail: "待排期",
     isToday: false,
-    isWeekend: false
+    isWeekend: false,
+    isMajor: false
   });
 
   return ticks;
+}
+
+function createDateTick(id: string, date: Date, today: string, viewport: FishboneCanvasViewport): FishboneCanvasDateTick {
+  const day = date.getDay();
+  return {
+    id,
+    x: dateToCanvasX(id, viewport),
+    y: CANVAS_AXIS_Y,
+    label: formatCanvasDate(id, viewport.timeAxisMode),
+    detail: formatCanvasWeekday(id, viewport.timeAxisMode),
+    isToday: id === today,
+    isWeekend: day === 0 || day === 6,
+    isMajor: date.getDate() === 1 || day === 1 || id === today
+  };
+}
+
+function buildBucketId(laneId: string, date: string | null): string {
+  return `${laneId}:${date ?? "__undated__"}`;
 }
 
 function dateDiff(from: string, to: string): number {
