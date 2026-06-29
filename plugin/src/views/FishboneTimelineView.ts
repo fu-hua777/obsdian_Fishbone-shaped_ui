@@ -25,6 +25,17 @@ export class FishboneTimelineView extends ItemView {
   private plugin: FishbonePlannerPlugin;
   private viewport: FishboneCanvasViewport = createDefaultFishboneCanvasViewport();
   private panDrag: { pointerId: number; x: number; y: number } | null = null;
+  private suppressNextMainlineClick = false;
+  private mainlinePointerDrag: {
+    sourceId: string;
+    pointerId: number;
+    timer: number | null;
+    active: boolean;
+    layout: FishboneCanvasLayout;
+    mainlines: Mainline[];
+    canvas: HTMLElement;
+    label: HTMLElement;
+  } | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FishbonePlannerPlugin) {
     super(leaf);
@@ -147,7 +158,7 @@ export class FishboneTimelineView extends ItemView {
 
     const labelLayer = canvas.createDiv({ cls: "fishbone-canvas-label-layer" });
     for (const lane of layout.lanes) {
-      this.renderCanvasLaneLabel(labelLayer, lane, mainlines);
+      this.renderCanvasLaneLabel(labelLayer, lane, mainlines, layout);
     }
     this.applyCanvasTransform(canvas);
   }
@@ -269,14 +280,18 @@ export class FishboneTimelineView extends ItemView {
       name.setAttr("title", "点击修改；右键删除；长按拖动排序");
       name.addEventListener("click", (event) => {
         event.stopPropagation();
+        if (this.suppressNextMainlineClick) {
+          event.preventDefault();
+          this.suppressNextMainlineClick = false;
+          return;
+        }
         this.openEditMainlineModal(mainline);
       });
       this.bindMainlineContextMenu(label, mainline);
-      this.bindMainlineDrag(label, mainline);
     }
   }
 
-  private renderCanvasLaneLabel(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[]): void {
+  private renderCanvasLaneLabel(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[], layout: FishboneCanvasLayout): void {
     const label = layer.createDiv({ cls: `fishbone-canvas-lane-label${lane.isUnassigned ? " is-unassigned" : ""}` });
     label.style.setProperty("--lane-color", lane.color);
     label.setAttr("data-lane-id", lane.id);
@@ -293,10 +308,15 @@ export class FishboneTimelineView extends ItemView {
       name.setAttr("title", "点击修改；右键删除；长按拖动排序");
       name.addEventListener("click", (event) => {
         event.stopPropagation();
+        if (this.suppressNextMainlineClick) {
+          event.preventDefault();
+          this.suppressNextMainlineClick = false;
+          return;
+        }
         this.openEditMainlineModal(mainline);
       });
       this.bindMainlineContextMenu(label, mainline);
-      this.bindMainlineDrag(label, mainline);
+      this.bindMainlineDrag(label, mainline, layout, mainlines);
     }
   }
 
@@ -407,7 +427,7 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
-  private bindMainlineDrag(label: HTMLElement, mainline: Mainline): void {
+  private bindMainlineDrag(label: HTMLElement, mainline: Mainline, layout: FishboneCanvasLayout, mainlines: Mainline[]): void {
     let timer: number | null = null;
 
     const clearTimer = () => {
@@ -417,15 +437,70 @@ export class FishboneTimelineView extends ItemView {
       }
     };
 
-    label.addEventListener("pointerdown", () => {
+    const finishPointerDrag = async (event: PointerEvent) => {
+      const drag = this.mainlinePointerDrag;
+      if (!drag || drag.pointerId !== event.pointerId) {
+        clearTimer();
+        return;
+      }
       clearTimer();
+      this.mainlinePointerDrag = null;
+      if (label.hasPointerCapture(event.pointerId)) {
+        label.releasePointerCapture(event.pointerId);
+      }
+      label.removeClass("fishbone-lane-drag-ready");
+      label.removeClass("fishbone-lane-dragging");
+      drag.canvas.removeClass("is-mainline-drag-over");
+      if (!drag.active) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      this.suppressNextMainlineClick = true;
+      window.setTimeout(() => {
+        this.suppressNextMainlineClick = false;
+      }, 250);
+      await this.moveMainlineByClientY(drag.canvas, drag.layout, drag.mainlines, drag.sourceId, event.clientY);
+    };
+
+    label.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.stopPropagation();
+      clearTimer();
+      const canvas = label.closest(".fishbone-canvas-viewport") as HTMLElement | null;
+      if (!canvas) return;
+      label.draggable = false;
+      label.setPointerCapture(event.pointerId);
+      this.mainlinePointerDrag = {
+        sourceId: mainline.id,
+        pointerId: event.pointerId,
+        timer: null,
+        active: false,
+        layout,
+        mainlines,
+        canvas,
+        label
+      };
       timer = window.setTimeout(() => {
-        label.draggable = true;
+        if (!this.mainlinePointerDrag || this.mainlinePointerDrag.pointerId !== event.pointerId) return;
+        this.mainlinePointerDrag.active = true;
         label.addClass("fishbone-lane-drag-ready");
-      }, 450);
+        label.addClass("fishbone-lane-dragging");
+        canvas.addClass("is-mainline-drag-over");
+      }, 260);
     });
-    label.addEventListener("pointerup", clearTimer);
-    label.addEventListener("pointerleave", clearTimer);
+    label.addEventListener("pointermove", (event) => {
+      const drag = this.mainlinePointerDrag;
+      if (!drag || drag.pointerId !== event.pointerId || !drag.active) return;
+      event.preventDefault();
+      event.stopPropagation();
+      label.style.top = `${event.clientY - drag.canvas.getBoundingClientRect().top}px`;
+    });
+    label.addEventListener("pointerup", (event) => {
+      void finishPointerDrag(event);
+    });
+    label.addEventListener("pointercancel", (event) => {
+      void finishPointerDrag(event);
+    });
     label.addEventListener("dragstart", (event) => {
       if (!label.draggable) {
         event.preventDefault();
@@ -471,12 +546,22 @@ export class FishboneTimelineView extends ItemView {
     sourceId: string,
     event: DragEvent
   ): Promise<void> {
+    await this.moveMainlineByClientY(canvas, layout, mainlines, sourceId, event.clientY);
+  }
+
+  private async moveMainlineByClientY(
+    canvas: HTMLElement,
+    layout: FishboneCanvasLayout,
+    mainlines: Mainline[],
+    sourceId: string,
+    clientY: number
+  ): Promise<void> {
     const mainlineIds = new Set(mainlines.map((mainline) => mainline.id));
     const lanes = layout.lanes.filter((lane) => mainlineIds.has(lane.id));
     if (lanes.length === 0) return;
 
     const rect = canvas.getBoundingClientRect();
-    const pointerY = event.clientY - rect.top;
+    const pointerY = clientY - rect.top;
     let target = lanes[0];
     let nearestDistance = Number.POSITIVE_INFINITY;
     for (const lane of lanes) {
@@ -488,7 +573,10 @@ export class FishboneTimelineView extends ItemView {
       }
     }
 
-    if (sourceId === target.id) return;
+    if (sourceId === target.id) {
+      this.applyCanvasTransform(canvas);
+      return;
+    }
     const targetCenterY = this.viewport.panY + target.spineY * this.viewport.canvasZoom;
     const placement = pointerY < targetCenterY ? "before" : "after";
     await this.plugin.mainlineRepository.moveMainline(sourceId, target.id, placement);
