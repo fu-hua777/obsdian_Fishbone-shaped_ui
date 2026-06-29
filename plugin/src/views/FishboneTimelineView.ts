@@ -188,7 +188,7 @@ export class FishboneTimelineView extends ItemView {
       event.preventDefault();
       this.showRelations = !this.showRelations;
       await this.persistViewState();
-      relationButton.setText(this.showRelations ? "隐藏关系" : "显示关系");
+      relationButton.textContent = this.showRelations ? "隐藏关系" : "显示关系";
       this.updateRelationLayerVisibility();
     });
 
@@ -378,7 +378,7 @@ export class FishboneTimelineView extends ItemView {
 
   private updateRelationLayerVisibility(): void {
     const relationLayer = this.containerEl.querySelector(".fishbone-relation-layer");
-    relationLayer?.toggleClass("is-hidden", !this.showRelations);
+    relationLayer?.classList.toggle("is-hidden", !this.showRelations);
   }
 
   private bindCanvasViewport(canvas: HTMLElement, layout: FishboneCanvasLayout, mainlines: Mainline[], tasks: PlanningTask[]): void {
@@ -1063,7 +1063,11 @@ export class FishboneTimelineView extends ItemView {
       showHiddenMainlines: this.showHiddenMainlines,
       expandedClusters: [...this.expandedClusters]
     };
-    await this.plugin.saveFishboneViewState();
+    if (typeof this.plugin.saveFishboneViewState === "function") {
+      await this.plugin.saveFishboneViewState();
+      return;
+    }
+    await this.plugin.saveData(this.plugin.settings);
   }
 }
 
