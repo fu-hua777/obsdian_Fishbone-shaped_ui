@@ -19,10 +19,11 @@
 - M0：项目基线整理。
 - M1：标准任务数据层。
 - M2：Skills 回放校验与规则补强。
+- M3：自定义 Obsidian 插件最小框架。
 
-当前下一阶段可进入 M3：自定义 Obsidian 插件最小框架。
+当前下一阶段可进入 M4：鱼骨主视图静态版。
 
-在进入 M3 前后，仍然不开发完整鱼骨 UI，不接入真实 Vault。
+在进入 M4 前，仍然不接入真实 Vault，不扫描旧笔记。
 
 ## 目录约定
 
@@ -82,11 +83,14 @@ DEVLOG.md                     阶段日志
 ```text
 node scripts/validate-schema.js
 node scripts/validate-m2-skills.js
+node scripts/validate-m3-plugin.js
 ```
 
 后续插件阶段再加入：
 
 ```text
+cd plugin
+npm run typecheck
 npm run build
 ```
 

@@ -30,4 +30,5 @@
 ```powershell
 node scripts/validate-schema.js
 node scripts/validate-m2-skills.js
+node scripts/validate-m3-plugin.js
 ```

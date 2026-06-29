@@ -26,3 +26,23 @@
 - 补强 `planning-task-skill`：当主线列表为空时不得猜测主线，必须提问。
 - 中文化剩余 Skill 测试样例中的英文验收描述。
 - 创建 `scripts/validate-m2-skills.js`，用于校验 M2 关键规则一致性。
+
+### M3：自定义 Obsidian 插件最小框架
+
+- 创建 `plugin/` Obsidian 插件工程。
+- 实现 `Fishbone Planner` 最小插件入口。
+- 实现任务列表视图：读取标准任务 md，显示日期、主线、状态和优先级。
+- 支持空主线状态：`mainline: null` 显示为 `未分配`。
+- 支持打开单个任务 md。
+- 支持单个任务状态切换，并仅更新当前任务文件的 `status` 和 `updated`。
+- 创建 `scripts/install-m3-plugin.js`，将 `PlanningSystem` 和插件产物安装到测试 Vault。
+- 创建 `scripts/validate-m3-plugin.js`。
+- 创建 M3 手动验证清单和解析用例。
+- 已安装到测试 Vault：`E:\主线规划\主线规划`。
+
+M3 未做：
+
+- 未实现完整鱼骨主视图。
+- 未实现 relation 线、拖拽、缩放、右侧栏或底部看板。
+- 未扫描或修改旧笔记。
+- 未启用插件；需要用户在 Obsidian 中手动启用 `Fishbone Planner`。

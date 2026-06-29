@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-fishbone-planner",
+  "name": "Fishbone Planner",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Personal planning plugin with standard task data and a future fishbone timeline view.",
+  "author": "fu-hua777",
+  "authorUrl": "https://github.com/fu-hua777",
+  "isDesktopOnly": false
+}
