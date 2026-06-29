@@ -141,6 +141,115 @@
   padding: 10px 12px;
 }
 
+.fishbone-canvas-viewport {
+  position: relative;
+  height: calc(100vh - 180px);
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--background-modifier-border) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--background-modifier-border) 18%, transparent) 1px, transparent 1px),
+    var(--background-primary);
+  background-size: 48px 48px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.fishbone-canvas-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.fishbone-canvas-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.fishbone-date-axis-layer,
+.fishbone-mainline-layer,
+.fishbone-task-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fishbone-date-tick {
+  position: absolute;
+  min-width: 64px;
+  transform: translateX(-50%);
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  text-align: center;
+  pointer-events: auto;
+}
+
+.fishbone-date-tick::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 760px;
+  background: color-mix(in srgb, var(--background-modifier-border) 45%, transparent);
+}
+
+.fishbone-date-tick.is-today {
+  color: var(--text-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+
+.fishbone-date-tick.is-today::after {
+  background: color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+}
+
+.fishbone-date-tick.is-weekend {
+  color: var(--text-faint);
+}
+
+.fishbone-canvas-lane {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.fishbone-canvas-lane-label {
+  position: sticky;
+  left: 16px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 150px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--lane-color) 45%, var(--background-modifier-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-secondary) 92%, var(--lane-color));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--background-modifier-box-shadow) 22%, transparent);
+}
+
+.fishbone-canvas-spine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  transform: translateY(-50%);
+  background: color-mix(in srgb, var(--lane-color) 78%, var(--background-modifier-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lane-color) 20%, transparent);
+}
+
+.fishbone-canvas-lane.is-unassigned .fishbone-canvas-spine {
+  opacity: 0.62;
+}
+
+.fishbone-canvas-viewport .fishbone-task-node {
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
 .fishbone-timeline-scroller {
   overflow: auto;
   border: 1px solid var(--background-modifier-border);

@@ -46,7 +46,7 @@ function main() {
     "fishbone-planner-timeline",
     "未分配",
     "当前没有用户主线",
-    "buildFishboneLayout",
+    "buildFishboneCanvasLayout",
     "openTask"
   ]);
 

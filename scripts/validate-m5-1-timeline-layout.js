@@ -26,58 +26,70 @@ function requireText(relativePath, patterns) {
 
 function main() {
   requireFile("PLANS/M5.1-fishbone-timeline-layout.md");
-  requireFile("plugin/src/views/fishboneViewport.ts");
+  requireFile("plugin/src/views/fishboneCanvasViewport.ts");
+  requireFile("plugin/src/views/fishboneCanvasLayout.ts");
   requireFile("tests/plugin/m5-1-manual-test-checklist.md");
 
-  requireText("plugin/src/views/fishboneViewport.ts", [
-    "FishboneViewportState",
-    "mode: \"week\"",
-    "buildViewportDateColumns",
-    "moveViewportWeek",
-    "moveViewportToToday",
-    "showAllViewport",
-    "Array.from({ length: 7 }",
-    "isToday",
-    "isWeekend"
+  requireText("plugin/src/views/fishboneCanvasViewport.ts", [
+    "FishboneCanvasViewport",
+    "panX",
+    "panY",
+    "canvasZoom",
+    "timeScale",
+    "focusedLaneId",
+    "laneZooms",
+    "panCanvasViewport",
+    "zoomCanvasViewport",
+    "zoomTimeScale",
+    "zoomLane",
+    "dateToCanvasX"
   ]);
 
-  requireText("plugin/src/views/fishboneLayout.ts", [
-    "buildFishboneLayout(tasks: PlanningTask[], mainlines: Mainline[], dates: FishboneDateColumn[])",
-    "createTaskNode",
-    "branchSide",
-    "branchIndex",
-    "continue"
+  requireText("plugin/src/views/fishboneCanvasLayout.ts", [
+    "FishboneCanvasLayout",
+    "FishboneCanvasDateTick",
+    "FishboneCanvasLane",
+    "FishboneCanvasTaskNode",
+    "buildFishboneCanvasLayout",
+    "dateToCanvasX",
+    "spineY",
+    "branchSide"
   ]);
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
-    "renderViewportControls",
-    "上一周",
-    "下一周",
-    "今天",
-    "显示全部",
-    "周视图",
-    "fishbone-branch-",
-    "fishbone-task-status",
-    "fishbone-task-priority"
+    "fishbone-canvas-viewport",
+    "fishbone-canvas-stage",
+    "fishbone-date-axis-layer",
+    "fishbone-mainline-layer",
+    "fishbone-task-layer",
+    "bindCanvasViewport",
+    "panCanvasViewport",
+    "zoomCanvasViewport",
+    "zoomTimeScale",
+    "zoomLane",
+    "ctrlKey",
+    "altKey"
   ]);
 
   requireText("plugin/styles.css", [
-    ".fishbone-viewport-controls",
-    ".fishbone-timeline-date.is-today",
-    ".fishbone-lane-cell.is-today",
-    ".fishbone-branch-above",
-    ".fishbone-branch-below",
-    ".fishbone-task-doing",
-    ".fishbone-task-done",
-    ".fishbone-task-blocked",
-    ".fishbone-priority-high",
-    ".fishbone-priority-medium"
+    ".fishbone-canvas-viewport",
+    ".fishbone-canvas-stage",
+    ".fishbone-date-axis-layer",
+    ".fishbone-mainline-layer",
+    ".fishbone-task-layer",
+    ".fishbone-date-tick",
+    ".fishbone-canvas-lane",
+    ".fishbone-canvas-spine",
+    ".fishbone-canvas-lane-label"
   ]);
 
+  const view = read("plugin/src/views/FishboneTimelineView.ts");
+  assert(!view.includes("fishbone-timeline-grid"), "M5.1 主渲染不应继续依赖 fishbone-timeline-grid");
+
   const combined = [
-    read("plugin/src/views/fishboneViewport.ts"),
-    read("plugin/src/views/fishboneLayout.ts"),
-    read("plugin/src/views/FishboneTimelineView.ts")
+    read("plugin/src/views/fishboneCanvasViewport.ts"),
+    read("plugin/src/views/fishboneCanvasLayout.ts"),
+    view
   ].join("\n");
   const forbiddenDefaultMainlines = ["健康", "学习", "事业", "生活", "财务"];
   for (const name of forbiddenDefaultMainlines) {
@@ -85,7 +97,7 @@ function main() {
     assert(!combined.includes(`text: "${name}"`), `M5.1 代码疑似显示默认主线: ${name}`);
   }
 
-  console.log("M5.1 timeline layout validation passed.");
+  console.log("M5.1 canvas view validation passed.");
 }
 
 main();

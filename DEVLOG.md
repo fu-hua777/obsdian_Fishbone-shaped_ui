@@ -83,3 +83,14 @@ M3 未做：
 - 任务节点围绕主线脊骨上下错位，形成基础鱼骨分支感。
 - 增加任务状态和优先级视觉样式。
 - 新增 `scripts/validate-m5-1-timeline-layout.js` 和 M5.1 手动验证清单。
+
+### M5.1 修正：鱼骨画布视图底座
+
+- 将 M5.1 方向从连续日期 grid 修正为坐标化鱼骨画布。
+- 新增 `fishboneCanvasViewport.ts`，支持画布平移、整体缩放、时间轴缩放和单主线缩放状态。
+- 新增 `fishboneCanvasLayout.ts`，将日期、主线和任务转换为 canvas 坐标。
+- `FishboneTimelineView` 主渲染改为 `fishbone-canvas-viewport` / `fishbone-canvas-stage` / layer 结构。
+- 支持按住空白画布拖动平移。
+- 支持 `Ctrl + 滚轮` 在主线外缩放整体画布，在主线内缩放单条主线。
+- 支持 `Alt + 滚轮` 或在日期轴上 `Ctrl + 滚轮` 调整时间轴密度。
+- M5.1 校验和手动测试清单改为验证画布模型。
