@@ -1,6 +1,15 @@
 import { App, normalizePath } from "obsidian";
 import { Mainline, MainlinesFile } from "./taskTypes";
 
+type RawMainline = Partial<Omit<Mainline, "parentMainlineId" | "startDate" | "endDate">> & {
+  parent_mainline_id?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  parentMainlineId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+};
+
 export class MainlineRepository {
   private app: App;
   private planningSystemPath: string;
@@ -31,13 +40,17 @@ export class MainlineRepository {
     const nextOrder = file.mainlines.reduce((max, mainline) => Math.max(max, mainline.order), 0) + 1;
     const mainline: Mainline = {
       id: createMainlineId(normalizedName),
+      type: "mainline",
       name: normalizedName,
       color: normalizedColor,
       icon: "",
       order: nextOrder,
       visible: true,
       collapsed: false,
-      pinned: false
+      pinned: false,
+      parentMainlineId: null,
+      startDate: null,
+      endDate: null
     };
 
     file.mainlines.push(mainline);
@@ -144,7 +157,7 @@ export class MainlineRepository {
       const parsed = JSON.parse(raw) as MainlinesFile;
       return {
         version: typeof parsed.version === "string" ? parsed.version : "1.0",
-        mainlines: Array.isArray(parsed.mainlines) ? parsed.mainlines : []
+        mainlines: Array.isArray(parsed.mainlines) ? parsed.mainlines.map(normalizeMainline) : []
       };
     } catch (error) {
       console.warn("Fishbone Planner: failed to read mainlines.json", error);
@@ -158,8 +171,54 @@ export class MainlineRepository {
     if (!(await this.app.vault.adapter.exists(folderPath))) {
       await this.app.vault.adapter.mkdir(folderPath);
     }
-    await this.app.vault.adapter.write(path, `${JSON.stringify(file, null, 2)}\n`);
+    await this.app.vault.adapter.write(path, `${JSON.stringify(serializeMainlinesFile(file), null, 2)}\n`);
   }
+}
+
+function normalizeMainline(value: RawMainline): Mainline {
+  return {
+    id: typeof value.id === "string" ? value.id : createMainlineId(typeof value.name === "string" ? value.name : "mainline"),
+    type: value.type === "branch" ? "branch" : "mainline",
+    name: typeof value.name === "string" ? value.name : "未命名主线",
+    color: typeof value.color === "string" ? normalizeColor(value.color) : "#4f8cff",
+    icon: typeof value.icon === "string" ? value.icon : "",
+    order: typeof value.order === "number" ? value.order : 0,
+    visible: value.visible !== false,
+    collapsed: value.collapsed === true,
+    pinned: value.pinned === true,
+    parentMainlineId: asNullableString(value.parent_mainline_id ?? value.parentMainlineId),
+    startDate: asNullableString(value.start_date ?? value.startDate),
+    endDate: asNullableString(value.end_date ?? value.endDate)
+  };
+}
+
+function serializeMainlinesFile(file: MainlinesFile): { version: string; mainlines: Array<Record<string, unknown>> } {
+  return {
+    version: file.version,
+    mainlines: file.mainlines.map((mainline) => {
+      const serialized: Record<string, unknown> = {
+        id: mainline.id,
+        type: mainline.type,
+        name: mainline.name,
+        color: mainline.color,
+        icon: mainline.icon,
+        order: mainline.order,
+        visible: mainline.visible,
+        collapsed: mainline.collapsed,
+        pinned: mainline.pinned
+      };
+      if (mainline.type === "branch") {
+        serialized.parent_mainline_id = mainline.parentMainlineId;
+        serialized.start_date = mainline.startDate;
+        serialized.end_date = mainline.endDate;
+      }
+      return serialized;
+    })
+  };
+}
+
+function asNullableString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function normalizeColor(color: string): string {

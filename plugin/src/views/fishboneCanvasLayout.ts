@@ -41,6 +41,7 @@ export interface FishboneCanvasLayout {
   stageHeight: number;
   dateTicks: FishboneCanvasDateTick[];
   lanes: FishboneCanvasLane[];
+  branchMainlines: FishboneCanvasBranchMainline[];
   tasks: FishboneCanvasTaskNode[];
   clusters: FishboneCanvasTaskCluster[];
   relationLines: FishboneCanvasRelationLine[];
@@ -96,6 +97,24 @@ export interface FishboneCanvasTaskNode {
   branchSide: "above" | "below";
   color: string;
   isCompacted: boolean;
+  branchMainlineId: string | null;
+  effectiveDate: string | null;
+}
+
+export interface FishboneCanvasBranchMainline {
+  id: string;
+  name: string;
+  color: string;
+  parentMainlineId: string;
+  parentLaneId: string;
+  xStart: number;
+  xEnd: number;
+  y: number;
+  parentY: number;
+  taskCount: number;
+  isCollapsed: boolean;
+  startDate: string;
+  endDate: string;
 }
 
 export interface FishboneCanvasTaskCluster {
@@ -141,25 +160,32 @@ export function buildFishboneCanvasLayout(
 ): FishboneCanvasLayout {
   const lanes = buildCanvasLanes(tasks, mainlines, viewport, options);
   const dateScale = buildDateScale(tasks, lanes, mainlines, viewport);
-  const { taskNodes, clusters } = buildCanvasTasks(tasks, lanes, mainlines, viewport, options, dateScale);
+  const branchMainlines = buildCanvasBranchMainlines(tasks, mainlines, lanes, viewport, options, dateScale);
+  const { taskNodes, clusters } = buildCanvasTasks(tasks, lanes, branchMainlines, mainlines, viewport, options, dateScale);
   const taskNodeByTaskId = new Map(taskNodes.map((node) => [node.task.taskId, node]));
   const taskNodeByPath = new Map(taskNodes.map((node) => [node.task.path, node]));
   const taskNodeByTitle = new Map(taskNodes.map((node) => [node.task.title, node]));
   const relationLines = buildRelationLines(taskNodes, taskNodeByTaskId, taskNodeByPath, taskNodeByTitle);
-  const dateTicks = buildDateTicks(tasks, viewport, dateScale);
+  const dateTicks = buildDateTicks(tasks, mainlines, viewport, dateScale);
   const stageWidth = Math.max(
     5200,
     ...dateTicks.map((tick) => tick.x + 420),
+    ...branchMainlines.map((branch) => branch.xEnd + 420),
     ...taskNodes.map((node) => node.x + 420),
     ...clusters.map((cluster) => cluster.x + 420)
   );
-  const stageHeight = Math.max(900, ...lanes.map((lane) => lane.y + lane.height + 220));
+  const stageHeight = Math.max(
+    900,
+    ...lanes.map((lane) => lane.y + lane.height + 220),
+    ...branchMainlines.map((branch) => branch.y + 220)
+  );
 
   return {
     stageWidth,
     stageHeight,
     dateTicks,
     lanes,
+    branchMainlines,
     tasks: taskNodes,
     clusters,
     relationLines,
@@ -219,8 +245,10 @@ function buildCanvasLanes(
   viewport: FishboneCanvasViewport,
   options: FishboneCanvasLayoutOptions
 ): FishboneCanvasLane[] {
-  const allMainlineNames = new Set(mainlines.map((mainline) => mainline.name));
+  const rootMainlines = mainlines.filter((mainline) => mainline.type !== "branch");
+  const allMainlineNames = new Set(rootMainlines.map((mainline) => mainline.name));
   const visibleMainlines = mainlines
+    .filter((mainline) => mainline.type !== "branch")
     .filter((mainline) => options.showHiddenMainlines || mainline.visible !== false)
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.order - b.order);
   const visibleNames = new Set(visibleMainlines.map((mainline) => mainline.name));
@@ -271,8 +299,12 @@ function buildDateScale(
   viewport: FishboneCanvasViewport
 ): FishboneDateScale {
   const laneByName = new Map<string, FishboneCanvasLane>();
-  const allMainlineNames = new Set(mainlines.map((mainline) => mainline.name));
-  for (const mainline of mainlines) {
+  const rootMainlines = mainlines.filter((mainline) => mainline.type !== "branch");
+  const branchMainlines = mainlines.filter((mainline) => mainline.type === "branch");
+  const allMainlineNames = new Set(rootMainlines.map((mainline) => mainline.name));
+  const branchById = new Map(branchMainlines.map((mainline) => [mainline.id, mainline]));
+  const branchByName = new Map(branchMainlines.map((mainline) => [mainline.name, mainline]));
+  for (const mainline of rootMainlines) {
     const lane = lanes.find((item) => item.id === mainline.id);
     if (lane) {
       laneByName.set(mainline.name, lane);
@@ -287,6 +319,20 @@ function buildDateScale(
 
   for (const task of tasks) {
     if (!task.date || !parseDateString(task.date)) continue;
+    const branch = resolveTaskBranchMainline(task, branchById, branchByName);
+    if (branch && branch.startDate && branch.endDate) {
+      const startDate = normalizeBranchDate(branch.startDate);
+      const endDate = normalizeBranchDate(branch.endDate);
+      if (!startDate || !endDate) continue;
+      const normalizedStart = startDate <= endDate ? startDate : endDate;
+      const normalizedEnd = startDate <= endDate ? endDate : startDate;
+      const date = clampDateToRange(task.date, normalizedStart, normalizedEnd);
+      const key = buildBucketId(branch.id, date);
+      const bucket = bucketCounts.get(key) ?? { date, count: 0 };
+      bucket.count += 1;
+      bucketCounts.set(key, bucket);
+      continue;
+    }
     const lane = resolveTaskLane(task, laneByName, allMainlineNames, unassignedLane);
     if (!lane || lane.isCollapsed) continue;
     const key = buildBucketId(lane.id, task.date);
@@ -305,17 +351,80 @@ function buildDateScale(
   return { slotWidths };
 }
 
+function buildCanvasBranchMainlines(
+  tasks: PlanningTask[],
+  mainlines: Mainline[],
+  lanes: FishboneCanvasLane[],
+  viewport: FishboneCanvasViewport,
+  options: FishboneCanvasLayoutOptions,
+  dateScale: FishboneDateScale
+): FishboneCanvasBranchMainline[] {
+  const laneByMainlineId = new Map(lanes.map((lane) => [lane.id, lane]));
+  const branchesByParent = new Map<string, Mainline[]>();
+  const branches = mainlines
+    .filter((mainline) => mainline.type === "branch")
+    .filter((mainline) => options.showHiddenMainlines || mainline.visible !== false)
+    .filter((mainline) => Boolean(mainline.parentMainlineId && mainline.startDate && mainline.endDate));
+
+  for (const branch of branches) {
+    const parentId = branch.parentMainlineId as string;
+    const list = branchesByParent.get(parentId) ?? [];
+    list.push(branch);
+    branchesByParent.set(parentId, list);
+  }
+
+  const result: FishboneCanvasBranchMainline[] = [];
+  for (const [parentId, parentBranches] of branchesByParent) {
+    const parentLane = laneByMainlineId.get(parentId);
+    if (!parentLane || parentLane.isCollapsed) continue;
+    parentBranches
+      .sort((a, b) => a.order - b.order)
+      .forEach((branch, index) => {
+        const startDate = normalizeBranchDate(branch.startDate);
+        const endDate = normalizeBranchDate(branch.endDate);
+        if (!startDate || !endDate) return;
+        const normalizedStart = startDate <= endDate ? startDate : endDate;
+        const normalizedEnd = startDate <= endDate ? endDate : startDate;
+        const side = index % 2 === 0 ? -1 : 1;
+        const stack = Math.floor(index / 2);
+        const y = parentLane.spineY + side * (58 + stack * 42);
+        const xStart = dateToCanvasXWithScale(normalizedStart, viewport, dateScale);
+        const xEnd = dateToCanvasXWithScale(normalizedEnd, viewport, dateScale);
+        result.push({
+          id: branch.id,
+          name: branch.name,
+          color: branch.color,
+          parentMainlineId: parentId,
+          parentLaneId: parentLane.id,
+          xStart: Math.min(xStart, xEnd),
+          xEnd: Math.max(xStart, xEnd),
+          y,
+          parentY: parentLane.spineY,
+          taskCount: tasks.filter((task) => task.branchMainlineId === branch.id || task.branchMainline === branch.name).length,
+          isCollapsed: branch.collapsed,
+          startDate: normalizedStart,
+          endDate: normalizedEnd
+        });
+      });
+  }
+  return result;
+}
+
 function buildCanvasTasks(
   tasks: PlanningTask[],
   lanes: FishboneCanvasLane[],
+  branchMainlines: FishboneCanvasBranchMainline[],
   mainlines: Mainline[],
   viewport: FishboneCanvasViewport,
   options: FishboneCanvasLayoutOptions,
   dateScale: FishboneDateScale
 ): { taskNodes: FishboneCanvasTaskNode[]; clusters: FishboneCanvasTaskCluster[] } {
   const laneByName = new Map<string, FishboneCanvasLane>();
-  const allMainlineNames = new Set(mainlines.map((mainline) => mainline.name));
-  for (const mainline of mainlines) {
+  const rootMainlines = mainlines.filter((mainline) => mainline.type !== "branch");
+  const allMainlineNames = new Set(rootMainlines.map((mainline) => mainline.name));
+  const branchById = new Map(branchMainlines.map((branch) => [branch.id, branch]));
+  const branchByName = new Map(branchMainlines.map((branch) => [branch.name, branch]));
+  for (const mainline of rootMainlines) {
     const lane = lanes.find((item) => item.id === mainline.id);
     if (lane) {
       laneByName.set(mainline.name, lane);
@@ -326,6 +435,15 @@ function buildCanvasTasks(
 
   const bucketTasks = new Map<string, { lane: FishboneCanvasLane; date: string | null; tasks: PlanningTask[] }>();
   for (const task of tasks) {
+    const branch = resolveTaskBranch(task, branchById, branchByName);
+    if (branch && !branch.isCollapsed) {
+      const date = clampDateToRange(task.date, branch.startDate, branch.endDate);
+      const bucketId = buildBucketId(branch.id, date);
+      const bucket = bucketTasks.get(bucketId) ?? { lane: createBranchTaskLane(branch), date, tasks: [] };
+      bucket.tasks.push(task);
+      bucketTasks.set(bucketId, bucket);
+      continue;
+    }
     const lane = resolveTaskLane(task, laneByName, allMainlineNames, unassignedLane);
     if (!lane || lane.isCollapsed) continue;
     const bucketId = buildBucketId(lane.id, task.date);
@@ -341,7 +459,8 @@ function buildCanvasTasks(
     const compacted = bucket.tasks.length >= COMPACT_BUCKET_THRESHOLD && !expanded;
     const visibleTasks = compacted ? bucket.tasks.slice(0, COMPACT_BUCKET_VISIBLE_LIMIT) : bucket.tasks;
     visibleTasks.forEach((task, index) => {
-      taskNodes.push(createTaskNodeForBucket(task, bucket.lane, bucket.date, index, visibleTasks.length, viewport, dateScale, bucketId, compacted));
+      const branchMainlineId = branchById.has(bucket.lane.id) ? bucket.lane.id : null;
+      taskNodes.push(createTaskNodeForBucket(task, bucket.lane, bucket.date, index, visibleTasks.length, viewport, dateScale, bucketId, compacted, branchMainlineId));
     });
 
     if (compacted) {
@@ -360,6 +479,61 @@ function buildCanvasTasks(
   }
 
   return { taskNodes, clusters };
+}
+
+function createBranchTaskLane(branch: FishboneCanvasBranchMainline): FishboneCanvasLane {
+  return {
+    id: branch.id,
+    name: branch.name,
+    color: branch.color,
+    y: branch.y - 48,
+    height: 96,
+    spineY: branch.y,
+    isUnassigned: false,
+    isCollapsed: branch.isCollapsed,
+    isPinned: false,
+    isHidden: false,
+    taskCount: branch.taskCount
+  };
+}
+
+function resolveTaskBranch(
+  task: PlanningTask,
+  branchById: Map<string, FishboneCanvasBranchMainline>,
+  branchByName: Map<string, FishboneCanvasBranchMainline>
+): FishboneCanvasBranchMainline | null {
+  if (task.branchMainlineId && branchById.has(task.branchMainlineId)) {
+    return branchById.get(task.branchMainlineId) ?? null;
+  }
+  if (task.branchMainline && branchByName.has(task.branchMainline)) {
+    return branchByName.get(task.branchMainline) ?? null;
+  }
+  return null;
+}
+
+function resolveTaskBranchMainline(
+  task: PlanningTask,
+  branchById: Map<string, Mainline>,
+  branchByName: Map<string, Mainline>
+): Mainline | null {
+  if (task.branchMainlineId && branchById.has(task.branchMainlineId)) {
+    return branchById.get(task.branchMainlineId) ?? null;
+  }
+  if (task.branchMainline && branchByName.has(task.branchMainline)) {
+    return branchByName.get(task.branchMainline) ?? null;
+  }
+  return null;
+}
+
+function normalizeBranchDate(value: string | null): string | null {
+  return value && parseDateString(value) ? value : null;
+}
+
+function clampDateToRange(date: string | null, startDate: string, endDate: string): string {
+  if (!date || !parseDateString(date)) return startDate;
+  if (date < startDate) return startDate;
+  if (date > endDate) return endDate;
+  return date;
 }
 
 function resolveTaskLane(
@@ -383,14 +557,15 @@ function createTaskNodeForBucket(
   viewport: FishboneCanvasViewport,
   dateScale: FishboneDateScale,
   bucketId: string,
-  isCompacted: boolean
+  isCompacted: boolean,
+  branchMainlineId: string | null
 ): FishboneCanvasTaskNode {
   const x = dateToCanvasXWithScale(date, viewport, dateScale) + getDenseBucketOffset(index, bucketSize);
   const branchSide = index % 2 === 0 ? "above" : "below";
   const branchIndex = Math.floor(index / 2);
   const branchOffset = isCompacted ? 34 + branchIndex * 36 : 42 + branchIndex * 40;
   const y = branchSide === "above" ? lane.spineY - branchOffset : lane.spineY + branchOffset;
-  return createTaskNode(task, lane.id, bucketId, x, y, branchIndex, branchSide, lane.color, lane.spineY, isCompacted);
+  return createTaskNode(task, lane.id, bucketId, x, y, branchIndex, branchSide, lane.color, lane.spineY, isCompacted, branchMainlineId, date);
 }
 
 function getDenseBucketOffset(index: number, bucketSize: number): number {
@@ -462,7 +637,9 @@ function createTaskNode(
   branchSide: "above" | "below",
   color: string,
   spineY: number,
-  isCompacted: boolean
+  isCompacted: boolean,
+  branchMainlineId: string | null,
+  effectiveDate: string | null
 ): FishboneCanvasTaskNode {
   const halfWidth = TASK_NODE_WIDTH / 2;
   const halfHeight = TASK_NODE_HEIGHT / 2;
@@ -482,7 +659,9 @@ function createTaskNode(
     branchIndex,
     branchSide,
     color,
-    isCompacted
+    isCompacted,
+    branchMainlineId,
+    effectiveDate
   };
 }
 
@@ -567,20 +746,25 @@ function getRelationStyle(type: string): { color: string; className: string; das
   return { color: "var(--text-muted)", className: "is-related", dashed: true };
 }
 
-function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport, dateScale: FishboneDateScale): FishboneCanvasDateTick[] {
+function buildDateTicks(tasks: PlanningTask[], mainlines: Mainline[], viewport: FishboneCanvasViewport, dateScale: FishboneDateScale): FishboneCanvasDateTick[] {
   const today = getLocalDateString(new Date());
   const taskDates = tasks
     .map((task) => task.date)
     .filter((value): value is string => Boolean(value && parseDateString(value)));
-  const taskRange = getDateRangeFromValues(taskDates);
+  const branchDates = mainlines
+    .filter((mainline) => mainline.type === "branch")
+    .flatMap((mainline) => [mainline.startDate, mainline.endDate])
+    .filter((value): value is string => Boolean(value && parseDateString(value)));
+  const allDates = [...taskDates, ...branchDates];
+  const taskRange = getDateRangeFromValues(allDates);
   const padding = getDateTickRangePadding(viewport.timeAxisMode);
-  const minOffset = Math.min(-padding, ...taskDates.map((date) => dateDiff(viewport.centerDate, date)));
-  const maxOffset = Math.max(padding, ...taskDates.map((date) => dateDiff(viewport.centerDate, date)));
+  const minOffset = Math.min(-padding, ...allDates.map((date) => dateDiff(viewport.centerDate, date)));
+  const maxOffset = Math.max(padding, ...allDates.map((date) => dateDiff(viewport.centerDate, date)));
   const center = parseDateString(viewport.centerDate) ?? new Date();
   const ticks: FishboneCanvasDateTick[] = [];
 
-  if (viewport.timeAxisMode === "overview" && taskDates.length > 0) {
-    const keyDates = new Set([...taskDates, today, taskRange.start, taskRange.end].filter((value): value is string => Boolean(value)));
+  if (viewport.timeAxisMode === "overview" && allDates.length > 0) {
+    const keyDates = new Set([...allDates, today, taskRange.start, taskRange.end].filter((value): value is string => Boolean(value)));
     for (const id of [...keyDates].sort()) {
       const date = parseDateString(id);
       if (!date) continue;

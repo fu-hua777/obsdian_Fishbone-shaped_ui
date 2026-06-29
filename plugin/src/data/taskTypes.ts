@@ -18,6 +18,8 @@ export interface PlanningTask {
   title: string;
   date: string | null;
   mainline: string | null;
+  branchMainline: string | null;
+  branchMainlineId: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   sourceType: string;
@@ -33,6 +35,7 @@ export interface PlanningTask {
 
 export interface Mainline {
   id: string;
+  type: "mainline" | "branch";
   name: string;
   color: string;
   icon: string;
@@ -40,6 +43,9 @@ export interface Mainline {
   visible: boolean;
   collapsed: boolean;
   pinned: boolean;
+  parentMainlineId: string | null;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export interface MainlinesFile {

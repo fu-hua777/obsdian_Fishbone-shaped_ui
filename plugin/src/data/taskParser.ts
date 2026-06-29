@@ -25,6 +25,8 @@ export function parsePlanningTask(file: TFile, frontmatter: Frontmatter | undefi
     title,
     date: asNullableString(frontmatter.date),
     mainline: asNullableString(frontmatter.mainline),
+    branchMainline: asNullableString(frontmatter.branch_mainline),
+    branchMainlineId: asNullableString(frontmatter.branch_mainline_id),
     status: asStatus(frontmatter.status),
     priority: asPriority(frontmatter.priority),
     sourceType: asString(frontmatter.source_type),

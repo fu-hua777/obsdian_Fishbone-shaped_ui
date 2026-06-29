@@ -24,6 +24,7 @@ export function buildFishboneLayout(tasks: PlanningTask[], mainlines: Mainline[]
 
 function buildLanes(tasks: PlanningTask[], mainlines: Mainline[], dates: FishboneDateColumn[]): FishboneLane[] {
   const visibleMainlines = mainlines
+    .filter((mainline) => mainline.type !== "branch")
     .filter((mainline) => mainline.visible !== false)
     .sort((a, b) => a.order - b.order);
   const mainlineNames = new Set(visibleMainlines.map((mainline) => mainline.name));

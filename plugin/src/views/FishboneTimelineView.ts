@@ -8,6 +8,7 @@ import {
   canvasPointToLane,
   canvasPointToMainline,
   clientPointToCanvasPoint,
+  FishboneCanvasBranchMainline,
   FishboneCanvasLane,
   FishboneCanvasLayout,
   FishboneCanvasRelationLine,
@@ -111,7 +112,10 @@ export class FishboneTimelineView extends ItemView {
         showHiddenMainlines: this.showHiddenMainlines,
         expandedClusters: this.expandedClusters
       });
-      const dateRange = getDateRangeFromValues(tasks.map((task) => task.date));
+      const dateRange = getDateRangeFromValues([
+        ...tasks.map((task) => task.date),
+        ...mainlines.flatMap((mainline) => mainline.type === "branch" ? [mainline.startDate, mainline.endDate] : [])
+      ]);
 
       const toolbar = container.createDiv({ cls: "fishbone-timeline-toolbar" });
       const titleGroup = toolbar.createDiv({ cls: "fishbone-title-group" });
@@ -291,7 +295,7 @@ export class FishboneTimelineView extends ItemView {
     canvas.tabIndex = 0;
     canvas.setAttr("data-time-axis-mode", this.viewport.timeAxisMode);
     this.bindCanvasViewport(canvas, layout, mainlines, tasks);
-    this.bindCanvasKeyboard(canvas, tasks);
+    this.bindCanvasKeyboard(canvas, tasks, mainlines);
 
     const stage = canvas.createDiv({ cls: "fishbone-canvas-stage" });
     stage.style.width = `${layout.stageWidth}px`;
@@ -321,6 +325,15 @@ export class FishboneTimelineView extends ItemView {
         this.renderCanvasLane(laneLayer, lane, mainlines);
       } catch (error) {
         console.error("Fishbone Planner: failed to render lane", lane, error);
+      }
+    }
+
+    const branchMainlineLayer = stage.createDiv({ cls: "fishbone-branch-mainline-layer" });
+    for (const branch of layout.branchMainlines) {
+      try {
+        this.renderCanvasBranchMainline(branchMainlineLayer, branch);
+      } catch (error) {
+        console.error("Fishbone Planner: failed to render branch mainline", branch.id, error);
       }
     }
 
@@ -383,6 +396,31 @@ export class FishboneTimelineView extends ItemView {
     line.style.left = `${taskNode.x}px`;
     line.style.top = `${top}px`;
     line.style.height = `${height}px`;
+  }
+
+  private renderCanvasBranchMainline(parent: HTMLElement, branch: FishboneCanvasBranchMainline): void {
+    const connector = parent.createDiv({ cls: "fishbone-branch-mainline-connector" });
+    connector.style.setProperty("--lane-color", branch.color);
+    connector.style.left = `${branch.xStart}px`;
+    connector.style.top = `${Math.min(branch.parentY, branch.y)}px`;
+    connector.style.height = `${Math.max(8, Math.abs(branch.y - branch.parentY))}px`;
+
+    const spine = parent.createDiv({
+      cls: [
+        "fishbone-branch-mainline",
+        branch.isCollapsed ? "is-collapsed" : ""
+      ].filter(Boolean).join(" ")
+    });
+    spine.style.setProperty("--lane-color", branch.color);
+    spine.style.left = `${branch.xStart}px`;
+    spine.style.top = `${branch.y}px`;
+    spine.style.width = `${Math.max(80, branch.xEnd - branch.xStart)}px`;
+    spine.setAttr("data-branch-mainline-id", branch.id);
+    spine.createDiv({ cls: "fishbone-branch-mainline-line" });
+
+    const label = spine.createDiv({ cls: "fishbone-branch-mainline-label" });
+    label.createSpan({ cls: "fishbone-branch-mainline-name", text: branch.name });
+    label.createSpan({ cls: "fishbone-branch-mainline-meta", text: `${branch.startDate} - ${branch.endDate} · ${branch.taskCount}` });
   }
 
   private renderRelationLayer(stage: HTMLElement, relationLines: FishboneCanvasRelationLine[]): void {
@@ -555,10 +593,13 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
-  private bindCanvasKeyboard(canvas: HTMLElement, tasks: PlanningTask[]): void {
+  private bindCanvasKeyboard(canvas: HTMLElement, tasks: PlanningTask[], mainlines: Mainline[]): void {
     canvas.addEventListener("keydown", async (event) => {
       if (isFormTarget(event.target)) return;
-      const dateRange = getDateRangeFromValues(tasks.map((task) => task.date));
+      const dateRange = getDateRangeFromValues([
+        ...tasks.map((task) => task.date),
+        ...mainlines.flatMap((mainline) => mainline.type === "branch" ? [mainline.startDate, mainline.endDate] : [])
+      ]);
       if (event.key === "t" || event.key === "T") {
         event.preventDefault();
         this.viewport = setViewportCenterDate(this.viewport, getLocalDateString(new Date()));
@@ -679,6 +720,7 @@ export class FishboneTimelineView extends ItemView {
         `fishbone-task-${task.status}`,
         `fishbone-priority-${task.priority}`,
         `fishbone-branch-${taskNode.branchSide}`,
+        taskNode.branchMainlineId ? "is-branch-task" : "",
         taskNode.isCompacted ? "is-compacted" : ""
       ].filter(Boolean).join(" ")
     });
@@ -720,7 +762,7 @@ export class FishboneTimelineView extends ItemView {
     const meta = node.createDiv({ cls: "fishbone-task-meta" });
     meta.createSpan({ cls: "fishbone-task-status", text: task.status });
     node.addEventListener("mouseenter", () => {
-      this.showTaskTooltip(node, task);
+      this.showTaskTooltip(node, task, taskNode);
       const stage = parent.closest(".fishbone-canvas-stage") as HTMLElement | null;
       if (stage) this.highlightTaskRelations(stage, task.taskId);
     });
@@ -760,13 +802,19 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
-  private showTaskTooltip(node: HTMLElement, task: PlanningTask): void {
+  private showTaskTooltip(node: HTMLElement, task: PlanningTask, taskNode?: FishboneCanvasTaskNode): void {
     if (this.taskPointerDrag?.active) return;
     node.querySelector(".fishbone-task-tooltip")?.remove();
     const tooltip = node.createDiv({ cls: "fishbone-task-tooltip" });
     tooltip.createDiv({ cls: "fishbone-task-tooltip-title", text: task.title });
     tooltip.createDiv({ text: `日期：${task.date ?? "无日期"}` });
     tooltip.createDiv({ text: `主线：${task.mainline ?? "未分配"}` });
+    if (task.branchMainline || task.branchMainlineId || taskNode?.branchMainlineId) {
+      tooltip.createDiv({ text: `分支主线：${task.branchMainline ?? task.branchMainlineId ?? taskNode?.branchMainlineId}` });
+    }
+    if (taskNode?.effectiveDate && task.date && taskNode.effectiveDate !== task.date) {
+      tooltip.createDiv({ text: `显示日期：${taskNode.effectiveDate}（已限制在分支范围内）` });
+    }
     tooltip.createDiv({ text: `状态：${task.status} · 优先级：${task.priority}` });
     tooltip.createDiv({ text: `关系：${task.relations.length}` });
     if (task.sourceExcerpt) {
