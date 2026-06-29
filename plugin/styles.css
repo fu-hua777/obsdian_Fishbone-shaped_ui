@@ -283,6 +283,19 @@
   pointer-events: none;
 }
 
+.fishbone-fixed-date-axis-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fishbone-fixed-date-axis-layer .fishbone-date-tick {
+  top: 14px;
+  pointer-events: auto;
+}
+
 .fishbone-date-tick {
   position: absolute;
   min-width: 64px;

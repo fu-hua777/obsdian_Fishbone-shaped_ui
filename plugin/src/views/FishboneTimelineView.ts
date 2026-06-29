@@ -315,27 +315,13 @@ export class FishboneTimelineView extends ItemView {
     this.bindCanvasViewport(canvas, layout, mainlines, tasks);
     this.bindCanvasKeyboard(canvas, tasks, mainlines);
 
+    const dateLayer = canvas.createDiv({ cls: "fishbone-fixed-date-axis-layer" });
+    this.renderFixedDateAxis(dateLayer, layout);
+
     const stage = canvas.createDiv({ cls: "fishbone-canvas-stage" });
     stage.style.width = `${layout.stageWidth}px`;
     stage.style.height = `${layout.stageHeight}px`;
     this.applyStageTransform(stage);
-
-    const dateLayer = stage.createDiv({ cls: "fishbone-date-axis-layer" });
-    for (const tick of layout.dateTicks) {
-      const tickEl = dateLayer.createDiv({
-        cls: [
-          "fishbone-date-tick",
-          tick.isToday ? "is-today" : "",
-          tick.isWeekend ? "is-weekend" : "",
-          tick.isMajor ? "is-major" : "",
-          tick.id === this.viewport.centerDate ? "is-center-date" : ""
-        ].filter(Boolean).join(" ")
-      });
-      tickEl.style.left = `${tick.x}px`;
-      tickEl.style.top = `${tick.y}px`;
-      tickEl.createDiv({ cls: "fishbone-date-label", text: tick.label });
-      tickEl.createDiv({ cls: "fishbone-date-detail", text: tick.detail });
-    }
 
     const laneLayer = stage.createDiv({ cls: "fishbone-mainline-layer" });
     for (const lane of layout.lanes) {
@@ -396,6 +382,24 @@ export class FishboneTimelineView extends ItemView {
     }
     canvas.createDiv({ cls: "fishbone-task-drop-hint" });
     this.applyCanvasTransform(canvas);
+  }
+
+  private renderFixedDateAxis(parent: HTMLElement, layout: FishboneCanvasLayout): void {
+    for (const tick of layout.dateTicks) {
+      const tickEl = parent.createDiv({
+        cls: [
+          "fishbone-date-tick",
+          tick.isToday ? "is-today" : "",
+          tick.isWeekend ? "is-weekend" : "",
+          tick.isMajor ? "is-major" : "",
+          tick.id === this.viewport.centerDate ? "is-center-date" : ""
+        ].filter(Boolean).join(" ")
+      });
+      tickEl.dataset.dateX = String(tick.x);
+      tickEl.style.left = `${this.viewport.panX + tick.x * this.viewport.canvasZoom}px`;
+      tickEl.createDiv({ cls: "fishbone-date-label", text: tick.label });
+      tickEl.createDiv({ cls: "fishbone-date-detail", text: tick.detail });
+    }
   }
 
   private renderTaskBranchLine(parent: HTMLElement, taskNode: FishboneCanvasTaskNode): void {
@@ -661,10 +665,20 @@ export class FishboneTimelineView extends ItemView {
     const stage = canvas.querySelector(".fishbone-canvas-stage") as HTMLElement | null;
     if (stage) this.applyStageTransform(stage);
 
+    this.updateFixedDateAxis(canvas);
+
     const labels = canvas.querySelectorAll<HTMLElement>(".fishbone-canvas-lane-label");
     labels.forEach((label) => {
       const spineY = Number(label.dataset.laneSpineY ?? 0);
       label.style.top = `${this.viewport.panY + spineY * this.viewport.canvasZoom}px`;
+    });
+  }
+
+  private updateFixedDateAxis(canvas: HTMLElement): void {
+    const dateTicks = canvas.querySelectorAll<HTMLElement>(".fishbone-fixed-date-axis-layer .fishbone-date-tick");
+    dateTicks.forEach((tick) => {
+      const x = Number(tick.dataset.dateX ?? 0);
+      tick.style.left = `${this.viewport.panX + x * this.viewport.canvasZoom}px`;
     });
   }
 

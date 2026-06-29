@@ -59,10 +59,13 @@ function main() {
   requireText("plugin/src/views/FishboneTimelineView.ts", [
     "fishbone-canvas-viewport",
     "fishbone-canvas-stage",
-    "fishbone-date-axis-layer",
+    "fishbone-fixed-date-axis-layer",
     "fishbone-mainline-layer",
     "fishbone-task-layer",
     "fishbone-canvas-label-layer",
+    "renderFixedDateAxis",
+    "updateFixedDateAxis",
+    "dataset.dateX",
     "bindCanvasViewport",
     "renderCanvasLaneLabel",
     "mainlinePointerDrag",
@@ -82,7 +85,7 @@ function main() {
   requireText("plugin/styles.css", [
     ".fishbone-canvas-viewport",
     ".fishbone-canvas-stage",
-    ".fishbone-date-axis-layer",
+    ".fishbone-fixed-date-axis-layer",
     ".fishbone-mainline-layer",
     ".fishbone-task-layer",
     ".fishbone-canvas-label-layer",
