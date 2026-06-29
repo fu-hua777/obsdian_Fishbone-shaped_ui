@@ -33,8 +33,7 @@ import {
   setTimeAxisMode,
   setViewportCenterDate,
   zoomCanvasViewport,
-  zoomLane,
-  zoomTimeScale
+  zoomLane
 } from "./fishboneCanvasViewport";
 
 export const FISHBONE_TIMELINE_VIEW_TYPE = "fishbone-planner-timeline";
@@ -574,13 +573,9 @@ export class FishboneTimelineView extends ItemView {
     canvas.addEventListener("pointercancel", endPan);
 
     canvas.addEventListener("wheel", async (event) => {
-      if (!event.ctrlKey && !event.altKey) return;
       event.preventDefault();
       const lane = (event.target as HTMLElement | null)?.closest(".fishbone-canvas-lane, .fishbone-task-node, .fishbone-canvas-lane-label") as HTMLElement | null;
-      const axis = (event.target as HTMLElement | null)?.closest(".fishbone-date-tick");
-      if (event.altKey || axis) {
-        this.viewport = zoomTimeScale(this.viewport, event.deltaY);
-      } else if (lane?.dataset.laneId) {
+      if (event.ctrlKey && lane?.dataset.laneId) {
         this.viewport = zoomLane(this.viewport, lane.dataset.laneId, event.deltaY);
       } else {
         const rect = canvas.getBoundingClientRect();

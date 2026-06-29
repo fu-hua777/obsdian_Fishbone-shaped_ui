@@ -72,10 +72,8 @@ function main() {
     "moveMainlineByClientY",
     "panCanvasViewport",
     "zoomCanvasViewport",
-    "zoomTimeScale",
     "zoomLane",
-    "ctrlKey",
-    "altKey"
+    "event.ctrlKey && lane?.dataset.laneId"
   ]);
 
   requireText("plugin/styles.css", [
