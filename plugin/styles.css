@@ -167,6 +167,11 @@
   outline-offset: -3px;
 }
 
+.fishbone-canvas-viewport.is-task-drag-over {
+  outline: 1px solid color-mix(in srgb, var(--color-yellow) 72%, transparent);
+  outline-offset: -5px;
+}
+
 .fishbone-canvas-stage {
   position: absolute;
   left: 0;
@@ -175,11 +180,51 @@
 }
 
 .fishbone-date-axis-layer,
+.fishbone-relation-layer,
 .fishbone-mainline-layer,
 .fishbone-task-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.fishbone-relation-layer {
+  overflow: visible;
+  z-index: 1;
+}
+
+.fishbone-relation {
+  pointer-events: auto;
+}
+
+.fishbone-relation-path {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.72;
+}
+
+.fishbone-relation-arrow {
+  fill: var(--text-muted);
+}
+
+.fishbone-relation-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  pointer-events: none;
+  stroke: var(--background-primary);
+  stroke-width: 4px;
+}
+
+.fishbone-relation.is-blocked .fishbone-relation-label {
+  fill: var(--text-error);
+}
+
+.fishbone-relation.is-relation-highlight .fishbone-relation-path,
+.fishbone-relation:hover .fishbone-relation-path {
+  opacity: 1;
+  stroke-width: 3;
 }
 
 .fishbone-canvas-label-layer {
@@ -291,6 +336,37 @@
 .fishbone-canvas-viewport .fishbone-task-node {
   transform: translate(-50%, -50%);
   pointer-events: auto;
+}
+
+.fishbone-task-node.fishbone-task-dragging {
+  z-index: 9;
+  opacity: 0.78;
+  box-shadow: 0 0 0 2px var(--interactive-accent), 0 8px 24px color-mix(in srgb, var(--background-modifier-box-shadow) 45%, transparent);
+}
+
+.fishbone-task-node.is-relation-highlight {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+}
+
+.fishbone-task-drop-hint {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 12;
+  display: none;
+  max-width: 260px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-yellow) 55%, var(--background-modifier-border));
+  border-radius: 8px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.fishbone-task-drop-hint.is-visible {
+  display: block;
 }
 
 .fishbone-timeline-scroller {
@@ -458,6 +534,37 @@
 
 .fishbone-task-node:hover {
   border-color: var(--lane-color);
+}
+
+.fishbone-task-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  width: 230px;
+  transform: translateX(-50%);
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--background-modifier-box-shadow) 34%, transparent);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.fishbone-task-tooltip-title {
+  margin-bottom: 4px;
+  color: var(--text-normal);
+  font-weight: 700;
+}
+
+.fishbone-task-tooltip-excerpt {
+  margin-top: 5px;
+  max-height: 48px;
+  overflow: hidden;
 }
 
 .fishbone-task-doing {

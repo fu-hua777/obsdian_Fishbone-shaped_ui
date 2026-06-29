@@ -1,6 +1,14 @@
 import { App, Notice, TFile, normalizePath } from "obsidian";
 import { parsePlanningTask } from "./taskParser";
-import { PlanningTask, TaskStatus, nextStatus } from "./taskTypes";
+import { PlanningTask, TaskPriority, TaskStatus, nextStatus } from "./taskTypes";
+
+export interface TaskFieldPatch {
+  title?: string;
+  date?: string | null;
+  mainline?: string | null;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+}
 
 export class TaskRepository {
   private app: App;
@@ -43,22 +51,34 @@ export class TaskRepository {
   }
 
   async cycleTaskStatus(task: PlanningTask): Promise<TaskStatus | null> {
-    const file = this.getTaskFile(task.path);
-    if (!file) {
-      new Notice(`找不到任务文件：${task.path}`);
-      return null;
-    }
-
     const status = nextStatus(task.status);
-    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter.status = status;
-      frontmatter.updated = formatLocalDateTime(new Date());
-    });
-    await this.waitForFrontmatter(file, (frontmatter) => frontmatter.status === status);
+    await this.updateTaskFields(task, { status });
     return status;
   }
 
   async setTaskMainline(task: PlanningTask, mainline: string | null): Promise<void> {
+    await this.updateTaskFields(task, { mainline });
+  }
+
+  async setTaskDone(task: PlanningTask, done: boolean): Promise<TaskStatus | null> {
+    const status: TaskStatus = done ? "done" : "todo";
+    await this.updateTaskFields(task, { status });
+    return status;
+  }
+
+  async setTaskDate(task: PlanningTask, date: string | null): Promise<void> {
+    await this.updateTaskFields(task, { date });
+  }
+
+  async setTaskPriority(task: PlanningTask, priority: TaskPriority): Promise<void> {
+    await this.updateTaskFields(task, { priority });
+  }
+
+  async setTaskStatus(task: PlanningTask, status: TaskStatus): Promise<void> {
+    await this.updateTaskFields(task, { status });
+  }
+
+  async updateTaskFields(task: PlanningTask, patch: TaskFieldPatch): Promise<void> {
     const file = this.getTaskFile(task.path);
     if (!file) {
       new Notice(`找不到任务文件：${task.path}`);
@@ -66,26 +86,27 @@ export class TaskRepository {
     }
 
     await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter.mainline = mainline;
+      if (typeof patch.title !== "undefined") {
+        frontmatter.title = patch.title;
+      }
+      if (typeof patch.date !== "undefined") {
+        frontmatter.date = patch.date;
+      }
+      if (typeof patch.mainline !== "undefined") {
+        frontmatter.mainline = patch.mainline;
+      }
+      if (typeof patch.status !== "undefined") {
+        frontmatter.status = patch.status;
+      }
+      if (typeof patch.priority !== "undefined") {
+        frontmatter.priority = patch.priority;
+      }
       frontmatter.updated = formatLocalDateTime(new Date());
     });
-    await this.waitForFrontmatter(file, (frontmatter) => frontmatter.mainline === mainline);
-  }
 
-  async setTaskDone(task: PlanningTask, done: boolean): Promise<TaskStatus | null> {
-    const file = this.getTaskFile(task.path);
-    if (!file) {
-      new Notice(`找不到任务文件：${task.path}`);
-      return null;
-    }
-
-    const status: TaskStatus = done ? "done" : "todo";
-    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter.status = status;
-      frontmatter.updated = formatLocalDateTime(new Date());
+    await this.waitForFrontmatter(file, (frontmatter) => {
+      return Object.entries(patch).every(([key, value]) => frontmatter[key] === value);
     });
-    await this.waitForFrontmatter(file, (frontmatter) => frontmatter.status === status);
-    return status;
   }
 
   private getTaskFile(filePath: string): TFile | null {

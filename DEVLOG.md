@@ -115,3 +115,12 @@ M3 未做：
 - 将原 M5.2 任务节点交互增强和 M5.3 relation 关系线合并为一个阶段。
 - 新增计划文档 `PLANS/M5.2-task-node-and-relations.md`。
 - 合并后的重点是任务拖拽改日期/主线、任务右键编辑、hover 详情、relation 解析与画布关系线渲染。
+
+### M5.2：任务节点交互与关系线实现
+- 扩展 `TaskRepository` 写回能力，新增 `updateTaskFields()`、`setTaskDate()`、`setTaskPriority()` 和 `setTaskStatus()`，仍只修改当前任务 md 的 frontmatter。
+- 扩展 `fishboneCanvasLayout.ts`，为任务节点输出稳定尺寸、锚点、任务映射、坐标反推日期/主线能力，并生成 `relationLines`。
+- 任务节点支持长按拖动，松手后按落点更新 `date` 和 `mainline`，拖到未分配泳道时写入 `mainline: null`。
+- 任务节点支持右键菜单、属性编辑弹窗和 hover 详情浮层。
+- 新增 SVG relation layer，支持虚线、箭头、标签、显示开关、hover 高亮和右键打开来源/目标任务。
+- 新增 `scripts/validate-m5-2-task-relations.js` 和 `tests/plugin/m5-2-manual-test-checklist.md`。
+- 本阶段仍不做 relation 编辑器、拖拽创建 relation、task-index 同步和右侧工作台。

@@ -49,8 +49,9 @@ function main() {
   requireText("plugin/src/data/taskRepository.ts", [
     "setTaskMainline",
     "setTaskDone",
+    "updateTaskFields",
     "frontmatter.mainline",
-    "frontmatter.status = status",
+    "frontmatter.status",
     "frontmatter.updated"
   ]);
 
