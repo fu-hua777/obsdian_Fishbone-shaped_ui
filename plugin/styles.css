@@ -105,6 +105,28 @@
   font-size: 13px;
 }
 
+.fishbone-viewport-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fishbone-viewport-label,
+.fishbone-zoom-label {
+  min-width: 72px;
+  padding: 3px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.fishbone-zoom-label {
+  min-width: 44px;
+}
+
 .fishbone-toolbar-actions {
   display: flex;
   align-items: center;
@@ -124,13 +146,14 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
   background: var(--background-primary);
+  max-height: calc(100vh - 190px);
 }
 
 .fishbone-timeline-grid {
   --fishbone-date-count: 1;
   display: grid;
-  grid-template-columns: 160px repeat(var(--fishbone-date-count), minmax(180px, 1fr));
-  min-width: calc(160px + var(--fishbone-date-count) * 180px);
+  grid-template-columns: 170px repeat(var(--fishbone-date-count), minmax(190px, 1fr));
+  min-width: calc(170px + var(--fishbone-date-count) * 190px);
 }
 
 .fishbone-timeline-corner,
@@ -159,6 +182,27 @@
 
 .fishbone-timeline-date {
   text-align: center;
+}
+
+.fishbone-timeline-date.is-today {
+  color: var(--text-accent);
+  box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+
+.fishbone-timeline-date.is-weekend {
+  background: color-mix(in srgb, var(--background-secondary) 85%, var(--background-modifier-border));
+}
+
+.fishbone-date-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fishbone-date-detail {
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .fishbone-lane-label {
@@ -217,8 +261,12 @@
 
 .fishbone-lane-cell {
   position: relative;
-  min-height: 88px;
-  padding: 12px 10px;
+  min-height: 132px;
+  padding: 10px 10px;
+}
+
+.fishbone-lane-cell.is-today {
+  background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
 }
 
 .fishbone-spine {
@@ -233,10 +281,13 @@
 }
 
 .fishbone-task-node {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   z-index: 1;
-  max-width: 150px;
-  margin: 0 auto 8px;
+  max-width: 156px;
+  width: min(156px, calc(100% - 18px));
+  margin: 0 auto;
   padding: 6px 8px;
   border: 1px solid color-mix(in srgb, var(--lane-color) 55%, var(--background-modifier-border));
   border-radius: 6px;
@@ -245,8 +296,35 @@
   cursor: pointer;
 }
 
+.fishbone-branch-above {
+  transform: translate(-50%, calc(-100% - 12px - var(--branch-index) * 42px));
+}
+
+.fishbone-branch-below {
+  transform: translate(-50%, calc(12px + var(--branch-index) * 42px));
+}
+
 .fishbone-task-node:hover {
   border-color: var(--lane-color);
+}
+
+.fishbone-task-doing {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+}
+
+.fishbone-task-done {
+  opacity: 0.62;
+}
+
+.fishbone-task-blocked {
+  border-color: var(--text-error);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error) 45%, transparent);
+}
+
+.fishbone-task-canceled {
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 
 .fishbone-task-header {
@@ -271,9 +349,35 @@
 }
 
 .fishbone-task-meta {
-  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 4px;
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.fishbone-task-priority {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  text-align: center;
+  background: var(--background-modifier-border);
+}
+
+.fishbone-priority-high .fishbone-task-priority {
+  color: var(--text-on-accent);
+  background: var(--text-error);
+}
+
+.fishbone-priority-medium .fishbone-task-priority {
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--color-yellow) 35%, var(--background-modifier-border));
+}
+
+.fishbone-priority-low .fishbone-task-priority {
+  color: var(--text-muted);
 }
 
 .fishbone-task-mainline-select {

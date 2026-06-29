@@ -15,7 +15,11 @@ export interface FishboneLayout {
 export interface FishboneDateColumn {
   id: string;
   label: string;
+  fullLabel: string;
   sortValue: string;
+  isToday: boolean;
+  isWeekend: boolean;
+  isUndated: boolean;
 }
 
 export interface FishboneLane {
@@ -23,7 +27,13 @@ export interface FishboneLane {
   name: string;
   color: string;
   isUnassigned: boolean;
-  tasksByDate: Record<string, PlanningTask[]>;
+  tasksByDate: Record<string, FishboneTaskNode[]>;
+}
+
+export interface FishboneTaskNode {
+  task: PlanningTask;
+  branchIndex: number;
+  branchSide: "above" | "below";
 }
 
 export interface FishboneRelationLine {

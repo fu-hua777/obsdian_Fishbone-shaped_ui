@@ -4,15 +4,14 @@ import {
   FishboneLane,
   FishboneLayout,
   FishboneRelationLine,
+  FishboneTaskNode,
   UNASSIGNED_COLOR,
   UNASSIGNED_LANE_ID,
   UNASSIGNED_LANE_NAME,
-  UNDATED_COLUMN_ID,
-  UNDATED_COLUMN_LABEL
+  UNDATED_COLUMN_ID
 } from "./fishboneRenderTypes";
 
-export function buildFishboneLayout(tasks: PlanningTask[], mainlines: Mainline[]): FishboneLayout {
-  const dates = buildDateColumns(tasks);
+export function buildFishboneLayout(tasks: PlanningTask[], mainlines: Mainline[], dates: FishboneDateColumn[]): FishboneLayout {
   const lanes = buildLanes(tasks, mainlines, dates);
   const relationLines = buildRelationLines(tasks, lanes);
 
@@ -21,28 +20,6 @@ export function buildFishboneLayout(tasks: PlanningTask[], mainlines: Mainline[]
     lanes,
     relationLines
   };
-}
-
-function buildDateColumns(tasks: PlanningTask[]): FishboneDateColumn[] {
-  const values = new Set<string>();
-  for (const task of tasks) {
-    values.add(task.date ?? UNDATED_COLUMN_ID);
-  }
-  if (values.size === 0) {
-    values.add(UNDATED_COLUMN_ID);
-  }
-
-  return Array.from(values)
-    .sort((a, b) => {
-      if (a === UNDATED_COLUMN_ID) return 1;
-      if (b === UNDATED_COLUMN_ID) return -1;
-      return a.localeCompare(b);
-    })
-    .map((value) => ({
-      id: value,
-      label: value === UNDATED_COLUMN_ID ? UNDATED_COLUMN_LABEL : formatDateLabel(value),
-      sortValue: value
-    }));
 }
 
 function buildLanes(tasks: PlanningTask[], mainlines: Mainline[], dates: FishboneDateColumn[]): FishboneLane[] {
@@ -75,6 +52,9 @@ function buildLanes(tasks: PlanningTask[], mainlines: Mainline[], dates: Fishbon
   let hasUnassignedTask = mainlines.length === 0;
   for (const task of tasks) {
     const dateId = task.date ?? UNDATED_COLUMN_ID;
+    if (!dates.some((date) => date.id === dateId)) {
+      continue;
+    }
     const lane =
       task.mainline && mainlineNames.has(task.mainline)
         ? laneByName.get(task.mainline) ?? unassignedLane
@@ -85,7 +65,7 @@ function buildLanes(tasks: PlanningTask[], mainlines: Mainline[], dates: Fishbon
     if (!lane.tasksByDate[dateId]) {
       lane.tasksByDate[dateId] = [];
     }
-    lane.tasksByDate[dateId].push(task);
+    lane.tasksByDate[dateId].push(createTaskNode(task, lane.tasksByDate[dateId].length));
   }
 
   if (hasUnassignedTask) {
@@ -99,7 +79,8 @@ function buildRelationLines(tasks: PlanningTask[], lanes: FishboneLane[]): Fishb
   const taskPosition = new Map<string, { dateId: string; laneId: string }>();
   for (const lane of lanes) {
     for (const [dateId, laneTasks] of Object.entries(lane.tasksByDate)) {
-      for (const task of laneTasks) {
+      for (const node of laneTasks) {
+        const task = node.task;
         taskPosition.set(task.taskId, { dateId, laneId: lane.id });
         taskPosition.set(task.title, { dateId, laneId: lane.id });
       }
@@ -124,16 +105,18 @@ function buildRelationLines(tasks: PlanningTask[], lanes: FishboneLane[]): Fishb
   return lines;
 }
 
-function emptyTasksByDate(dates: FishboneDateColumn[]): Record<string, PlanningTask[]> {
-  const result: Record<string, PlanningTask[]> = {};
+function emptyTasksByDate(dates: FishboneDateColumn[]): Record<string, FishboneTaskNode[]> {
+  const result: Record<string, FishboneTaskNode[]> = {};
   for (const date of dates) {
     result[date.id] = [];
   }
   return result;
 }
 
-function formatDateLabel(value: string): string {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return value;
-  return `${Number(match[2])}/${Number(match[3])}`;
+function createTaskNode(task: PlanningTask, index: number): FishboneTaskNode {
+  return {
+    task,
+    branchIndex: Math.floor(index / 2),
+    branchSide: index % 2 === 0 ? "above" : "below"
+  };
 }

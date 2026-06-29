@@ -2,12 +2,22 @@ import { ItemView, Menu, Modal, Notice, Setting, WorkspaceLeaf } from "obsidian"
 import FishbonePlannerPlugin from "../main";
 import { Mainline, PlanningTask } from "../data/taskTypes";
 import { buildFishboneLayout } from "./fishboneLayout";
-import { FishboneLane, FishboneLayout } from "./fishboneRenderTypes";
+import { FishboneLane, FishboneLayout, FishboneTaskNode } from "./fishboneRenderTypes";
+import {
+  buildViewportDateColumns,
+  createDefaultFishboneViewport,
+  describeViewport,
+  FishboneViewportState,
+  moveViewportToToday,
+  moveViewportWeek,
+  showAllViewport
+} from "./fishboneViewport";
 
 export const FISHBONE_TIMELINE_VIEW_TYPE = "fishbone-planner-timeline";
 
 export class FishboneTimelineView extends ItemView {
   private plugin: FishbonePlannerPlugin;
+  private viewport: FishboneViewportState = createDefaultFishboneViewport();
 
   constructor(leaf: WorkspaceLeaf, plugin: FishbonePlannerPlugin) {
     super(leaf);
@@ -35,10 +45,12 @@ export class FishboneTimelineView extends ItemView {
       this.plugin.mainlineRepository.listMainlines(),
       this.plugin.taskRepository.listTasks()
     ]);
-    const layout = buildFishboneLayout(tasks, mainlines);
+    const dates = buildViewportDateColumns(tasks, this.viewport);
+    const layout = buildFishboneLayout(tasks, mainlines, dates);
 
     const toolbar = container.createDiv({ cls: "fishbone-timeline-toolbar" });
     toolbar.createDiv({ cls: "fishbone-timeline-title", text: "鱼骨时间视图" });
+    this.renderViewportControls(toolbar);
     this.renderMainlineCreator(toolbar);
 
     const refreshButton = toolbar.createEl("button", { text: "刷新" });
@@ -51,6 +63,7 @@ export class FishboneTimelineView extends ItemView {
     summary.createSpan({ text: `主线 ${mainlines.length}` });
     summary.createSpan({ text: `日期 ${layout.dates.length}` });
     summary.createSpan({ text: `关系 ${layout.relationLines.length}` });
+    summary.createSpan({ text: `视图 ${this.viewport.mode === "week" ? "周视图" : "显示全部"}` });
 
     if (mainlines.length === 0) {
       container.createDiv({
@@ -81,6 +94,28 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
+  private renderViewportControls(toolbar: HTMLElement): void {
+    const controls = toolbar.createDiv({ cls: "fishbone-viewport-controls" });
+    controls.createEl("button", { text: "上一周" }).addEventListener("click", async () => {
+      this.viewport = moveViewportWeek(this.viewport, -1);
+      await this.render();
+    });
+    controls.createDiv({ cls: "fishbone-viewport-label", text: describeViewport(this.viewport) });
+    controls.createEl("button", { text: "下一周" }).addEventListener("click", async () => {
+      this.viewport = moveViewportWeek(this.viewport, 1);
+      await this.render();
+    });
+    controls.createEl("button", { text: "今天" }).addEventListener("click", async () => {
+      this.viewport = moveViewportToToday();
+      await this.render();
+    });
+    controls.createEl("button", { text: this.viewport.mode === "all" ? "周视图" : "显示全部" }).addEventListener("click", async () => {
+      this.viewport = this.viewport.mode === "all" ? moveViewportToToday() : showAllViewport(this.viewport);
+      await this.render();
+    });
+    controls.createDiv({ cls: "fishbone-zoom-label", text: "100%" });
+  }
+
   private renderTimeline(container: Element, layout: FishboneLayout, mainlines: Mainline[]): void {
     const scroller = container.createDiv({ cls: "fishbone-timeline-scroller" });
     const grid = scroller.createDiv({ cls: "fishbone-timeline-grid" });
@@ -88,7 +123,11 @@ export class FishboneTimelineView extends ItemView {
 
     grid.createDiv({ cls: "fishbone-timeline-corner", text: "主线 / 日期" });
     for (const date of layout.dates) {
-      grid.createDiv({ cls: "fishbone-timeline-date", text: date.label });
+      const dateEl = grid.createDiv({
+        cls: `fishbone-timeline-date${date.isToday ? " is-today" : ""}${date.isWeekend ? " is-weekend" : ""}${date.isUndated ? " is-undated" : ""}`
+      });
+      dateEl.createDiv({ cls: "fishbone-date-label", text: date.label });
+      dateEl.createDiv({ cls: "fishbone-date-detail", text: date.fullLabel });
     }
 
     for (const lane of layout.lanes) {
@@ -128,15 +167,22 @@ export class FishboneTimelineView extends ItemView {
       const cell = grid.createDiv({ cls: "fishbone-lane-cell" });
       cell.style.setProperty("--lane-color", lane.color);
       cell.createDiv({ cls: "fishbone-spine" });
-      const tasks = lane.tasksByDate[date.id] ?? [];
-      for (const task of tasks) {
-        this.renderTaskNode(cell, task, mainlines);
+      if (date.isToday) {
+        cell.addClass("is-today");
+      }
+      const nodes = lane.tasksByDate[date.id] ?? [];
+      for (const node of nodes) {
+        this.renderTaskNode(cell, node, mainlines);
       }
     }
   }
 
-  private renderTaskNode(parent: HTMLElement, task: PlanningTask, mainlines: Mainline[]): void {
-    const node = parent.createDiv({ cls: "fishbone-task-node" });
+  private renderTaskNode(parent: HTMLElement, taskNode: FishboneTaskNode, mainlines: Mainline[]): void {
+    const task = taskNode.task;
+    const node = parent.createDiv({
+      cls: `fishbone-task-node fishbone-task-${task.status} fishbone-priority-${task.priority} fishbone-branch-${taskNode.branchSide}`
+    });
+    node.style.setProperty("--branch-index", String(taskNode.branchIndex));
     const header = node.createDiv({ cls: "fishbone-task-header" });
     const checkbox = header.createEl("input", {
       attr: {
@@ -161,7 +207,9 @@ export class FishboneTimelineView extends ItemView {
     });
 
     header.createDiv({ cls: "fishbone-task-title", text: task.title });
-    node.createDiv({ cls: "fishbone-task-meta", text: `${task.status} · ${task.priority}` });
+    const meta = node.createDiv({ cls: "fishbone-task-meta" });
+    meta.createSpan({ cls: "fishbone-task-status", text: task.status });
+    meta.createSpan({ cls: "fishbone-task-priority", text: formatPriority(task.priority) });
 
     if (mainlines.length > 0) {
       const select = node.createEl("select", { cls: "fishbone-task-mainline-select" });
@@ -365,4 +413,17 @@ class MainlineEditorModal extends Modal {
 function getDropPlacement(target: HTMLElement, event: DragEvent): "before" | "after" {
   const rect = target.getBoundingClientRect();
   return event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+}
+
+function formatPriority(priority: PlanningTask["priority"]): string {
+  switch (priority) {
+    case "high":
+      return "高";
+    case "medium":
+      return "中";
+    case "low":
+      return "低";
+    default:
+      return priority;
+  }
 }
