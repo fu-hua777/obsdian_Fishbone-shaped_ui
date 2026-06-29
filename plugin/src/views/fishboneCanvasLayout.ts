@@ -23,8 +23,8 @@ import {
   UNASSIGNED_LANE_NAME
 } from "./fishboneRenderTypes";
 
-export const TASK_NODE_WIDTH = 132;
-export const TASK_NODE_HEIGHT = 58;
+export const TASK_NODE_WIDTH = 136;
+export const TASK_NODE_HEIGHT = 34;
 export const TASK_CLUSTER_WIDTH = 116;
 export const TASK_CLUSTER_HEIGHT = 46;
 const COMPACT_BUCKET_THRESHOLD = 10;
@@ -339,7 +339,7 @@ function createTaskNodeForBucket(
   const x = dateToCanvasX(date, viewport) + getDenseBucketOffset(index, bucketSize, viewport);
   const branchSide = index % 2 === 0 ? "above" : "below";
   const branchIndex = Math.floor(index / 2);
-  const branchOffset = isCompacted ? 34 + branchIndex * 28 : 40 + branchIndex * 32;
+  const branchOffset = isCompacted ? 34 + branchIndex * 36 : 42 + branchIndex * 40;
   const y = branchSide === "above" ? lane.spineY - branchOffset : lane.spineY + branchOffset;
   return createTaskNode(task, lane.id, bucketId, x, y, branchIndex, branchSide, lane.color, lane.spineY, isCompacted);
 }

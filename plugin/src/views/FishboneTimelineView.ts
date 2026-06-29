@@ -324,6 +324,15 @@ export class FishboneTimelineView extends ItemView {
       }
     }
 
+    const taskBranchLayer = stage.createDiv({ cls: "fishbone-task-branch-layer" });
+    for (const taskNode of layout.tasks) {
+      try {
+        this.renderTaskBranchLine(taskBranchLayer, taskNode);
+      } catch (error) {
+        console.error("Fishbone Planner: failed to render task branch", taskNode.task.taskId, error);
+      }
+    }
+
     const taskLayer = stage.createDiv({ cls: "fishbone-task-layer" });
     for (const taskNode of layout.tasks) {
       try {
@@ -356,6 +365,24 @@ export class FishboneTimelineView extends ItemView {
     }
     canvas.createDiv({ cls: "fishbone-task-drop-hint" });
     this.applyCanvasTransform(canvas);
+  }
+
+  private renderTaskBranchLine(parent: HTMLElement, taskNode: FishboneCanvasTaskNode): void {
+    const nodeEdgeY = taskNode.branchSide === "above"
+      ? taskNode.y + taskNode.height / 2
+      : taskNode.y - taskNode.height / 2;
+    const top = Math.min(taskNode.spineAnchor.y, nodeEdgeY);
+    const height = Math.max(6, Math.abs(taskNode.spineAnchor.y - nodeEdgeY));
+    const line = parent.createDiv({
+      cls: [
+        "fishbone-task-branch-line",
+        `fishbone-branch-${taskNode.branchSide}`
+      ].join(" ")
+    });
+    line.style.setProperty("--lane-color", taskNode.color);
+    line.style.left = `${taskNode.x}px`;
+    line.style.top = `${top}px`;
+    line.style.height = `${height}px`;
   }
 
   private renderRelationLayer(stage: HTMLElement, relationLines: FishboneCanvasRelationLine[]): void {

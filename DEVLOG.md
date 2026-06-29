@@ -152,3 +152,8 @@ M3 未做：
 - 已在测试 Vault 重置鱼骨视图状态到默认视角，主线与任务数据未修改。
 - 修复 SVG relation 分组 class 添加方式，避免把 `fishbone-relation is-dependency` 作为单个 token 导致 `DOMTokenList.add` 抛错。
 - 增加鱼骨视图诊断/降级渲染，渲染异常时显示真实错误、数据路径和主线文件状态，避免整页空白。
+
+### M5.3 修正：任务标签单行与分支线
+- 任务节点高度压缩为单行胶囊，去掉卡片式二行观感。
+- 新增 `fishbone-task-branch-layer`，为每个任务绘制连接主线脊骨的短分支线。
+- 覆盖旧 grid 鱼骨样式中的 `.fishbone-branch-above/below` transform，避免 canvas 坐标布局后被二次偏移。
