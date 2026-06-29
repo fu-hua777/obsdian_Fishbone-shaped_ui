@@ -1,0 +1,2 @@
+# obsdian_Fishbone-shaped_ui
+适用于obsidian的个人鱼骨型规划设计插件
