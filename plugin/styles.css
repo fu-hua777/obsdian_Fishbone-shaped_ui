@@ -162,6 +162,11 @@
   cursor: grabbing;
 }
 
+.fishbone-canvas-viewport.is-mainline-drag-over {
+  outline: 1px solid color-mix(in srgb, var(--interactive-accent) 72%, transparent);
+  outline-offset: -3px;
+}
+
 .fishbone-canvas-stage {
   position: absolute;
   left: 0;

@@ -117,7 +117,7 @@ export class FishboneTimelineView extends ItemView {
 
   private renderCanvas(container: Element, layout: FishboneCanvasLayout, mainlines: Mainline[]): void {
     const canvas = container.createDiv({ cls: "fishbone-canvas-viewport" });
-    this.bindCanvasViewport(canvas);
+    this.bindCanvasViewport(canvas, layout, mainlines);
 
     const stage = canvas.createDiv({ cls: "fishbone-canvas-stage" });
     stage.style.width = `${layout.stageWidth}px`;
@@ -152,7 +152,7 @@ export class FishboneTimelineView extends ItemView {
     this.applyCanvasTransform(canvas);
   }
 
-  private bindCanvasViewport(canvas: HTMLElement): void {
+  private bindCanvasViewport(canvas: HTMLElement, layout: FishboneCanvasLayout, mainlines: Mainline[]): void {
     canvas.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || isInteractiveTarget(event.target)) return;
       canvas.setPointerCapture(event.pointerId);
@@ -204,6 +204,27 @@ export class FishboneTimelineView extends ItemView {
       }
       await this.render();
     }, { passive: false });
+
+    canvas.addEventListener("dragover", (event) => {
+      const hasMainlineDrag = Array.from(event.dataTransfer?.types ?? []).includes("text/fishbone-mainline-id");
+      if (!hasMainlineDrag) return;
+      event.preventDefault();
+      canvas.addClass("is-mainline-drag-over");
+    });
+
+    canvas.addEventListener("dragleave", (event) => {
+      if (event.currentTarget === event.target) {
+        canvas.removeClass("is-mainline-drag-over");
+      }
+    });
+
+    canvas.addEventListener("drop", async (event) => {
+      const sourceId = event.dataTransfer?.getData("text/fishbone-mainline-id");
+      if (!sourceId) return;
+      event.preventDefault();
+      canvas.removeClass("is-mainline-drag-over");
+      await this.moveMainlineByCanvasDrop(canvas, layout, mainlines, sourceId, event);
+    });
   }
 
   private applyStageTransform(stage: HTMLElement): void {
@@ -425,6 +446,7 @@ export class FishboneTimelineView extends ItemView {
     });
     label.addEventListener("drop", async (event) => {
       event.preventDefault();
+      event.stopPropagation();
       const sourceId = event.dataTransfer?.getData("text/fishbone-mainline-id");
       if (!sourceId || sourceId === mainline.id) return;
       const placement = getDropPlacement(label, event);
@@ -440,6 +462,38 @@ export class FishboneTimelineView extends ItemView {
       label.removeClass("fishbone-lane-drop-before");
       label.removeClass("fishbone-lane-drop-after");
     });
+  }
+
+  private async moveMainlineByCanvasDrop(
+    canvas: HTMLElement,
+    layout: FishboneCanvasLayout,
+    mainlines: Mainline[],
+    sourceId: string,
+    event: DragEvent
+  ): Promise<void> {
+    const mainlineIds = new Set(mainlines.map((mainline) => mainline.id));
+    const lanes = layout.lanes.filter((lane) => mainlineIds.has(lane.id));
+    if (lanes.length === 0) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const pointerY = event.clientY - rect.top;
+    let target = lanes[0];
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const lane of lanes) {
+      const laneCenterY = this.viewport.panY + lane.spineY * this.viewport.canvasZoom;
+      const distance = Math.abs(pointerY - laneCenterY);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        target = lane;
+      }
+    }
+
+    if (sourceId === target.id) return;
+    const targetCenterY = this.viewport.panY + target.spineY * this.viewport.canvasZoom;
+    const placement = pointerY < targetCenterY ? "before" : "after";
+    await this.plugin.mainlineRepository.moveMainline(sourceId, target.id, placement);
+    new Notice("主线排序已更新");
+    await this.render();
   }
 }
 
