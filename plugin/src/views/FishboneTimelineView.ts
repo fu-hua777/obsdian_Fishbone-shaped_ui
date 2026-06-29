@@ -261,12 +261,20 @@ export class FishboneTimelineView extends ItemView {
     });
     label.addEventListener("dragover", (event) => {
       event.preventDefault();
+      label.removeClass("fishbone-lane-drop-before");
+      label.removeClass("fishbone-lane-drop-after");
+      label.addClass(getDropPlacement(label, event) === "before" ? "fishbone-lane-drop-before" : "fishbone-lane-drop-after");
+    });
+    label.addEventListener("dragleave", () => {
+      label.removeClass("fishbone-lane-drop-before");
+      label.removeClass("fishbone-lane-drop-after");
     });
     label.addEventListener("drop", async (event) => {
       event.preventDefault();
       const sourceId = event.dataTransfer?.getData("text/fishbone-mainline-id");
       if (!sourceId || sourceId === mainline.id) return;
-      await this.plugin.mainlineRepository.moveMainlineBefore(sourceId, mainline.id);
+      const placement = getDropPlacement(label, event);
+      await this.plugin.mainlineRepository.moveMainline(sourceId, mainline.id, placement);
       new Notice("主线排序已更新");
       await this.render();
     });
@@ -275,6 +283,8 @@ export class FishboneTimelineView extends ItemView {
       label.draggable = false;
       label.removeClass("fishbone-lane-drag-ready");
       label.removeClass("fishbone-lane-dragging");
+      label.removeClass("fishbone-lane-drop-before");
+      label.removeClass("fishbone-lane-drop-after");
     });
   }
 }
@@ -350,4 +360,9 @@ class MainlineEditorModal extends Modal {
   onClose(): void {
     this.contentEl.empty();
   }
+}
+
+function getDropPlacement(target: HTMLElement, event: DragEvent): "before" | "after" {
+  const rect = target.getBoundingClientRect();
+  return event.clientY < rect.top + rect.height / 2 ? "before" : "after";
 }

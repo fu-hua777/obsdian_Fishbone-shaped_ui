@@ -36,7 +36,8 @@ function main() {
     "createMainline",
     "updateMainline",
     "deleteMainline",
-    "moveMainlineBefore",
+    "moveMainline",
+    "placement: \"before\" | \"after\"",
     "主线名称不能为空",
     "主线已存在",
     "visible: true",
@@ -61,6 +62,9 @@ function main() {
     "openEditMainlineModal",
     "contextmenu",
     "dragstart",
+    "getDropPlacement",
+    "fishbone-lane-drop-before",
+    "fishbone-lane-drop-after",
     "type: \"checkbox\"",
     "pointerdown",
     "setTaskDone",
@@ -72,6 +76,8 @@ function main() {
     ".fishbone-toolbar-actions",
     ".fishbone-lane-label-interactive",
     ".fishbone-lane-drag-ready",
+    ".fishbone-lane-drop-before",
+    ".fishbone-lane-drop-after",
     ".fishbone-task-header",
     ".fishbone-task-mainline-select"
   ]);

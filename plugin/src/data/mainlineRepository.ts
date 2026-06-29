@@ -87,7 +87,7 @@ export class MainlineRepository {
     return deleted;
   }
 
-  async moveMainlineBefore(sourceId: string, targetId: string): Promise<void> {
+  async moveMainline(sourceId: string, targetId: string, placement: "before" | "after"): Promise<void> {
     if (sourceId === targetId) {
       return;
     }
@@ -102,7 +102,8 @@ export class MainlineRepository {
 
     const [source] = ordered.splice(sourceIndex, 1);
     const adjustedTargetIndex = ordered.findIndex((mainline) => mainline.id === targetId);
-    ordered.splice(adjustedTargetIndex, 0, source);
+    const insertIndex = placement === "before" ? adjustedTargetIndex : adjustedTargetIndex + 1;
+    ordered.splice(insertIndex, 0, source);
     normalizeMainlineOrder(ordered);
     file.mainlines = ordered;
     await this.writeMainlinesFile(file);

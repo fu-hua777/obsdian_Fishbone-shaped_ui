@@ -70,4 +70,5 @@ M3 未做：
 - 新增 `PLANS/M5-fishbone-interaction.md`、`scripts/validate-m5-interaction.js` 和 M5 手动验证清单。
 - 修正 M5 工具栏：主线名称和颜色设置改为点击 `新建主线` 后弹窗输入。
 - 已有主线支持点击名称修改、右键删除、长按拖动排序。
+- 主线拖动排序支持按落点插入到目标主线前或后，不再只能插到目标主线前。
 - 修复 checkbox 写入后立即刷新读到旧 metadata cache，导致看起来需要点击两次的问题。
