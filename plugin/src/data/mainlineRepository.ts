@@ -45,6 +45,69 @@ export class MainlineRepository {
     return mainline;
   }
 
+  async updateMainline(id: string, name: string, color: string): Promise<Mainline> {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      throw new Error("主线名称不能为空");
+    }
+
+    const file = await this.readMainlinesFile();
+    const index = file.mainlines.findIndex((mainline) => mainline.id === id);
+    if (index < 0) {
+      throw new Error("找不到要修改的主线");
+    }
+
+    const hasDuplicate = file.mainlines.some(
+      (mainline) => mainline.id !== id && mainline.name === normalizedName
+    );
+    if (hasDuplicate) {
+      throw new Error(`主线已存在：${normalizedName}`);
+    }
+
+    const updated: Mainline = {
+      ...file.mainlines[index],
+      name: normalizedName,
+      color: normalizeColor(color)
+    };
+    file.mainlines[index] = updated;
+    await this.writeMainlinesFile(file);
+    return updated;
+  }
+
+  async deleteMainline(id: string): Promise<Mainline | null> {
+    const file = await this.readMainlinesFile();
+    const index = file.mainlines.findIndex((mainline) => mainline.id === id);
+    if (index < 0) {
+      return null;
+    }
+
+    const [deleted] = file.mainlines.splice(index, 1);
+    normalizeMainlineOrder(file.mainlines);
+    await this.writeMainlinesFile(file);
+    return deleted;
+  }
+
+  async moveMainlineBefore(sourceId: string, targetId: string): Promise<void> {
+    if (sourceId === targetId) {
+      return;
+    }
+
+    const file = await this.readMainlinesFile();
+    const ordered = [...file.mainlines].sort((a, b) => a.order - b.order);
+    const sourceIndex = ordered.findIndex((mainline) => mainline.id === sourceId);
+    const targetIndex = ordered.findIndex((mainline) => mainline.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    const [source] = ordered.splice(sourceIndex, 1);
+    const adjustedTargetIndex = ordered.findIndex((mainline) => mainline.id === targetId);
+    ordered.splice(adjustedTargetIndex, 0, source);
+    normalizeMainlineOrder(ordered);
+    file.mainlines = ordered;
+    await this.writeMainlinesFile(file);
+  }
+
   private async readMainlinesFile(): Promise<MainlinesFile> {
     const path = normalizePath(`${this.planningSystemPath}/Mainlines/mainlines.json`);
     try {
@@ -82,4 +145,10 @@ function createMainlineId(name: string): string {
     .replace(/\s+/g, "-")
     .replace(/[^\w\u4e00-\u9fa5-]/g, "");
   return `mainline-${slug || "custom"}-${Date.now().toString(36)}`;
+}
+
+function normalizeMainlineOrder(mainlines: Mainline[]): void {
+  mainlines.forEach((mainline, index) => {
+    mainline.order = index + 1;
+  });
 }

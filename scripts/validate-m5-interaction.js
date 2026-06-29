@@ -34,6 +34,9 @@ function main() {
 
   requireText("plugin/src/data/mainlineRepository.ts", [
     "createMainline",
+    "updateMainline",
+    "deleteMainline",
+    "moveMainlineBefore",
     "主线名称不能为空",
     "主线已存在",
     "visible: true",
@@ -52,16 +55,23 @@ function main() {
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
     "renderMainlineCreator",
+    "MainlineEditorModal",
     "主线名称",
     "新建主线",
+    "openEditMainlineModal",
+    "contextmenu",
+    "dragstart",
     "type: \"checkbox\"",
+    "pointerdown",
     "setTaskDone",
     "setTaskMainline",
     "fishbone-task-mainline-select"
   ]);
 
   requireText("plugin/styles.css", [
-    ".fishbone-mainline-form",
+    ".fishbone-toolbar-actions",
+    ".fishbone-lane-label-interactive",
+    ".fishbone-lane-drag-ready",
     ".fishbone-task-header",
     ".fishbone-task-mainline-select"
   ]);

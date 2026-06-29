@@ -34,13 +34,18 @@ function main() {
   assertExists(path.join(pluginSource, "manifest.json"), "缺少 plugin/manifest.json");
   assertExists(path.join(pluginSource, "styles.css"), "缺少 plugin/styles.css");
 
-  copyRecursive(planningSource, planningTarget);
+  if (!fs.existsSync(planningTarget)) {
+    copyRecursive(planningSource, planningTarget);
+    console.log(`Installed PlanningSystem to ${planningTarget}`);
+  } else {
+    console.log(`Skipped PlanningSystem because it already exists: ${planningTarget}`);
+  }
+
   fs.mkdirSync(pluginTarget, { recursive: true });
   for (const file of ["main.js", "manifest.json", "styles.css"]) {
     fs.copyFileSync(path.join(pluginSource, file), path.join(pluginTarget, file));
   }
 
-  console.log(`Installed PlanningSystem to ${planningTarget}`);
   console.log(`Installed plugin to ${pluginTarget}`);
 }
 

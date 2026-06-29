@@ -105,22 +105,11 @@
   font-size: 13px;
 }
 
-.fishbone-mainline-form {
+.fishbone-toolbar-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-left: auto;
-}
-
-.fishbone-mainline-form input[type="text"] {
-  width: 140px;
-  min-width: 120px;
-}
-
-.fishbone-mainline-form input[type="color"] {
-  width: 34px;
-  height: 28px;
-  padding: 2px;
 }
 
 .fishbone-timeline-warning {
@@ -198,6 +187,24 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 650;
+}
+
+.fishbone-lane-label-interactive .fishbone-lane-name {
+  cursor: pointer;
+}
+
+.fishbone-lane-label-interactive:hover .fishbone-lane-name {
+  text-decoration: underline;
+}
+
+.fishbone-lane-drag-ready {
+  cursor: grab;
+  outline: 1px dashed var(--interactive-accent);
+  outline-offset: -4px;
+}
+
+.fishbone-lane-dragging {
+  opacity: 0.65;
 }
 
 .fishbone-lane-cell {

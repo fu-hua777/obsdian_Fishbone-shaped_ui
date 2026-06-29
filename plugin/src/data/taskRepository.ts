@@ -54,6 +54,7 @@ export class TaskRepository {
       frontmatter.status = status;
       frontmatter.updated = formatLocalDateTime(new Date());
     });
+    await this.waitForFrontmatter(file, (frontmatter) => frontmatter.status === status);
     return status;
   }
 
@@ -68,6 +69,7 @@ export class TaskRepository {
       frontmatter.mainline = mainline;
       frontmatter.updated = formatLocalDateTime(new Date());
     });
+    await this.waitForFrontmatter(file, (frontmatter) => frontmatter.mainline === mainline);
   }
 
   async setTaskDone(task: PlanningTask, done: boolean): Promise<TaskStatus | null> {
@@ -82,6 +84,7 @@ export class TaskRepository {
       frontmatter.status = status;
       frontmatter.updated = formatLocalDateTime(new Date());
     });
+    await this.waitForFrontmatter(file, (frontmatter) => frontmatter.status === status);
     return status;
   }
 
@@ -89,9 +92,26 @@ export class TaskRepository {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     return file instanceof TFile ? file : null;
   }
+
+  private async waitForFrontmatter(
+    file: TFile,
+    predicate: (frontmatter: Record<string, unknown>) => boolean
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+      if (frontmatter && predicate(frontmatter)) {
+        return;
+      }
+      await sleep(100);
+    }
+  }
 }
 
 function formatLocalDateTime(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

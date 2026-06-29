@@ -1,4 +1,4 @@
-import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
+import { ItemView, Menu, Modal, Notice, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
 import { Mainline, PlanningTask } from "../data/taskTypes";
 import { buildFishboneLayout } from "./fishboneLayout";
@@ -63,30 +63,21 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderMainlineCreator(toolbar: HTMLElement): void {
-    const form = toolbar.createDiv({ cls: "fishbone-mainline-form" });
-    const nameInput = form.createEl("input", {
-      attr: {
-        type: "text",
-        placeholder: "主线名称"
-      }
-    });
-    const colorInput = form.createEl("input", {
-      attr: {
-        type: "color",
-        value: "#4f8cff",
-        "aria-label": "主线颜色"
-      }
-    });
-    const createButton = form.createEl("button", { text: "新建主线" });
+    const actionGroup = toolbar.createDiv({ cls: "fishbone-toolbar-actions" });
+    const createButton = actionGroup.createEl("button", { text: "新建主线" });
     createButton.addEventListener("click", async (event) => {
       event.preventDefault();
-      try {
-        await this.plugin.mainlineRepository.createMainline(nameInput.value, colorInput.value);
-        new Notice(`已创建主线：${nameInput.value.trim()}`);
-        await this.render();
-      } catch (error) {
-        new Notice(error instanceof Error ? error.message : "创建主线失败");
-      }
+      new MainlineEditorModal(this.plugin, {
+        title: "新建主线",
+        submitText: "创建",
+        name: "",
+        color: "#4f8cff",
+        onSubmit: async (name, color) => {
+          await this.plugin.mainlineRepository.createMainline(name, color);
+          new Notice(`已创建主线：${name.trim()}`);
+          await this.render();
+        }
+      }).open();
     });
   }
 
@@ -120,7 +111,18 @@ export class FishboneTimelineView extends ItemView {
     const label = grid.createDiv({ cls: "fishbone-lane-label" });
     label.style.setProperty("--lane-color", lane.color);
     label.createDiv({ cls: "fishbone-lane-dot" });
-    label.createDiv({ cls: "fishbone-lane-name", text: lane.name });
+    const mainline = mainlines.find((item) => item.id === lane.id);
+    const name = label.createDiv({ cls: "fishbone-lane-name", text: lane.name });
+    if (mainline) {
+      label.addClass("fishbone-lane-label-interactive");
+      name.setAttr("title", "点击修改；右键删除；长按拖动排序");
+      name.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.openEditMainlineModal(mainline);
+      });
+      this.bindMainlineContextMenu(label, mainline);
+      this.bindMainlineDrag(label, mainline);
+    }
 
     for (const date of layout.dates) {
       const cell = grid.createDiv({ cls: "fishbone-lane-cell" });
@@ -143,6 +145,9 @@ export class FishboneTimelineView extends ItemView {
       }
     });
     checkbox.checked = task.status === "done";
+    checkbox.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
     checkbox.addEventListener("click", (event) => {
       event.stopPropagation();
     });
@@ -165,6 +170,9 @@ export class FishboneTimelineView extends ItemView {
         select.createEl("option", { text: mainline.name, value: mainline.name });
       }
       select.value = task.mainline ?? "";
+      select.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
       select.addEventListener("click", (event) => {
         event.stopPropagation();
       });
@@ -180,5 +188,166 @@ export class FishboneTimelineView extends ItemView {
     node.addEventListener("click", () => {
       void this.plugin.taskRepository.openTask(task);
     });
+  }
+
+  private openEditMainlineModal(mainline: Mainline): void {
+    new MainlineEditorModal(this.plugin, {
+      title: "修改主线",
+      submitText: "保存",
+      name: mainline.name,
+      color: mainline.color,
+      onSubmit: async (name, color) => {
+        await this.plugin.mainlineRepository.updateMainline(mainline.id, name, color);
+        new Notice(`已修改主线：${name.trim()}`);
+        await this.render();
+      }
+    }).open();
+  }
+
+  private bindMainlineContextMenu(label: HTMLElement, mainline: Mainline): void {
+    label.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      const menu = new Menu();
+      menu.addItem((item) => {
+        item
+          .setTitle("修改主线")
+          .setIcon("pencil")
+          .onClick(() => this.openEditMainlineModal(mainline));
+      });
+      menu.addItem((item) => {
+        item
+          .setTitle("删除主线")
+          .setIcon("trash")
+          .onClick(async () => {
+            const confirmed = window.confirm(`删除主线「${mainline.name}」？任务文件不会被批量修改，原本挂在该主线的任务会显示为未分配。`);
+            if (!confirmed) return;
+            const deleted = await this.plugin.mainlineRepository.deleteMainline(mainline.id);
+            if (deleted) {
+              new Notice(`已删除主线：${deleted.name}`);
+              await this.render();
+            }
+          });
+      });
+      menu.showAtMouseEvent(event);
+    });
+  }
+
+  private bindMainlineDrag(label: HTMLElement, mainline: Mainline): void {
+    let timer: number | null = null;
+
+    const clearTimer = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    label.addEventListener("pointerdown", () => {
+      clearTimer();
+      timer = window.setTimeout(() => {
+        label.draggable = true;
+        label.addClass("fishbone-lane-drag-ready");
+      }, 450);
+    });
+    label.addEventListener("pointerup", clearTimer);
+    label.addEventListener("pointerleave", clearTimer);
+    label.addEventListener("dragstart", (event) => {
+      if (!label.draggable) {
+        event.preventDefault();
+        return;
+      }
+      event.dataTransfer?.setData("text/fishbone-mainline-id", mainline.id);
+      label.addClass("fishbone-lane-dragging");
+    });
+    label.addEventListener("dragover", (event) => {
+      event.preventDefault();
+    });
+    label.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      const sourceId = event.dataTransfer?.getData("text/fishbone-mainline-id");
+      if (!sourceId || sourceId === mainline.id) return;
+      await this.plugin.mainlineRepository.moveMainlineBefore(sourceId, mainline.id);
+      new Notice("主线排序已更新");
+      await this.render();
+    });
+    label.addEventListener("dragend", () => {
+      clearTimer();
+      label.draggable = false;
+      label.removeClass("fishbone-lane-drag-ready");
+      label.removeClass("fishbone-lane-dragging");
+    });
+  }
+}
+
+interface MainlineEditorOptions {
+  title: string;
+  submitText: string;
+  name: string;
+  color: string;
+  onSubmit: (name: string, color: string) => Promise<void>;
+}
+
+class MainlineEditorModal extends Modal {
+  private options: MainlineEditorOptions;
+  private name: string;
+  private color: string;
+
+  constructor(plugin: FishbonePlannerPlugin, options: MainlineEditorOptions) {
+    super(plugin.app);
+    this.options = options;
+    this.name = options.name;
+    this.color = options.color;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: this.options.title });
+
+    new Setting(contentEl)
+      .setName("主线名称")
+      .addText((text) => {
+        text
+          .setPlaceholder("例如：项目")
+          .setValue(this.name)
+          .onChange((value) => {
+            this.name = value;
+          });
+        window.setTimeout(() => text.inputEl.focus(), 0);
+      });
+
+    new Setting(contentEl)
+      .setName("颜色")
+      .addColorPicker((picker) => {
+        picker
+          .setValue(this.color)
+          .onChange((value) => {
+            this.color = value;
+          });
+      });
+
+    new Setting(contentEl)
+      .addButton((button) => {
+        button
+          .setButtonText("取消")
+          .onClick(() => this.close());
+      })
+      .addButton((button) => {
+        button
+          .setButtonText(this.options.submitText)
+          .setCta()
+          .onClick(async () => {
+            try {
+              await this.options.onSubmit(this.name, this.color);
+              this.close();
+            } catch (error) {
+              new Notice(error instanceof Error ? error.message : "保存主线失败");
+            }
+          });
+      });
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
   }
 }
