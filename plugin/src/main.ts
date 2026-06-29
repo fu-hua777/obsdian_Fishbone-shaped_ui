@@ -43,6 +43,23 @@ export default class FishbonePlannerPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: "cycle-first-fishbone-task-status",
+      name: "切换第一条任务状态（M3 验证）",
+      callback: async () => {
+        const tasks = await this.taskRepository.listTasks();
+        const firstTask = tasks[0];
+        if (!firstTask) {
+          new Notice("未找到可切换状态的规划任务");
+          return;
+        }
+        const next = await this.taskRepository.cycleTaskStatus(firstTask);
+        if (next) {
+          new Notice(`已将第一条任务状态切换为 ${next}`);
+        }
+      }
+    });
+
     this.addSettingTab(new FishbonePlannerSettingTab(this.app, this));
   }
 

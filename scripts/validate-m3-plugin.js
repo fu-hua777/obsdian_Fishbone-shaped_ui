@@ -53,7 +53,8 @@ function validatePluginProject() {
   requireText("plugin/src/main.ts", [
     "registerView",
     "open-fishbone-task-list",
-    "refresh-fishbone-task-data"
+    "refresh-fishbone-task-data",
+    "cycle-first-fishbone-task-status"
   ]);
   requireText("plugin/src/data/mainlineRepository.ts", [
     "mainlines.json",

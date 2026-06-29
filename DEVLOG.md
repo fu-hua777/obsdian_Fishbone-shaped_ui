@@ -35,6 +35,7 @@
 - 支持空主线状态：`mainline: null` 显示为 `未分配`。
 - 支持打开单个任务 md。
 - 支持单个任务状态切换，并仅更新当前任务文件的 `status` 和 `updated`。
+- 增加 M3 验证命令：`Fishbone Planner: 切换第一条任务状态（M3 验证）`，用于通过 REST 命令接口验证状态更新逻辑。
 - 创建 `scripts/install-m3-plugin.js`，将 `PlanningSystem` 和插件产物安装到测试 Vault。
 - 创建 `scripts/validate-m3-plugin.js`。
 - 创建 M3 手动验证清单和解析用例。
