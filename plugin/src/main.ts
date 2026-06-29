@@ -113,6 +113,10 @@ export default class FishbonePlannerPlugin extends Plugin {
     this.rebuildRepositories();
   }
 
+  async saveFishboneViewState(): Promise<void> {
+    await this.saveData(this.settings);
+  }
+
   rebuildRepositories(): void {
     this.taskRepository = new TaskRepository(this.app, this.settings.planningSystemPath);
     this.mainlineRepository = new MainlineRepository(this.app, this.settings.planningSystemPath);

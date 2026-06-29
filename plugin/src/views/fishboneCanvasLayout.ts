@@ -23,12 +23,12 @@ import {
   UNASSIGNED_LANE_NAME
 } from "./fishboneRenderTypes";
 
-export const TASK_NODE_WIDTH = 156;
-export const TASK_NODE_HEIGHT = 86;
+export const TASK_NODE_WIDTH = 132;
+export const TASK_NODE_HEIGHT = 58;
 export const TASK_CLUSTER_WIDTH = 116;
 export const TASK_CLUSTER_HEIGHT = 46;
-const COMPACT_BUCKET_THRESHOLD = 4;
-const COMPACT_BUCKET_VISIBLE_LIMIT = 2;
+const COMPACT_BUCKET_THRESHOLD = 10;
+const COMPACT_BUCKET_VISIBLE_LIMIT = 8;
 
 export interface FishboneCanvasLayoutOptions {
   showHiddenMainlines: boolean;
@@ -293,7 +293,7 @@ function buildCanvasTasks(
     const compacted = bucket.tasks.length >= COMPACT_BUCKET_THRESHOLD && !expanded;
     const visibleTasks = compacted ? bucket.tasks.slice(0, COMPACT_BUCKET_VISIBLE_LIMIT) : bucket.tasks;
     visibleTasks.forEach((task, index) => {
-      taskNodes.push(createTaskNodeForBucket(task, bucket.lane, bucket.date, index, viewport, bucketId, compacted));
+      taskNodes.push(createTaskNodeForBucket(task, bucket.lane, bucket.date, index, visibleTasks.length, viewport, bucketId, compacted));
     });
 
     if (compacted) {
@@ -302,7 +302,7 @@ function buildCanvasTasks(
         id: bucketId,
         laneId: bucket.lane.id,
         date: bucket.date,
-        x: dateToCanvasX(bucket.date, viewport),
+        x: dateToCanvasX(bucket.date, viewport) + getBucketClusterOffset(visibleTasks.length, viewport),
         y: bucket.lane.spineY + 78,
         count: hiddenTasks.length,
         hiddenTaskIds: hiddenTasks.map((task) => task.taskId),
@@ -331,16 +331,32 @@ function createTaskNodeForBucket(
   lane: FishboneCanvasLane,
   date: string | null,
   index: number,
+  bucketSize: number,
   viewport: FishboneCanvasViewport,
   bucketId: string,
   isCompacted: boolean
 ): FishboneCanvasTaskNode {
-  const x = dateToCanvasX(date, viewport);
+  const x = dateToCanvasX(date, viewport) + getDenseBucketOffset(index, bucketSize, viewport);
   const branchSide = index % 2 === 0 ? "above" : "below";
   const branchIndex = Math.floor(index / 2);
-  const branchOffset = isCompacted ? 38 + branchIndex * 38 : 44 + branchIndex * 52;
+  const branchOffset = isCompacted ? 34 + branchIndex * 28 : 40 + branchIndex * 32;
   const y = branchSide === "above" ? lane.spineY - branchOffset : lane.spineY + branchOffset;
   return createTaskNode(task, lane.id, bucketId, x, y, branchIndex, branchSide, lane.color, lane.spineY, isCompacted);
+}
+
+function getDenseBucketOffset(index: number, bucketSize: number, viewport: FishboneCanvasViewport): number {
+  if (bucketSize <= 1) return 0;
+  const step = clampNumber(viewport.timeScale * 0.86, 88, 142);
+  return (index - (bucketSize - 1) / 2) * step;
+}
+
+function getBucketClusterOffset(visibleCount: number, viewport: FishboneCanvasViewport): number {
+  if (visibleCount <= 1) return TASK_NODE_WIDTH;
+  return getDenseBucketOffset(visibleCount - 1, visibleCount, viewport) + TASK_NODE_WIDTH;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function createTaskNode(

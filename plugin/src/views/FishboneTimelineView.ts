@@ -183,10 +183,13 @@ export class FishboneTimelineView extends ItemView {
       await this.persistViewState();
       await this.render();
     });
-    this.createToolbarButton(controls, this.showRelations ? "隐藏关系" : "显示关系", async () => {
+    const relationButton = controls.createEl("button", { text: this.showRelations ? "隐藏关系" : "显示关系" });
+    relationButton.addEventListener("click", async (event) => {
+      event.preventDefault();
       this.showRelations = !this.showRelations;
       await this.persistViewState();
-      await this.render();
+      relationButton.setText(this.showRelations ? "隐藏关系" : "显示关系");
+      this.updateRelationLayerVisibility();
     });
 
     const zoomGroup = controls.createDiv({ cls: "fishbone-zoom-readout" });
@@ -264,9 +267,7 @@ export class FishboneTimelineView extends ItemView {
       tickEl.createDiv({ cls: "fishbone-date-detail", text: tick.detail });
     }
 
-    if (this.showRelations) {
-      this.renderRelationLayer(stage, layout.relationLines);
-    }
+    this.renderRelationLayer(stage, layout.relationLines);
 
     const laneLayer = stage.createDiv({ cls: "fishbone-mainline-layer" });
     for (const lane of layout.lanes) {
@@ -292,6 +293,9 @@ export class FishboneTimelineView extends ItemView {
   private renderRelationLayer(stage: HTMLElement, relationLines: FishboneCanvasRelationLine[]): void {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.addClass("fishbone-relation-layer");
+    if (!this.showRelations) {
+      svg.addClass("is-hidden");
+    }
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     svg.setAttribute("viewBox", `0 0 ${stage.style.width.replace("px", "")} ${stage.style.height.replace("px", "")}`);
@@ -370,6 +374,11 @@ export class FishboneTimelineView extends ItemView {
       svg.appendChild(group);
     }
     stage.appendChild(svg);
+  }
+
+  private updateRelationLayerVisibility(): void {
+    const relationLayer = this.containerEl.querySelector(".fishbone-relation-layer");
+    relationLayer?.toggleClass("is-hidden", !this.showRelations);
   }
 
   private bindCanvasViewport(canvas: HTMLElement, layout: FishboneCanvasLayout, mainlines: Mainline[], tasks: PlanningTask[]): void {
@@ -611,31 +620,9 @@ export class FishboneTimelineView extends ItemView {
     });
 
     header.createDiv({ cls: "fishbone-task-title", text: task.title });
+    header.createSpan({ cls: "fishbone-task-priority", text: formatPriority(task.priority) });
     const meta = node.createDiv({ cls: "fishbone-task-meta" });
     meta.createSpan({ cls: "fishbone-task-status", text: task.status });
-    meta.createSpan({ cls: "fishbone-task-priority", text: formatPriority(task.priority) });
-    if (mainlines.length > 0) {
-      const select = node.createEl("select", { cls: "fishbone-task-mainline-select" });
-      select.createEl("option", { text: "未分配", value: "" });
-      for (const mainline of mainlines) {
-        select.createEl("option", { text: mainline.name, value: mainline.name });
-      }
-      select.value = task.mainline ?? "";
-      select.addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-      });
-      select.addEventListener("click", (event) => {
-        event.stopPropagation();
-      });
-      select.addEventListener("change", async (event) => {
-        event.stopPropagation();
-        const value = select.value.length > 0 ? select.value : null;
-        await this.plugin.taskRepository.setTaskMainline(task, value);
-        new Notice(value ? `任务已分配到主线：${value}` : "任务已移回未分配");
-        await this.render();
-      });
-    }
-
     node.addEventListener("mouseenter", () => {
       this.showTaskTooltip(node, task);
       const stage = parent.closest(".fishbone-canvas-stage") as HTMLElement | null;
@@ -1076,7 +1063,7 @@ export class FishboneTimelineView extends ItemView {
       showHiddenMainlines: this.showHiddenMainlines,
       expandedClusters: [...this.expandedClusters]
     };
-    await this.plugin.saveSettings();
+    await this.plugin.saveFishboneViewState();
   }
 }
 

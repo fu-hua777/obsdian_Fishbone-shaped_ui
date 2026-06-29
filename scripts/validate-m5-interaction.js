@@ -70,7 +70,8 @@ function main() {
     "pointerdown",
     "setTaskDone",
     "setTaskMainline",
-    "fishbone-task-mainline-select"
+    "TaskEditorModal",
+    "编辑任务属性"
   ]);
 
   requireText("plugin/styles.css", [
@@ -79,7 +80,7 @@ function main() {
     ".fishbone-lane-drag-ready",
     ".fishbone-lane-dragging",
     ".fishbone-task-header",
-    ".fishbone-task-mainline-select"
+    ".fishbone-task-node"
   ]);
 
   const interactionCode = [
