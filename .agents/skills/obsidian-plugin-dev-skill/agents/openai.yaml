@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian 插件开发 Skill"
+  short_description: "安全开发个人规划系统 Obsidian 插件"
+  default_prompt: "使用 $obsidian-plugin-dev-skill 安全、稳定地修改个人规划系统的 Obsidian 插件。"

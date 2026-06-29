@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.obsidian-planner/schemas/task-index.schema.json",
+  "title": "Planning Task Index",
+  "type": "object",
+  "required": [
+    "version",
+    "generated_at",
+    "tasks"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "title",
+          "date",
+          "mainline",
+          "status",
+          "priority",
+          "path",
+          "relations",
+          "updated",
+          "review_status"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mainline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "relations": {
+            "type": "array"
+          },
+          "updated": {
+            "type": "string"
+          },
+          "review_status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

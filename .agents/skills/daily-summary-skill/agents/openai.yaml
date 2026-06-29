@@ -1,0 +1,4 @@
+interface:
+  display_name: "每日总结 Skill"
+  short_description: "生成基于证据的每日规划总结"
+  default_prompt: "使用 $daily-summary-skill 根据任务和笔记生成每日规划总结。"

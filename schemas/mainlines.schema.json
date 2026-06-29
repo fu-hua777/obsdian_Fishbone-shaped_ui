@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.obsidian-planner/schemas/mainlines.schema.json",
+  "title": "Planning Mainlines",
+  "type": "object",
+  "required": [
+    "version",
+    "mainlines"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "mainlines": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "color",
+          "icon",
+          "order",
+          "visible",
+          "collapsed",
+          "pinned"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "collapsed": {
+            "type": "boolean"
+          },
+          "pinned": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

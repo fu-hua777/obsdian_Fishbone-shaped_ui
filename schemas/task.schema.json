@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.obsidian-planner/schemas/task.schema.json",
+  "title": "Planning Task",
+  "type": "object",
+  "required": [
+    "type",
+    "task_id",
+    "title",
+    "date",
+    "mainline",
+    "status",
+    "priority",
+    "relations",
+    "created",
+    "updated",
+    "review_status",
+    "confidence"
+  ],
+  "properties": {
+    "type": {
+      "const": "planning-task"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^task_[0-9]{8}_[0-9]{3,}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "mainline": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "enum": [
+        "todo",
+        "doing",
+        "done",
+        "blocked",
+        "canceled",
+        "inbox"
+      ]
+    },
+    "priority": {
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "source_file": {
+      "type": "string"
+    },
+    "source_excerpt": {
+      "type": "string"
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "type",
+          "direction",
+          "label",
+          "note"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "普通关联",
+              "前置",
+              "依赖",
+              "阻塞",
+              "参考",
+              "支撑",
+              "影响"
+            ]
+          },
+          "direction": {
+            "enum": [
+              "in",
+              "out",
+              "both"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "created": {
+      "type": "string"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "review_status": {
+      "enum": [
+        "pending",
+        "confirmed",
+        "rejected"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "additionalProperties": true
+}

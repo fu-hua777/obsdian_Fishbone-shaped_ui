@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian Vault 操作 Skill"
+  short_description: "安全操作个人规划系统 Vault 文件"
+  default_prompt: "使用 $obsidian-vault-ops-skill 安全扫描、写入或更新 Obsidian Vault 中的规划文件。"

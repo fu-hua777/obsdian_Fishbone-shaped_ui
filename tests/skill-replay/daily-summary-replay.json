@@ -1,0 +1,23 @@
+[
+  {
+    "case_id": "daily-summary-normal-001",
+    "skill": "daily-summary-skill",
+    "input": "完成：修复训练脚本 bug；新增：跑对比实验；进行中：整理实验结果；quick note：论文讨论章节要用实验表 3。",
+    "expected_rules": [
+      "今日完成只列有证据的完成事项",
+      "进行中任务与新增任务分开",
+      "relation 变化使用 支撑",
+      "明日建议必须少而可执行"
+    ]
+  },
+  {
+    "case_id": "daily-summary-uncertain-001",
+    "skill": "daily-summary-skill",
+    "input": "今天好像应该整理一下学习资料，但没确定具体内容。",
+    "expected_rules": [
+      "不生成已完成项",
+      "将内容列入新增想法或确认事项",
+      "不确定内容必须标记待确认或证据不足"
+    ]
+  }
+]

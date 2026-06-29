@@ -1,0 +1,24 @@
+[
+  {
+    "case_id": "plugin-typescript-build-001",
+    "skill": "obsidian-plugin-dev-skill",
+    "request": "给 FishboneTimelineView 增加任务节点勾选逻辑。",
+    "expected_rules": [
+      "先读取现有插件结构",
+      "只实现最小状态更新能力",
+      "使用标准任务 md 或 task-index 数据",
+      "修改 TypeScript 后运行 npm run build 或说明无法运行原因",
+      "更新 DEVLOG.md"
+    ]
+  },
+  {
+    "case_id": "plugin-no-third-party-schema-001",
+    "skill": "obsidian-plugin-dev-skill",
+    "request": "把 Dataview 的字段格式直接作为任务 schema。",
+    "expected_rules": [
+      "拒绝让现成插件反向定义核心 schema",
+      "标准 planning-task frontmatter 仍是数据源",
+      "Dataview 只能作为辅助显示或调试层"
+    ]
+  }
+]

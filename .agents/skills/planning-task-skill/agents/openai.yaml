@@ -1,0 +1,4 @@
+interface:
+  display_name: "规划任务 Skill"
+  short_description: "将规划笔记标准化为可审阅任务"
+  default_prompt: "使用 $planning-task-skill 将规划笔记转换为 TaskCandidate 对象和标准任务 Markdown。"

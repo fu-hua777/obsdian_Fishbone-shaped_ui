@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "default_view": "fishbone-week",
+  "mainline_creation": {
+    "mode": "user_created",
+    "allow_empty_mainlines": true
+  },
+  "task_defaults": {
+    "status": "inbox",
+    "priority": "medium",
+    "review_status": "pending"
+  }
+}

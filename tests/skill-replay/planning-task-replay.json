@@ -1,0 +1,52 @@
+[
+  {
+    "case_id": "planning-empty-mainlines-001",
+    "skill": "planning-task-skill",
+    "input_context": {
+      "mainlines": []
+    },
+    "input": "明天上午先修训练脚本 bug，修完后再跑对比实验。",
+    "expected_rules": [
+      "当没有可用主线时，所有任务的 mainline 必须为 null",
+      "review_status 必须为 pending",
+      "questions 必须提示用户先创建主线或确认任务归属",
+      "可以识别前置 relation，但不得写死为 项目 或 学习"
+    ]
+  },
+  {
+    "case_id": "planning-user-mainlines-001",
+    "skill": "planning-task-skill",
+    "input_context": {
+      "mainlines": [
+        {
+          "id": "health",
+          "name": "健康"
+        },
+        {
+          "id": "research",
+          "name": "科研"
+        }
+      ]
+    },
+    "input": "今晚记录睡眠时间，观察早睡对第二天学习效率的影响。",
+    "expected_rules": [
+      "可以根据用户提供的主线选择 健康",
+      "不得使用不存在于上下文的默认主线",
+      "如果抽取学习效率相关任务，relation 类型应为 影响"
+    ]
+  },
+  {
+    "case_id": "planning-low-confidence-date-001",
+    "skill": "planning-task-skill",
+    "input_context": {
+      "mainlines": []
+    },
+    "input": "找时间整理概率论错题。",
+    "expected_rules": [
+      "date 必须为 null",
+      "mainline 必须为 null",
+      "confidence 应低于 0.7",
+      "questions 必须同时询问日期和主线归属"
+    ]
+  }
+]
