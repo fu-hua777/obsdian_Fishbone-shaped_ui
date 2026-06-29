@@ -865,7 +865,7 @@ export class FishboneTimelineView extends ItemView {
       }, 250);
 
       const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
-      const targetDate = canvasPointToDate(point, this.viewport);
+      const targetDate = drag.taskNode.task.date;
       const targetMainline = canvasPointToMainline(drag.layout.lanes, point);
       if (typeof targetMainline === "undefined") {
         this.applyCanvasTransform(drag.canvas);
@@ -912,8 +912,8 @@ export class FishboneTimelineView extends ItemView {
       const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
       node.style.left = `${point.x}px`;
       node.style.top = `${point.y}px`;
-      this.updateTaskDropHint(drag.canvas, drag.layout, point);
-    });
+        this.updateTaskDropHint(drag.canvas, drag.layout, point, drag.taskNode.task.date);
+      });
 
     node.addEventListener("pointerup", (event) => {
       void finishTaskDrag(event);
@@ -923,11 +923,11 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
-  private updateTaskDropHint(canvas: HTMLElement, layout: FishboneCanvasLayout, point: { x: number; y: number }): void {
+  private updateTaskDropHint(canvas: HTMLElement, layout: FishboneCanvasLayout, point: { x: number; y: number }, lockedDate?: string | null): void {
     const hint = canvas.querySelector<HTMLElement>(".fishbone-task-drop-hint");
     if (!hint) return;
     const lane = canvasPointToLane(layout.lanes, point);
-    const date = canvasPointToDate(point, this.viewport);
+    const date = lockedDate ?? canvasPointToDate(point, this.viewport);
     hint.setText(`${date ?? "无日期"} · ${lane?.name ?? "无主线"}`);
     hint.addClass("is-visible");
   }

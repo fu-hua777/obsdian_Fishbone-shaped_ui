@@ -46,6 +46,10 @@ function main() {
     "FishboneCanvasTaskCluster",
     "COMPACT_BUCKET_THRESHOLD",
     "expandedClusters",
+    "buildDateScale",
+    "dateToCanvasXWithScale",
+    "getDateSlotWidth",
+    "TASK_NODE_COLUMN_GAP",
     "isCollapsed",
     "isPinned",
     "isHidden",
@@ -67,7 +71,8 @@ function main() {
     "renderTaskCluster",
     "bindCanvasKeyboard",
     "persistViewState",
-    "updateMainlineFlags"
+    "updateMainlineFlags",
+    "const targetDate = drag.taskNode.task.date"
   ]);
 
   requireText("plugin/src/data/mainlineRepository.ts", [

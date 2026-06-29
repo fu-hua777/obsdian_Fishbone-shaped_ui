@@ -2,12 +2,12 @@ import { Mainline, PlanningRelation, PlanningTask } from "../data/taskTypes";
 import {
   FishboneCanvasViewport,
   CANVAS_AXIS_Y,
+  CANVAS_ORIGIN_X,
   CANVAS_LANE_START_Y,
   LANE_GAP,
   UNDATED_X,
   CanvasPoint,
   canvasXToDate,
-  dateToCanvasX,
   formatCanvasDate,
   formatCanvasWeekday,
   getDateRangeFromValues,
@@ -29,6 +29,7 @@ export const TASK_CLUSTER_WIDTH = 116;
 export const TASK_CLUSTER_HEIGHT = 46;
 const COMPACT_BUCKET_THRESHOLD = 10;
 const COMPACT_BUCKET_VISIBLE_LIMIT = 8;
+const TASK_NODE_COLUMN_GAP = 24;
 
 export interface FishboneCanvasLayoutOptions {
   showHiddenMainlines: boolean;
@@ -128,6 +129,10 @@ export interface FishboneCanvasRelationLine {
   control2: FishboneCanvasAnchor;
 }
 
+interface FishboneDateScale {
+  slotWidths: Map<string, number>;
+}
+
 export function buildFishboneCanvasLayout(
   tasks: PlanningTask[],
   mainlines: Mainline[],
@@ -135,12 +140,13 @@ export function buildFishboneCanvasLayout(
   options: FishboneCanvasLayoutOptions
 ): FishboneCanvasLayout {
   const lanes = buildCanvasLanes(tasks, mainlines, viewport, options);
-  const { taskNodes, clusters } = buildCanvasTasks(tasks, lanes, mainlines, viewport, options);
+  const dateScale = buildDateScale(tasks, lanes, mainlines, viewport);
+  const { taskNodes, clusters } = buildCanvasTasks(tasks, lanes, mainlines, viewport, options, dateScale);
   const taskNodeByTaskId = new Map(taskNodes.map((node) => [node.task.taskId, node]));
   const taskNodeByPath = new Map(taskNodes.map((node) => [node.task.path, node]));
   const taskNodeByTitle = new Map(taskNodes.map((node) => [node.task.title, node]));
   const relationLines = buildRelationLines(taskNodes, taskNodeByTaskId, taskNodeByPath, taskNodeByTitle);
-  const dateTicks = buildDateTicks(tasks, viewport);
+  const dateTicks = buildDateTicks(tasks, viewport, dateScale);
   const stageWidth = Math.max(
     5200,
     ...dateTicks.map((tick) => tick.x + 420),
@@ -258,12 +264,54 @@ function buildCanvasLanes(
   return lanes;
 }
 
+function buildDateScale(
+  tasks: PlanningTask[],
+  lanes: FishboneCanvasLane[],
+  mainlines: Mainline[],
+  viewport: FishboneCanvasViewport
+): FishboneDateScale {
+  const laneByName = new Map<string, FishboneCanvasLane>();
+  const allMainlineNames = new Set(mainlines.map((mainline) => mainline.name));
+  for (const mainline of mainlines) {
+    const lane = lanes.find((item) => item.id === mainline.id);
+    if (lane) {
+      laneByName.set(mainline.name, lane);
+    }
+  }
+
+  const unassignedLane = lanes.find((lane) => lane.id === UNASSIGNED_LANE_ID) ?? lanes[0];
+  const bucketCounts = new Map<string, { date: string; count: number }>();
+  if (!unassignedLane) {
+    return { slotWidths: new Map() };
+  }
+
+  for (const task of tasks) {
+    if (!task.date || !parseDateString(task.date)) continue;
+    const lane = resolveTaskLane(task, laneByName, allMainlineNames, unassignedLane);
+    if (!lane || lane.isCollapsed) continue;
+    const key = buildBucketId(lane.id, task.date);
+    const bucket = bucketCounts.get(key) ?? { date: task.date, count: 0 };
+    bucket.count += 1;
+    bucketCounts.set(key, bucket);
+  }
+
+  const slotWidths = new Map<string, number>();
+  for (const bucket of bucketCounts.values()) {
+    const visibleCount = Math.min(bucket.count, COMPACT_BUCKET_VISIBLE_LIMIT);
+    const width = getDateSlotWidth(visibleCount, viewport);
+    slotWidths.set(bucket.date, Math.max(slotWidths.get(bucket.date) ?? viewport.timeScale, width));
+  }
+
+  return { slotWidths };
+}
+
 function buildCanvasTasks(
   tasks: PlanningTask[],
   lanes: FishboneCanvasLane[],
   mainlines: Mainline[],
   viewport: FishboneCanvasViewport,
-  options: FishboneCanvasLayoutOptions
+  options: FishboneCanvasLayoutOptions,
+  dateScale: FishboneDateScale
 ): { taskNodes: FishboneCanvasTaskNode[]; clusters: FishboneCanvasTaskCluster[] } {
   const laneByName = new Map<string, FishboneCanvasLane>();
   const allMainlineNames = new Set(mainlines.map((mainline) => mainline.name));
@@ -293,7 +341,7 @@ function buildCanvasTasks(
     const compacted = bucket.tasks.length >= COMPACT_BUCKET_THRESHOLD && !expanded;
     const visibleTasks = compacted ? bucket.tasks.slice(0, COMPACT_BUCKET_VISIBLE_LIMIT) : bucket.tasks;
     visibleTasks.forEach((task, index) => {
-      taskNodes.push(createTaskNodeForBucket(task, bucket.lane, bucket.date, index, visibleTasks.length, viewport, bucketId, compacted));
+      taskNodes.push(createTaskNodeForBucket(task, bucket.lane, bucket.date, index, visibleTasks.length, viewport, dateScale, bucketId, compacted));
     });
 
     if (compacted) {
@@ -302,7 +350,7 @@ function buildCanvasTasks(
         id: bucketId,
         laneId: bucket.lane.id,
         date: bucket.date,
-        x: dateToCanvasX(bucket.date, viewport) + getBucketClusterOffset(visibleTasks.length, viewport),
+        x: dateToCanvasXWithScale(bucket.date, viewport, dateScale) + getBucketClusterOffset(visibleTasks.length),
         y: bucket.lane.spineY + 78,
         count: hiddenTasks.length,
         hiddenTaskIds: hiddenTasks.map((task) => task.taskId),
@@ -333,10 +381,11 @@ function createTaskNodeForBucket(
   index: number,
   bucketSize: number,
   viewport: FishboneCanvasViewport,
+  dateScale: FishboneDateScale,
   bucketId: string,
   isCompacted: boolean
 ): FishboneCanvasTaskNode {
-  const x = dateToCanvasX(date, viewport) + getDenseBucketOffset(index, bucketSize, viewport);
+  const x = dateToCanvasXWithScale(date, viewport, dateScale) + getDenseBucketOffset(index, bucketSize);
   const branchSide = index % 2 === 0 ? "above" : "below";
   const branchIndex = Math.floor(index / 2);
   const branchOffset = isCompacted ? 34 + branchIndex * 36 : 42 + branchIndex * 40;
@@ -344,19 +393,63 @@ function createTaskNodeForBucket(
   return createTaskNode(task, lane.id, bucketId, x, y, branchIndex, branchSide, lane.color, lane.spineY, isCompacted);
 }
 
-function getDenseBucketOffset(index: number, bucketSize: number, viewport: FishboneCanvasViewport): number {
+function getDenseBucketOffset(index: number, bucketSize: number): number {
   if (bucketSize <= 1) return 0;
-  const step = clampNumber(viewport.timeScale * 0.86, 88, 142);
-  return (index - (bucketSize - 1) / 2) * step;
+  const step = TASK_NODE_WIDTH + TASK_NODE_COLUMN_GAP;
+  const column = Math.floor(index / 2);
+  const columnCount = Math.ceil(bucketSize / 2);
+  return (column - (columnCount - 1) / 2) * step;
 }
 
-function getBucketClusterOffset(visibleCount: number, viewport: FishboneCanvasViewport): number {
+function getBucketClusterOffset(visibleCount: number): number {
   if (visibleCount <= 1) return TASK_NODE_WIDTH;
-  return getDenseBucketOffset(visibleCount - 1, visibleCount, viewport) + TASK_NODE_WIDTH;
+  return getDenseBucketOffset(visibleCount - 1, visibleCount) + TASK_NODE_WIDTH;
 }
 
-function clampNumber(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+function getDateSlotWidth(visibleCount: number, viewport: FishboneCanvasViewport): number {
+  if (visibleCount <= 2) {
+    return viewport.timeScale;
+  }
+  const columnCount = Math.ceil(visibleCount / 2);
+  const requiredWidth = columnCount * TASK_NODE_WIDTH + Math.max(0, columnCount - 1) * TASK_NODE_COLUMN_GAP + 80;
+  return Math.max(viewport.timeScale, requiredWidth);
+}
+
+function dateToCanvasXWithScale(date: string | null, viewport: FishboneCanvasViewport, dateScale: FishboneDateScale): number {
+  if (!date) {
+    return UNDATED_X;
+  }
+  const offset = dateDiff(viewport.centerDate, date);
+  if (offset === 0) {
+    return CANVAS_ORIGIN_X;
+  }
+
+  let x = CANVAS_ORIGIN_X;
+  if (offset > 0) {
+    for (let day = 0; day < offset; day += 1) {
+      const current = addDays(viewport.centerDate, day);
+      const next = addDays(viewport.centerDate, day + 1);
+      x += (getDateSlotWidthForDate(current, viewport, dateScale) + getDateSlotWidthForDate(next, viewport, dateScale)) / 2;
+    }
+    return x;
+  }
+
+  for (let day = 0; day > offset; day -= 1) {
+    const current = addDays(viewport.centerDate, day);
+    const previous = addDays(viewport.centerDate, day - 1);
+    x -= (getDateSlotWidthForDate(current, viewport, dateScale) + getDateSlotWidthForDate(previous, viewport, dateScale)) / 2;
+  }
+  return x;
+}
+
+function getDateSlotWidthForDate(date: string, viewport: FishboneCanvasViewport, dateScale: FishboneDateScale): number {
+  return dateScale.slotWidths.get(date) ?? viewport.timeScale;
+}
+
+function addDays(date: string, offset: number): string {
+  const parsed = parseDateString(date) ?? new Date();
+  parsed.setDate(parsed.getDate() + offset);
+  return getLocalDateString(parsed);
 }
 
 function createTaskNode(
@@ -474,7 +567,7 @@ function getRelationStyle(type: string): { color: string; className: string; das
   return { color: "var(--text-muted)", className: "is-related", dashed: true };
 }
 
-function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport): FishboneCanvasDateTick[] {
+function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport, dateScale: FishboneDateScale): FishboneCanvasDateTick[] {
   const today = getLocalDateString(new Date());
   const taskDates = tasks
     .map((task) => task.date)
@@ -491,7 +584,7 @@ function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport)
     for (const id of [...keyDates].sort()) {
       const date = parseDateString(id);
       if (!date) continue;
-      ticks.push(createDateTick(id, date, today, viewport));
+      ticks.push(createDateTick(id, date, today, viewport, dateScale));
     }
   } else {
     const step = getDateTickStep(viewport.timeAxisMode);
@@ -500,13 +593,13 @@ function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport)
       const date = new Date(center.getFullYear(), center.getMonth(), center.getDate());
       date.setDate(center.getDate() + offset);
       const id = getLocalDateString(date);
-      ticks.push(createDateTick(id, date, today, viewport));
+      ticks.push(createDateTick(id, date, today, viewport, dateScale));
     }
   }
 
   ticks.unshift({
     id: "__undated__",
-    x: dateToCanvasX(null, viewport),
+    x: dateToCanvasXWithScale(null, viewport, dateScale),
     y: CANVAS_AXIS_Y,
     label: "无日期",
     detail: "待排期",
@@ -518,11 +611,11 @@ function buildDateTicks(tasks: PlanningTask[], viewport: FishboneCanvasViewport)
   return ticks;
 }
 
-function createDateTick(id: string, date: Date, today: string, viewport: FishboneCanvasViewport): FishboneCanvasDateTick {
+function createDateTick(id: string, date: Date, today: string, viewport: FishboneCanvasViewport, dateScale: FishboneDateScale): FishboneCanvasDateTick {
   const day = date.getDay();
   return {
     id,
-    x: dateToCanvasX(id, viewport),
+    x: dateToCanvasXWithScale(id, viewport, dateScale),
     y: CANVAS_AXIS_Y,
     label: formatCanvasDate(id, viewport.timeAxisMode),
     detail: formatCanvasWeekday(id, viewport.timeAxisMode),
