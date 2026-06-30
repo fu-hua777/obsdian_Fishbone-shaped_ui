@@ -63,6 +63,8 @@ function main() {
     "fishbone-relation-layer",
     "group.addClass(\"fishbone-relation\")",
     "group.addClass(line.className)",
+    "fishbone-relation-hit-area",
+    "hitArea.setAttribute(\"d\", relationPath)",
     "renderTaskBranchLine",
     "fishbone-task-branch-line",
     "bindTaskDrag",
@@ -82,6 +84,7 @@ function main() {
   requireText("plugin/styles.css", [
     ".fishbone-relation-layer",
     ".fishbone-relation",
+    ".fishbone-relation-hit-area",
     ".fishbone-relation-path",
     ".fishbone-relation-label",
     ".fishbone-task-branch-layer",

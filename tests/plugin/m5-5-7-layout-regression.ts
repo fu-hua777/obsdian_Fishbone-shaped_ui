@@ -82,6 +82,7 @@ const tasks: PlanningTask[] = [
   task("task-c", "相邻日期任务 C", "2026-07-02"),
   task("task-d", "相邻日期任务 D", "2026-07-02"),
   task("task-e", "相邻日期任务 E", "2026-07-03"),
+  task("task-obstacle", "关系线避障任务", "2026-07-04"),
   {
     ...task("task-f", "分支范围外任务", "2026-07-10"),
     branchMainlineId: "branch-a",
@@ -137,6 +138,9 @@ const relationLine = layout.relationLines[0];
 assert(isNodeEdgeAnchor(relationLine.source, relationLine.start), "关系线起点应连接到源任务节点边缘");
 assert(isNodeEdgeAnchor(relationLine.target, relationLine.end), "关系线终点应连接到目标任务节点边缘");
 assert(relationLine.control1.y !== relationLine.start.y || relationLine.control2.y !== relationLine.end.y, "关系线应带有避让弯曲偏移");
+const obstacleNode = taskNodes.find((node) => node.task.taskId === "task-obstacle");
+assert(obstacleNode, "应生成关系线避障测试任务");
+assert(!relationCurveIntersectsTask(relationLine, obstacleNode, 12), "关系线不应穿过非端点任务标签");
 
 const maxTaskBottom = Math.max(...taskNodes.map((node) => node.y + node.height / 2));
 assert(layout.stageHeight >= maxTaskBottom + 180, "stageHeight 应覆盖避让后最底部任务节点");
@@ -160,6 +164,28 @@ function isNodeEdgeAnchor(node: FishboneCanvasTaskNode, anchor: FishboneCanvasAn
     near(anchor.x, node.x, epsilon) && near(anchor.y, node.y - node.height / 2, epsilon) ||
     near(anchor.x, node.x, epsilon) && near(anchor.y, node.y + node.height / 2, epsilon)
   );
+}
+
+function relationCurveIntersectsTask(line: { start: FishboneCanvasAnchor; control1: FishboneCanvasAnchor; control2: FishboneCanvasAnchor; end: FishboneCanvasAnchor }, taskNode: FishboneCanvasTaskNode, padding: number): boolean {
+  const left = taskNode.x - taskNode.width / 2 - padding;
+  const right = taskNode.x + taskNode.width / 2 + padding;
+  const top = taskNode.y - taskNode.height / 2 - padding;
+  const bottom = taskNode.y + taskNode.height / 2 + padding;
+  for (let step = 1; step < 24; step += 1) {
+    const point = cubicBezierPoint(line.start, line.control1, line.control2, line.end, step / 24);
+    if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) return true;
+  }
+  return false;
+}
+
+function cubicBezierPoint(start: FishboneCanvasAnchor, control1: FishboneCanvasAnchor, control2: FishboneCanvasAnchor, end: FishboneCanvasAnchor, t: number): FishboneCanvasAnchor {
+  const inverse = 1 - t;
+  const inverse2 = inverse * inverse;
+  const t2 = t * t;
+  return {
+    x: inverse2 * inverse * start.x + 3 * inverse2 * t * control1.x + 3 * inverse * t2 * control2.x + t2 * t * end.x,
+    y: inverse2 * inverse * start.y + 3 * inverse2 * t * control1.y + 3 * inverse * t2 * control2.y + t2 * t * end.y
+  };
 }
 
 function near(a: number, b: number, epsilon: number): boolean {

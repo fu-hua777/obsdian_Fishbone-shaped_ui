@@ -256,6 +256,14 @@
   fill: none;
   stroke-width: 2;
   opacity: 0.72;
+  pointer-events: none;
+}
+
+.fishbone-relation-hit-area {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 18;
+  pointer-events: stroke;
 }
 
 .fishbone-relation-arrow {

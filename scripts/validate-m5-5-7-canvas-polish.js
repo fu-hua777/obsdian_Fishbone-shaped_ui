@@ -70,6 +70,10 @@ function main() {
     "getBucketBaseSide",
     "getRelationAnchors",
     "getRelationRouteOffset",
+    "buildRelationRouteCandidates",
+    "countRelationObstacleHits",
+    "relationCurveIntersectsTask",
+    "cubicBezierPoint",
     "...taskNodes.map((node) => node.y + node.height + 220)",
     "side: \"above\" | \"below\""
   ]);
@@ -80,6 +84,9 @@ function main() {
     "branch.side === \"above\"",
     "effectiveDate === \"2026-07-05\"",
     "layout.relationLines.length === 1",
+    "task-obstacle",
+    "relationCurveIntersectsTask",
+    "关系线不应穿过非端点任务标签",
     "M5.5-M5.7 layout regression passed."
   ]);
 

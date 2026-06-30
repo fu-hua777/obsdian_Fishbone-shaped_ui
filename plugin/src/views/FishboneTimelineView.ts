@@ -584,10 +584,16 @@ export class FishboneTimelineView extends ItemView {
       group.setAttribute("data-relation-id", line.id);
       group.setAttribute("data-source-task-id", line.sourceTaskId);
       group.setAttribute("data-target-task-id", line.targetTaskId);
+      const relationPath = `M ${line.start.x} ${line.start.y} C ${line.control1.x} ${line.control1.y}, ${line.control2.x} ${line.control2.y}, ${line.end.x} ${line.end.y}`;
+
+      const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      hitArea.addClass("fishbone-relation-hit-area");
+      hitArea.setAttribute("d", relationPath);
+      group.appendChild(hitArea);
 
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.addClass("fishbone-relation-path");
-      path.setAttribute("d", `M ${line.start.x} ${line.start.y} C ${line.control1.x} ${line.control1.y}, ${line.control2.x} ${line.control2.y}, ${line.end.x} ${line.end.y}`);
+      path.setAttribute("d", relationPath);
       path.setAttribute("stroke", line.color);
       if (line.dashed) {
         path.setAttribute("stroke-dasharray", "8 7");

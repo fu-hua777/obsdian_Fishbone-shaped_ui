@@ -765,7 +765,7 @@ function buildRelationLines(
       const verticalDistance = Math.abs(end.y - start.y);
       const bend = Math.min(260, Math.max(90, distance * 0.38));
       const direction = start.x <= end.x ? 1 : -1;
-      const routeOffset = getRelationRouteOffset(index, start, end, verticalDistance);
+      const routeOffset = getRelationRouteOffset(index, start, end, verticalDistance, bend, direction, source, target, taskNodes);
       const style = getRelationStyle(relation.type);
       lines.push({
         id: `${source.task.taskId}:${target.task.taskId}:${index}`,
@@ -804,11 +804,107 @@ function getRelationAnchors(source: FishboneCanvasTaskNode, target: FishboneCanv
     : { start: source.anchorLeft, end: target.anchorRight };
 }
 
-function getRelationRouteOffset(index: number, start: FishboneCanvasAnchor, end: FishboneCanvasAnchor, verticalDistance: number): number {
+function getRelationRouteOffset(
+  index: number,
+  start: FishboneCanvasAnchor,
+  end: FishboneCanvasAnchor,
+  verticalDistance: number,
+  bend: number,
+  direction: number,
+  source: FishboneCanvasTaskNode,
+  target: FishboneCanvasTaskNode,
+  taskNodes: FishboneCanvasTaskNode[]
+): number {
   const laneSide = start.y <= end.y ? -1 : 1;
   const alternating = index % 2 === 0 ? 1 : -1;
   const congestionOffset = Math.min(90, verticalDistance * 0.18);
-  return (24 + congestionOffset + Math.floor(index / 2) * 14) * laneSide * alternating;
+  const preferred = (24 + congestionOffset + Math.floor(index / 2) * 14) * laneSide * alternating;
+  const candidates = buildRelationRouteCandidates(preferred);
+  let best = candidates[0];
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const score = countRelationObstacleHits(start, end, bend, direction, candidate, source, target, taskNodes);
+    if (score === 0) return candidate;
+    if (score < bestScore || score === bestScore && Math.abs(candidate) < Math.abs(best)) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function buildRelationRouteCandidates(preferred: number): number[] {
+  const sign = preferred >= 0 ? 1 : -1;
+  const magnitude = Math.max(24, Math.abs(preferred));
+  return [
+    preferred,
+    -preferred,
+    sign * magnitude * 1.7,
+    -sign * magnitude * 1.7,
+    sign * magnitude * 2.4,
+    -sign * magnitude * 2.4,
+    sign * magnitude * 3.1,
+    -sign * magnitude * 3.1
+  ].map((value) => Math.round(Math.max(-220, Math.min(220, value))));
+}
+
+function countRelationObstacleHits(
+  start: FishboneCanvasAnchor,
+  end: FishboneCanvasAnchor,
+  bend: number,
+  direction: number,
+  routeOffset: number,
+  source: FishboneCanvasTaskNode,
+  target: FishboneCanvasTaskNode,
+  taskNodes: FishboneCanvasTaskNode[]
+): number {
+  const control1 = { x: start.x + bend * direction, y: start.y + routeOffset };
+  const control2 = { x: end.x - bend * direction, y: end.y + routeOffset };
+  let hits = 0;
+  for (const node of taskNodes) {
+    if (node.task.taskId === source.task.taskId || node.task.taskId === target.task.taskId) continue;
+    if (relationCurveIntersectsTask(start, control1, control2, end, node, 12)) {
+      hits += 1;
+    }
+  }
+  return hits;
+}
+
+function relationCurveIntersectsTask(
+  start: FishboneCanvasAnchor,
+  control1: FishboneCanvasAnchor,
+  control2: FishboneCanvasAnchor,
+  end: FishboneCanvasAnchor,
+  taskNode: FishboneCanvasTaskNode,
+  padding: number
+): boolean {
+  const left = taskNode.x - taskNode.width / 2 - padding;
+  const right = taskNode.x + taskNode.width / 2 + padding;
+  const top = taskNode.y - taskNode.height / 2 - padding;
+  const bottom = taskNode.y + taskNode.height / 2 + padding;
+  for (let step = 1; step < 24; step += 1) {
+    const point = cubicBezierPoint(start, control1, control2, end, step / 24);
+    if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function cubicBezierPoint(
+  start: FishboneCanvasAnchor,
+  control1: FishboneCanvasAnchor,
+  control2: FishboneCanvasAnchor,
+  end: FishboneCanvasAnchor,
+  t: number
+): FishboneCanvasAnchor {
+  const inverse = 1 - t;
+  const inverse2 = inverse * inverse;
+  const t2 = t * t;
+  return {
+    x: inverse2 * inverse * start.x + 3 * inverse2 * t * control1.x + 3 * inverse * t2 * control2.x + t2 * t * end.x,
+    y: inverse2 * inverse * start.y + 3 * inverse2 * t * control1.y + 3 * inverse * t2 * control2.y + t2 * t * end.y
+  };
 }
 
 function resolveRelationTarget(
