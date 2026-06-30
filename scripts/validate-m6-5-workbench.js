@@ -37,7 +37,7 @@ function main() {
     "WORKBENCH_COLUMN_IDS",
     "WORKBENCH_COLUMN_META",
     "QuickInputCandidate",
-    "fishbone-dock-main",
+    "this.renderQuickInput(canvasShell",
     "renderWorkbenchPanel",
     "renderQuickInput",
     "renderWorkbenchColumn",
@@ -52,7 +52,9 @@ function main() {
   ]);
 
   requireText("plugin/styles.css", [
-    ".fishbone-dock-main",
+    "grid-template-areas:",
+    "\"canvas dashboard\"",
+    "\"workbench dashboard\"",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-resizer",
     ".fishbone-workbench-columns",
@@ -68,7 +70,9 @@ function main() {
 
   const styles = read("plugin/styles.css");
   assert(styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))"), "下方工作台应为三列布局");
-  assert(styles.includes("position: absolute;") && styles.includes(".fishbone-quick-input"), "快速输入应为悬浮定位");
+  assert(styles.includes("grid-area: dashboard;"), "右侧辅助面板应占据独立右侧区域");
+  assert(styles.includes("grid-area: workbench;"), "下方工作台应只占据画布下方区域");
+  assert(styles.includes("bottom: 16px;") && styles.includes("transform: translateX(-50%);"), "快速输入应固定在画布底部居中");
   assert(styles.includes("overflow: hidden auto;"), "工作台列内部应允许独立滚动");
 
   console.log("M6.5 L dock workbench validation passed.");

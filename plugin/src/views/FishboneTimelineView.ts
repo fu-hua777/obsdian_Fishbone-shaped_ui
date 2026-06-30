@@ -232,11 +232,11 @@ export class FishboneTimelineView extends ItemView {
           this.showDashboard ? "" : "is-dashboard-hidden"
         ].filter(Boolean).join(" ")
       });
-      const dockMain = workspace.createDiv({ cls: "fishbone-dock-main" });
-      const canvasShell = dockMain.createDiv({ cls: "fishbone-canvas-shell" });
+      const canvasShell = workspace.createDiv({ cls: "fishbone-canvas-shell" });
       this.renderCanvas(canvasShell, layout, mainlines, tasks);
       if (this.showDashboard) {
-        this.renderDashboardPanel(dockMain, dashboardSummary);
+        this.renderQuickInput(canvasShell, dashboardSummary, mainlines);
+        this.renderDashboardPanel(workspace, dashboardSummary);
         this.renderWorkbenchPanel(workspace, dashboardSummary, mainlines);
       }
     } catch (error) {
@@ -735,8 +735,6 @@ export class FishboneTimelineView extends ItemView {
     panel.style.height = `${this.workbenchHeight}px`;
     const resizer = panel.createDiv({ cls: "fishbone-workbench-resizer" });
     this.bindWorkbenchResize(resizer, panel);
-
-    this.renderQuickInput(panel, summary, mainlines);
 
     const header = panel.createDiv({ cls: "fishbone-workbench-header" });
     header.createDiv({ cls: "fishbone-workbench-title", text: "状态工作台" });

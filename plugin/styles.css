@@ -142,38 +142,36 @@
 }
 
 .fishbone-workspace {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "canvas dashboard"
+    "workbench dashboard";
   gap: 10px;
   height: calc(100vh - 180px);
   min-height: 620px;
-}
-
-.fishbone-workspace.is-dashboard-hidden .fishbone-canvas-shell {
-  min-width: 100%;
-}
-
-.fishbone-dock-main {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  flex: 1 1 auto;
-  min-height: 320px;
   min-width: 0;
 }
 
+.fishbone-workspace.is-dashboard-hidden .fishbone-canvas-shell {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+
 .fishbone-canvas-shell {
-  flex: 1 1 auto;
+  position: relative;
+  grid-area: canvas;
   min-width: 420px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .fishbone-dashboard-panel {
   position: relative;
+  grid-area: dashboard;
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
   min-width: 280px;
   max-width: 520px;
   height: 100%;
@@ -584,12 +582,12 @@
 
 .fishbone-workbench-panel {
   position: relative;
+  grid-area: workbench;
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
   min-height: 180px;
   max-height: 440px;
-  padding: 42px 12px 12px;
+  padding: 12px;
   overflow: hidden;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
@@ -772,10 +770,11 @@
 
 .fishbone-quick-input {
   position: absolute;
-  top: -22px;
-  right: 18px;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
   z-index: 8;
-  width: min(520px, calc(100% - 36px));
+  width: min(560px, calc(100% - 48px));
   pointer-events: none;
 }
 
@@ -1933,12 +1932,10 @@
   }
 
   .fishbone-workspace {
+    display: flex;
+    flex-direction: column;
     height: auto;
     min-height: 0;
-  }
-
-  .fishbone-dock-main {
-    flex-direction: column;
   }
 
   .fishbone-canvas-shell {
@@ -1964,6 +1961,8 @@
   .fishbone-quick-input {
     left: 12px;
     right: 12px;
+    bottom: 12px;
+    transform: none;
     width: auto;
   }
 
