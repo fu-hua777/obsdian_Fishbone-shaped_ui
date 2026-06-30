@@ -55,6 +55,7 @@ interface DashboardTaskRenderOptions {
 }
 
 type DashboardModuleId = "today-progress" | "week-progress" | "today-focus" | "week-focus" | "mainline-progress";
+type WorkbenchColumnId = "todo" | "doing" | "done";
 
 const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["today-progress", "week-progress", "today-focus", "week-focus", "mainline-progress"];
 const DEFAULT_DASHBOARD_MODULE_HEIGHTS: Record<DashboardModuleId, number> = {
@@ -64,6 +65,21 @@ const DEFAULT_DASHBOARD_MODULE_HEIGHTS: Record<DashboardModuleId, number> = {
   "week-focus": 188,
   "mainline-progress": 156
 };
+const WORKBENCH_COLUMN_IDS: WorkbenchColumnId[] = ["todo", "doing", "done"];
+const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; targetStatus: TaskStatus; emptyText: string }> = {
+  todo: { title: "待办", targetStatus: "todo", emptyText: "暂无待办任务" },
+  doing: { title: "进行中", targetStatus: "doing", emptyText: "暂无进行中任务" },
+  done: { title: "已完成", targetStatus: "done", emptyText: "暂无已完成任务" }
+};
+
+interface QuickInputCandidate {
+  text: string;
+  title: string;
+  date: string;
+  mainline: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+}
 
 export class FishboneTimelineView extends ItemView {
   private plugin: FishbonePlannerPlugin;
@@ -74,10 +90,21 @@ export class FishboneTimelineView extends ItemView {
   private dashboardWidth = 340;
   private dashboardModuleOrder: DashboardModuleId[] = [...DASHBOARD_MODULE_IDS];
   private dashboardModuleHeights: Record<DashboardModuleId, number> = { ...DEFAULT_DASHBOARD_MODULE_HEIGHTS };
+  private workbenchHeight = 260;
+  private workbenchColumnOrder: WorkbenchColumnId[] = [...WORKBENCH_COLUMN_IDS];
+  private quickInputCandidate: QuickInputCandidate | null = null;
   private expandedClusters = new Set<string>();
   private renderGeneration = 0;
   private persistViewStateTimer: number | null = null;
   private dashboardResizeDrag: { pointerId: number; startX: number; startWidth: number; panel: HTMLElement } | null = null;
+  private workbenchResizeDrag: {
+    pointerId: number;
+    timer: number | null;
+    active: boolean;
+    startY: number;
+    startHeight: number;
+    panel: HTMLElement;
+  } | null = null;
   private dashboardModuleResizeDrag: {
     moduleId: DashboardModuleId;
     pointerId: number;
@@ -134,6 +161,8 @@ export class FishboneTimelineView extends ItemView {
     this.dashboardWidth = normalizeDashboardWidth(plugin.settings.dashboardState?.dashboardWidth);
     this.dashboardModuleOrder = normalizeDashboardModuleOrder(plugin.settings.dashboardState?.moduleOrder);
     this.dashboardModuleHeights = normalizeDashboardModuleHeights(plugin.settings.dashboardState?.moduleHeights);
+    this.workbenchHeight = normalizeWorkbenchHeight(plugin.settings.dashboardState?.workbenchHeight);
+    this.workbenchColumnOrder = normalizeWorkbenchColumnOrder(plugin.settings.dashboardState?.workbenchColumnOrder);
     this.expandedClusters = new Set(saved.expandedClusters ?? []);
   }
 
@@ -203,10 +232,12 @@ export class FishboneTimelineView extends ItemView {
           this.showDashboard ? "" : "is-dashboard-hidden"
         ].filter(Boolean).join(" ")
       });
-      const canvasShell = workspace.createDiv({ cls: "fishbone-canvas-shell" });
+      const dockMain = workspace.createDiv({ cls: "fishbone-dock-main" });
+      const canvasShell = dockMain.createDiv({ cls: "fishbone-canvas-shell" });
       this.renderCanvas(canvasShell, layout, mainlines, tasks);
       if (this.showDashboard) {
-        this.renderDashboardPanel(workspace, dashboardSummary);
+        this.renderDashboardPanel(dockMain, dashboardSummary);
+        this.renderWorkbenchPanel(workspace, dashboardSummary, mainlines);
       }
     } catch (error) {
       if (renderId !== this.renderGeneration) return;
@@ -270,7 +301,7 @@ export class FishboneTimelineView extends ItemView {
       relationButton.textContent = this.showRelations ? "隐藏关系" : "显示关系";
       this.updateRelationLayerVisibility();
     });
-    const dashboardButton = controls.createEl("button", { text: this.showDashboard ? "隐藏辅助" : "显示辅助" });
+    const dashboardButton = controls.createEl("button", { text: this.showDashboard ? "隐藏工作台" : "显示工作台" });
     dashboardButton.addEventListener("click", async (event) => {
       event.preventDefault();
       this.showDashboard = !this.showDashboard;
@@ -695,6 +726,272 @@ export class FishboneTimelineView extends ItemView {
       void finish(event);
     });
     resizer.addEventListener("pointercancel", (event) => {
+      void finish(event);
+    });
+  }
+
+  private renderWorkbenchPanel(parent: HTMLElement, summary: DashboardSummary, mainlines: Mainline[]): void {
+    const panel = parent.createDiv({ cls: "fishbone-workbench-panel" });
+    panel.style.height = `${this.workbenchHeight}px`;
+    const resizer = panel.createDiv({ cls: "fishbone-workbench-resizer" });
+    this.bindWorkbenchResize(resizer, panel);
+
+    this.renderQuickInput(panel, summary, mainlines);
+
+    const header = panel.createDiv({ cls: "fishbone-workbench-header" });
+    header.createDiv({ cls: "fishbone-workbench-title", text: "状态工作台" });
+    header.createDiv({ cls: "fishbone-workbench-subtitle", text: "待办、进行中、已完成与鱼骨任务状态同步" });
+
+    const columns = panel.createDiv({ cls: "fishbone-workbench-columns" });
+    columns.addEventListener("dragover", (event) => {
+      if (this.getDraggedWorkbenchColumnId(event) || this.getDraggedWorkbenchTaskId(event)) {
+        event.preventDefault();
+      }
+    });
+    const mainlineColors = new Map(mainlines.filter((mainline) => mainline.type !== "branch").map((mainline) => [mainline.name, mainline.color]));
+    for (const columnId of this.workbenchColumnOrder) {
+      this.renderWorkbenchColumn(columns, columnId, getWorkbenchColumnTasks(summary, columnId), mainlineColors);
+    }
+  }
+
+  private renderQuickInput(parent: HTMLElement, summary: DashboardSummary, mainlines: Mainline[]): void {
+    const wrapper = parent.createDiv({ cls: "fishbone-quick-input" });
+    const form = wrapper.createEl("form", { cls: "fishbone-quick-input-form" });
+    const input = form.createEl("input", {
+      type: "text",
+      cls: "fishbone-quick-input-field",
+      placeholder: "输入一句自然语言，生成候选任务..."
+    });
+    form.createEl("button", { text: "预览" });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      this.quickInputCandidate = buildQuickInputCandidate(text, summary, mainlines);
+      void this.render();
+    });
+
+    if (!this.quickInputCandidate) return;
+    const candidate = this.quickInputCandidate;
+    const preview = wrapper.createDiv({ cls: "fishbone-quick-input-preview" });
+    const top = preview.createDiv({ cls: "fishbone-quick-input-preview-top" });
+    top.createSpan({ text: "候选任务" });
+    const closeButton = top.createEl("button", { text: "×" });
+    closeButton.setAttr("title", "关闭候选预览");
+    closeButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      this.quickInputCandidate = null;
+      void this.render();
+    });
+    preview.createDiv({ cls: "fishbone-quick-input-title", text: candidate.title });
+    const meta = preview.createDiv({ cls: "fishbone-quick-input-meta" });
+    meta.createSpan({ text: candidate.date });
+    meta.createSpan({ text: candidate.mainline });
+    meta.createSpan({ text: formatPriority(candidate.priority) });
+    meta.createSpan({ text: candidate.status });
+    const actions = preview.createDiv({ cls: "fishbone-quick-input-actions" });
+    const confirm = actions.createEl("button", { text: "确认写入" });
+    confirm.addEventListener("click", (event) => {
+      event.preventDefault();
+      new Notice("M6.5 仅提供候选预览；写入标准任务 md 将在 M6.6 实现");
+    });
+  }
+
+  private renderWorkbenchColumn(
+    parent: HTMLElement,
+    columnId: WorkbenchColumnId,
+    tasks: PlanningTask[],
+    mainlineColors: Map<string, string>
+  ): void {
+    const meta = WORKBENCH_COLUMN_META[columnId];
+    const column = parent.createDiv({ cls: `fishbone-workbench-column fishbone-workbench-column-${columnId}` });
+    column.setAttr("data-workbench-column-id", columnId);
+    const header = column.createDiv({ cls: "fishbone-workbench-column-header" });
+    header.draggable = true;
+    header.setAttr("title", "拖动列标题可调整下方工作台顺序");
+    header.createSpan({ text: meta.title });
+    header.createSpan({ cls: "fishbone-workbench-count", text: String(tasks.length) });
+    this.bindWorkbenchColumnDrag(column, header, columnId);
+
+    const list = column.createDiv({ cls: "fishbone-workbench-task-list" });
+    if (tasks.length === 0) {
+      list.createDiv({ cls: "fishbone-dashboard-empty", text: meta.emptyText });
+      return;
+    }
+    for (const task of tasks) {
+      this.renderWorkbenchTask(list, task, mainlineColors);
+    }
+  }
+
+  private renderWorkbenchTask(parent: HTMLElement, task: PlanningTask, mainlineColors: Map<string, string>): void {
+    const row = parent.createDiv({ cls: `fishbone-workbench-task fishbone-task-${task.status}` });
+    row.draggable = true;
+    row.setAttr("data-task-id", task.taskId);
+    row.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"}`);
+    row.style.setProperty("--mainline-color", task.mainline ? mainlineColors.get(task.mainline) ?? "#94a3b8" : "#94a3b8");
+    row.addEventListener("click", () => {
+      void this.plugin.taskRepository.openTask(task);
+    });
+    row.addEventListener("dragstart", (event) => {
+      event.stopPropagation();
+      event.dataTransfer?.setData("text/fishbone-workbench-task-id", task.taskId);
+      event.dataTransfer?.setData("text/plain", task.taskId);
+      event.dataTransfer?.setDragImage(row, 16, 12);
+      row.addClass("is-workbench-task-dragging");
+    });
+    row.addEventListener("dragend", () => {
+      row.removeClass("is-workbench-task-dragging");
+      this.containerEl.querySelectorAll<HTMLElement>(".is-workbench-drop-target").forEach((target) => {
+        target.removeClass("is-workbench-drop-target");
+      });
+    });
+
+    const checkbox = row.createEl("input", { type: "checkbox", cls: "fishbone-dashboard-task-checkbox" });
+    checkbox.checked = task.status === "done";
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", (event) => {
+      event.stopPropagation();
+      void this.updateDashboardTaskDone(task, checkbox.checked);
+    });
+    const body = row.createDiv({ cls: "fishbone-workbench-task-body" });
+    body.createDiv({ cls: "fishbone-workbench-task-title", text: task.title });
+    const meta = body.createDiv({ cls: "fishbone-workbench-task-meta" });
+    meta.createSpan({ cls: "fishbone-workbench-mainline-dot" });
+    meta.createSpan({ text: task.mainline ?? "未分配" });
+    meta.createSpan({ text: task.date ?? "无日期" });
+    meta.createSpan({ cls: `fishbone-dashboard-priority is-${task.priority}`, text: formatPriority(task.priority) });
+    if (task.status === "blocked") {
+      meta.createSpan({ cls: "fishbone-dashboard-reason is-blocked", text: "阻塞" });
+    }
+  }
+
+  private bindWorkbenchColumnDrag(column: HTMLElement, header: HTMLElement, columnId: WorkbenchColumnId): void {
+    header.addEventListener("dragstart", (event) => {
+      event.stopPropagation();
+      event.dataTransfer?.setData("text/fishbone-workbench-column-id", columnId);
+      event.dataTransfer?.setData("text/plain", columnId);
+      event.dataTransfer?.setDragImage(column, 18, 18);
+      column.addClass("is-workbench-column-dragging");
+    });
+    header.addEventListener("dragend", () => {
+      column.removeClass("is-workbench-column-dragging");
+      this.containerEl.querySelectorAll<HTMLElement>(".is-workbench-drop-target").forEach((target) => {
+        target.removeClass("is-workbench-drop-target");
+      });
+    });
+    column.addEventListener("dragover", (event) => {
+      if (this.getDraggedWorkbenchColumnId(event) || this.getDraggedWorkbenchTaskId(event)) {
+        event.preventDefault();
+        column.addClass("is-workbench-drop-target");
+      }
+    });
+    column.addEventListener("dragleave", () => {
+      column.removeClass("is-workbench-drop-target");
+    });
+    column.addEventListener("drop", (event) => {
+      event.preventDefault();
+      column.removeClass("is-workbench-drop-target");
+      const draggedColumn = this.getDraggedWorkbenchColumnId(event);
+      if (draggedColumn && draggedColumn !== columnId) {
+        void this.moveWorkbenchColumn(draggedColumn, columnId, event);
+        return;
+      }
+      const taskId = this.getDraggedWorkbenchTaskId(event);
+      if (taskId) {
+        void this.moveWorkbenchTaskToColumn(taskId, columnId);
+      }
+    });
+  }
+
+  private getDraggedWorkbenchColumnId(event: DragEvent): WorkbenchColumnId | null {
+    const value = event.dataTransfer?.getData("text/fishbone-workbench-column-id") ?? "";
+    return isWorkbenchColumnId(value) ? value : null;
+  }
+
+  private getDraggedWorkbenchTaskId(event: DragEvent): string | null {
+    const value = event.dataTransfer?.getData("text/fishbone-workbench-task-id") ?? "";
+    return value.length > 0 ? value : null;
+  }
+
+  private async moveWorkbenchColumn(sourceId: WorkbenchColumnId, targetId: WorkbenchColumnId, event: DragEvent): Promise<void> {
+    const order = this.workbenchColumnOrder.filter((id) => id !== sourceId);
+    const targetIndex = order.indexOf(targetId);
+    if (targetIndex < 0) return;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const insertAfter = event.clientX > rect.left + rect.width / 2;
+    order.splice(targetIndex + (insertAfter ? 1 : 0), 0, sourceId);
+    this.workbenchColumnOrder = normalizeWorkbenchColumnOrder(order);
+    await this.persistDashboardState();
+    await this.render();
+  }
+
+  private async moveWorkbenchTaskToColumn(taskId: string, columnId: WorkbenchColumnId): Promise<void> {
+    const task = (await this.plugin.taskRepository.listTasks()).find((item) => item.taskId === taskId);
+    if (!task) {
+      new Notice("找不到要移动的任务");
+      return;
+    }
+    const status = WORKBENCH_COLUMN_META[columnId].targetStatus;
+    if (task.status === status) return;
+    await this.plugin.taskRepository.setTaskStatus(task, status);
+    await this.render();
+  }
+
+  private bindWorkbenchResize(handle: HTMLElement, panel: HTMLElement): void {
+    const clearTimer = () => {
+      const drag = this.workbenchResizeDrag;
+      if (drag?.timer !== null && drag?.timer !== undefined) {
+        window.clearTimeout(drag.timer);
+        drag.timer = null;
+      }
+    };
+    const finish = async (event: PointerEvent) => {
+      const drag = this.workbenchResizeDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      clearTimer();
+      const shouldSave = drag.active;
+      drag.panel.removeClass("is-workbench-resizing");
+      this.workbenchResizeDrag = null;
+      if (shouldSave) await this.persistDashboardState();
+    };
+
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handle.setPointerCapture(event.pointerId);
+      clearTimer();
+      this.workbenchResizeDrag = {
+        pointerId: event.pointerId,
+        timer: null,
+        active: false,
+        startY: event.clientY,
+        startHeight: this.workbenchHeight,
+        panel
+      };
+      const timer = window.setTimeout(() => {
+        const drag = this.workbenchResizeDrag;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        drag.active = true;
+        drag.timer = null;
+        panel.addClass("is-workbench-resizing");
+      }, 220);
+      this.workbenchResizeDrag.timer = timer;
+    });
+
+    handle.addEventListener("pointermove", (event) => {
+      const drag = this.workbenchResizeDrag;
+      if (!drag || drag.pointerId !== event.pointerId || !drag.active) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const nextHeight = normalizeWorkbenchHeight(drag.startHeight - (event.clientY - drag.startY));
+      this.workbenchHeight = nextHeight;
+      drag.panel.style.height = `${nextHeight}px`;
+    });
+    handle.addEventListener("pointerup", (event) => {
+      void finish(event);
+    });
+    handle.addEventListener("pointercancel", (event) => {
       void finish(event);
     });
   }
@@ -2027,7 +2324,9 @@ export class FishboneTimelineView extends ItemView {
       showDashboard: this.showDashboard,
       dashboardWidth: normalizeDashboardWidth(this.dashboardWidth),
       moduleOrder: [...this.dashboardModuleOrder],
-      moduleHeights: { ...this.dashboardModuleHeights }
+      moduleHeights: { ...this.dashboardModuleHeights },
+      workbenchHeight: normalizeWorkbenchHeight(this.workbenchHeight),
+      workbenchColumnOrder: [...this.workbenchColumnOrder]
     };
     if (typeof this.plugin.saveFishboneViewState === "function") {
       await this.plugin.saveFishboneViewState();
@@ -2399,12 +2698,59 @@ function normalizeDashboardModuleHeight(value: unknown, fallback = 156): number 
   return Math.max(86, Math.min(360, Math.round(numeric)));
 }
 
+function normalizeWorkbenchHeight(value: unknown): number {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : 260;
+  return Math.max(180, Math.min(440, Math.round(numeric)));
+}
+
+function normalizeWorkbenchColumnOrder(value: unknown): WorkbenchColumnId[] {
+  if (!Array.isArray(value)) return [...WORKBENCH_COLUMN_IDS];
+  const order = value.filter((item): item is WorkbenchColumnId => isWorkbenchColumnId(item));
+  for (const columnId of WORKBENCH_COLUMN_IDS) {
+    if (!order.includes(columnId)) order.push(columnId);
+  }
+  return order.filter((columnId, index) => order.indexOf(columnId) === index);
+}
+
 function isDashboardModuleId(value: string): value is DashboardModuleId {
   return (DASHBOARD_MODULE_IDS as string[]).includes(value);
 }
 
+function isWorkbenchColumnId(value: string): value is WorkbenchColumnId {
+  return (WORKBENCH_COLUMN_IDS as string[]).includes(value);
+}
+
 function isDashboardProgressModule(moduleId: DashboardModuleId): boolean {
   return moduleId === "today-progress" || moduleId === "week-progress";
+}
+
+function getWorkbenchColumnTasks(summary: DashboardSummary, columnId: WorkbenchColumnId): PlanningTask[] {
+  switch (columnId) {
+    case "todo":
+      return [...summary.inboxTasks, ...summary.todoTasks].filter((task, index, tasks) => {
+        return tasks.findIndex((item) => item.taskId === task.taskId) === index;
+      });
+    case "doing":
+      return [...summary.doingTasks, ...summary.blockedTasks].filter((task, index, tasks) => {
+        return tasks.findIndex((item) => item.taskId === task.taskId) === index;
+      });
+    case "done":
+      return summary.doneTasks;
+    default:
+      return [];
+  }
+}
+
+function buildQuickInputCandidate(text: string, summary: DashboardSummary, mainlines: Mainline[]): QuickInputCandidate {
+  const firstMainline = mainlines.find((mainline) => mainline.type === "mainline" && mainline.visible !== false);
+  return {
+    text,
+    title: text.length > 36 ? `${text.slice(0, 36)}...` : text,
+    date: summary.today,
+    mainline: firstMainline?.name ?? "待确认",
+    priority: "medium",
+    status: "inbox"
+  };
 }
 
 function getDashboardTaskReasons(task: PlanningTask, summary: DashboardSummary): string[] {

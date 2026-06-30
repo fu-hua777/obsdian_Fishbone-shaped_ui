@@ -95,7 +95,7 @@ function main() {
     "已完成",
     "快速笔记 / Codex 输入",
     "每日总结",
-    "M6.5：下方状态工作台"
+    "M6.5：L 型工作台与下方状态工作台"
   ]);
 
   console.log("M6.3-M6.4 dashboard modules validation passed.");

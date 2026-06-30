@@ -64,8 +64,8 @@ function main() {
     "renderDashboardModuleResizeHandle",
     "bindDashboardModuleResize",
     "persistDashboardState",
-    "隐藏辅助",
-    "显示辅助"
+    "隐藏工作台",
+    "显示工作台"
   ]);
 
   requireText("plugin/styles.css", [

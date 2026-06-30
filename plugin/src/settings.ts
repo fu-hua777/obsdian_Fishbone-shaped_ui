@@ -26,6 +26,8 @@ export interface FishboneDashboardState {
   dashboardWidth?: number;
   moduleOrder?: string[];
   moduleHeights?: Record<string, number>;
+  workbenchHeight?: number;
+  workbenchColumnOrder?: string[];
 }
 
 export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
@@ -41,7 +43,9 @@ export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
       "today-focus": 188,
       "week-focus": 188,
       "mainline-progress": 156
-    }
+    },
+    workbenchHeight: 260,
+    workbenchColumnOrder: ["todo", "doing", "done"]
   }
 };
 
