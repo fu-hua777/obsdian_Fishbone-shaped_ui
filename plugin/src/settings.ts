@@ -36,13 +36,12 @@ export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
   dashboardState: {
     showDashboard: true,
     dashboardWidth: 340,
-    moduleOrder: ["today-progress", "week-progress", "today-focus", "week-focus", "mainline-progress"],
+    moduleOrder: ["progress-overview", "today-focus", "week-focus", "mainline-progress"],
     moduleHeights: {
-      "today-progress": 112,
-      "week-progress": 112,
+      "progress-overview": 128,
       "today-focus": 188,
       "week-focus": 188,
-      "mainline-progress": 156
+      "mainline-progress": 190
     },
     workbenchHeight: 260,
     workbenchColumnOrder: ["todo", "doing", "done"]

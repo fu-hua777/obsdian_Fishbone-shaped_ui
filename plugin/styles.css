@@ -208,26 +208,6 @@
   background: var(--interactive-accent);
 }
 
-.fishbone-dashboard-header {
-  flex: 0 0 auto;
-  padding: 12px 14px 10px;
-  border: 1px solid var(--background-modifier-border);
-  border-bottom: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--background-primary) 94%, var(--background-secondary));
-}
-
-.fishbone-dashboard-title {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.fishbone-dashboard-subtitle {
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
 .fishbone-dashboard-modules {
   display: flex;
   flex-direction: column;
@@ -235,7 +215,6 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
-  padding-top: 8px;
 }
 
 .fishbone-dashboard-section {
@@ -288,10 +267,21 @@
   font-size: 13px;
   font-weight: 700;
   cursor: grab;
+  justify-content: flex-start;
 }
 
 .fishbone-dashboard-section-header:active {
   cursor: grabbing;
+}
+
+.fishbone-dashboard-drag-handle,
+.fishbone-workbench-drag-handle {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0;
+  cursor: grab;
 }
 
 .fishbone-dashboard-module-controls {
@@ -353,6 +343,27 @@
   min-width: 0;
   border-radius: inherit;
   background: var(--mainline-color, var(--interactive-accent));
+}
+
+.fishbone-dashboard-progress-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fishbone-dashboard-progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fishbone-dashboard-progress-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .fishbone-dashboard-meta-row {
@@ -546,38 +557,55 @@
   font-size: 12px;
 }
 
-.fishbone-dashboard-mainline-row {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+.fishbone-dashboard-mainline-rings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  min-height: 0;
+  overflow: hidden auto;
+  padding-right: 2px;
 }
 
-.fishbone-dashboard-mainline-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+.fishbone-dashboard-mainline-ring-item {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fishbone-dashboard-mainline-ring {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, var(--background-primary) 55%, transparent 57%),
+    conic-gradient(var(--mainline-color) var(--progress-deg), color-mix(in srgb, var(--background-modifier-border) 74%, transparent) 0);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mainline-color) 24%, transparent);
+}
+
+.fishbone-dashboard-mainline-ring span {
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.fishbone-dashboard-mainline-ring-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.fishbone-dashboard-mainline-ring-meta {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-muted);
-  font-size: 10px;
-}
-
-.fishbone-dashboard-mainline-meta span {
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-}
-
-.fishbone-dashboard-mainline-top {
-  font-size: 12px;
-}
-
-.fishbone-dashboard-mainline-name::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 6px;
-  border-radius: 999px;
-  background: var(--mainline-color);
+  font-size: 9px;
 }
 
 .fishbone-workbench-panel {
@@ -679,10 +707,10 @@
 .fishbone-workbench-column-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   flex: 0 0 auto;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 750;
   cursor: grab;
@@ -693,6 +721,7 @@
 }
 
 .fishbone-workbench-count {
+  margin-left: auto;
   padding: 1px 7px;
   border-radius: 999px;
   color: var(--text-muted);
@@ -703,7 +732,7 @@
 .fishbone-workbench-task-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   min-height: 0;
   overflow: hidden auto;
   padding-right: 2px;
@@ -711,11 +740,11 @@
 
 .fishbone-workbench-task {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 7px;
-  align-items: start;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
   min-width: 0;
-  padding: 7px 8px;
+  padding: 6px 8px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: color-mix(in srgb, var(--background-primary) 76%, transparent);
@@ -736,7 +765,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -745,27 +774,52 @@
   align-items: center;
   gap: 5px;
   min-width: 0;
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .fishbone-workbench-task-meta span {
   flex: 0 0 auto;
 }
 
-.fishbone-workbench-task-meta span:nth-child(2) {
+.fishbone-workbench-task-meta span:first-child {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.fishbone-workbench-mainline-dot {
-  width: 7px;
-  height: 7px;
+.fishbone-workbench-task-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
-  background: var(--mainline-color);
+  color: var(--mainline-color);
+  background: color-mix(in srgb, var(--mainline-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mainline-color) 70%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mainline-color) 24%, transparent);
+}
+
+.fishbone-workbench-task-icon svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.2;
+}
+
+.fishbone-workbench-mainline-tag {
+  max-width: 82px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--mainline-color) 72%, var(--text-normal));
+  background: color-mix(in srgb, var(--mainline-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mainline-color) 46%, transparent);
+  font-size: 10px;
+  font-weight: 650;
 }
 
 .fishbone-quick-input {

@@ -1,4 +1,4 @@
-import { ItemView, Menu, Modal, Notice, Setting, WorkspaceLeaf } from "obsidian";
+import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { TaskFieldPatch } from "../data/taskRepository";
@@ -54,16 +54,15 @@ interface DashboardTaskRenderOptions {
   summary?: DashboardSummary;
 }
 
-type DashboardModuleId = "today-progress" | "week-progress" | "today-focus" | "week-focus" | "mainline-progress";
+type DashboardModuleId = "progress-overview" | "today-focus" | "week-focus" | "mainline-progress";
 type WorkbenchColumnId = "todo" | "doing" | "done";
 
-const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["today-progress", "week-progress", "today-focus", "week-focus", "mainline-progress"];
+const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["progress-overview", "today-focus", "week-focus", "mainline-progress"];
 const DEFAULT_DASHBOARD_MODULE_HEIGHTS: Record<DashboardModuleId, number> = {
-  "today-progress": 112,
-  "week-progress": 112,
+  "progress-overview": 128,
   "today-focus": 188,
   "week-focus": 188,
-  "mainline-progress": 156
+  "mainline-progress": 190
 };
 const WORKBENCH_COLUMN_IDS: WorkbenchColumnId[] = ["todo", "doing", "done"];
 const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; targetStatus: TaskStatus; emptyText: string }> = {
@@ -408,10 +407,6 @@ export class FishboneTimelineView extends ItemView {
     const resizer = panel.createDiv({ cls: "fishbone-dashboard-resizer" });
     this.bindDashboardResize(resizer, panel);
 
-    const header = panel.createDiv({ cls: "fishbone-dashboard-header" });
-    header.createDiv({ cls: "fishbone-dashboard-title", text: "辅助面板" });
-    header.createDiv({ cls: "fishbone-dashboard-subtitle", text: `${summary.today} · 本周 ${summary.weekStart} - ${summary.weekEnd}` });
-
     const modules = panel.createDiv({ cls: "fishbone-dashboard-modules" });
     modules.addEventListener("dragover", (event) => {
       if (this.getDraggedDashboardModuleId(event)) event.preventDefault();
@@ -430,16 +425,11 @@ export class FishboneTimelineView extends ItemView {
       ].join(" ")
     });
     section.style.height = `${this.dashboardModuleHeights[moduleId]}px`;
-    section.draggable = true;
     section.setAttr("data-dashboard-module-id", moduleId);
-    this.bindDashboardModuleDrag(section, moduleId);
 
     switch (moduleId) {
-      case "today-progress":
-        this.renderDashboardProgressSection(section, moduleId, "今日进度", summary.todayProgress);
-        break;
-      case "week-progress":
-        this.renderDashboardProgressSection(section, moduleId, "本周进度", summary.weekProgress);
+      case "progress-overview":
+        this.renderDashboardProgressOverview(section, moduleId, summary);
         break;
       case "today-focus":
         this.renderDashboardTaskSection(section, moduleId, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务", {
@@ -463,22 +453,35 @@ export class FishboneTimelineView extends ItemView {
 
   private renderDashboardModuleHeader(section: HTMLElement, moduleId: DashboardModuleId, title: string, countText: string): HTMLElement {
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
+    header.draggable = true;
     header.setAttr("title", "拖动模块标题可调整模块位置");
+    header.createSpan({ cls: "fishbone-dashboard-drag-handle", text: "⋮⋮" });
     header.createSpan({ text: title });
     const controls = header.createDiv({ cls: "fishbone-dashboard-module-controls" });
     controls.createSpan({ cls: "fishbone-dashboard-module-count", text: countText });
+    this.bindDashboardModuleDrag(section, header, moduleId);
     return header;
   }
 
-  private renderDashboardProgressSection(section: HTMLElement, moduleId: DashboardModuleId, title: string, progress: DashboardProgress): void {
-    this.renderDashboardModuleHeader(section, moduleId, title, `${progress.done}/${progress.total}`);
-    const bar = section.createDiv({ cls: "fishbone-dashboard-progress-bar" });
+  private renderDashboardProgressOverview(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
+    this.renderDashboardModuleHeader(section, moduleId, "进度概览", `${summary.todayProgress.done}/${summary.todayProgress.total}`);
+    const rows = section.createDiv({ cls: "fishbone-dashboard-progress-overview" });
+    this.renderDashboardProgressBar(rows, "今日", summary.todayProgress);
+    this.renderDashboardProgressBar(rows, "本周", summary.weekProgress);
+  }
+
+  private renderDashboardProgressBar(parent: HTMLElement, label: string, progress: DashboardProgress): void {
+    const row = parent.createDiv({ cls: "fishbone-dashboard-progress-row" });
+    const top = row.createDiv({ cls: "fishbone-dashboard-progress-row-top" });
+    top.createSpan({ text: label });
+    top.createSpan({ text: `${Math.round(progress.rate * 100)}%` });
+    const bar = row.createDiv({ cls: "fishbone-dashboard-progress-bar" });
     const fill = bar.createDiv({ cls: "fishbone-dashboard-progress-fill" });
     fill.style.width = `${Math.round(progress.rate * 100)}%`;
-    const meta = section.createDiv({ cls: "fishbone-dashboard-meta-row" });
-    meta.createSpan({ text: `进行中 ${progress.doing}` });
-    meta.createSpan({ text: `阻塞 ${progress.blocked}` });
-    meta.createSpan({ text: `待办 ${progress.todo}` });
+    const meta = row.createDiv({ cls: "fishbone-dashboard-meta-row" });
+    meta.createSpan({ text: `完成 ${progress.done}/${progress.total}` });
+    meta.createSpan({ text: `进 ${progress.doing}` });
+    meta.createSpan({ text: `阻 ${progress.blocked}` });
   }
 
   private renderDashboardTaskSection(
@@ -533,22 +536,15 @@ export class FishboneTimelineView extends ItemView {
 
   private renderDashboardMainlineProgress(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
     this.renderDashboardModuleHeader(section, moduleId, "主线进度", String(summary.mainlineProgress.length));
-    const list = section.createDiv({ cls: "fishbone-dashboard-mainline-list" });
+    const grid = section.createDiv({ cls: "fishbone-dashboard-mainline-rings" });
     for (const item of summary.mainlineProgress.slice(0, 8)) {
-      const row = list.createDiv({ cls: "fishbone-dashboard-mainline-row" });
-      row.style.setProperty("--mainline-color", item.color);
-      const top = row.createDiv({ cls: "fishbone-dashboard-mainline-top" });
-      top.createSpan({ cls: "fishbone-dashboard-mainline-name", text: item.name });
-      top.createSpan({ text: `${Math.round(item.rate * 100)}%` });
-      const bar = row.createDiv({ cls: "fishbone-dashboard-progress-bar" });
-      const fill = bar.createDiv({ cls: "fishbone-dashboard-progress-fill" });
-      fill.style.width = `${Math.round(item.rate * 100)}%`;
-      const meta = row.createDiv({ cls: "fishbone-dashboard-mainline-meta" });
-      meta.createSpan({ text: `总 ${item.total}` });
-      meta.createSpan({ text: `进 ${item.doing}` });
-      meta.createSpan({ text: `阻 ${item.blocked}` });
-      meta.createSpan({ text: `高 ${item.highPriority}` });
-      meta.createSpan({ text: `期 ${item.overdue}` });
+      const ringItem = grid.createDiv({ cls: "fishbone-dashboard-mainline-ring-item" });
+      ringItem.style.setProperty("--mainline-color", item.color);
+      ringItem.style.setProperty("--progress-deg", `${Math.round(item.rate * 360)}deg`);
+      const ring = ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring" });
+      ring.createSpan({ text: `${Math.round(item.rate * 100)}%` });
+      ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-name", text: item.name });
+      ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-meta", text: `总 ${item.total} · 进 ${item.doing} · 阻 ${item.blocked}` });
     }
   }
 
@@ -565,14 +561,15 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
-  private bindDashboardModuleDrag(section: HTMLElement, moduleId: DashboardModuleId): void {
-    section.addEventListener("dragstart", (event) => {
+  private bindDashboardModuleDrag(section: HTMLElement, handle: HTMLElement, moduleId: DashboardModuleId): void {
+    handle.addEventListener("dragstart", (event) => {
+      event.stopPropagation();
       event.dataTransfer?.setData("text/fishbone-dashboard-module-id", moduleId);
       event.dataTransfer?.setData("text/plain", moduleId);
       event.dataTransfer?.setDragImage(section, 12, 12);
       section.addClass("is-dashboard-module-dragging");
     });
-    section.addEventListener("dragend", () => {
+    handle.addEventListener("dragend", () => {
       section.removeClass("is-dashboard-module-dragging");
       this.containerEl.querySelectorAll<HTMLElement>(".is-dashboard-module-drop-target").forEach((target) => {
         target.removeClass("is-dashboard-module-drop-target");
@@ -746,9 +743,11 @@ export class FishboneTimelineView extends ItemView {
         event.preventDefault();
       }
     });
-    const mainlineColors = new Map(mainlines.filter((mainline) => mainline.type !== "branch").map((mainline) => [mainline.name, mainline.color]));
+    const mainlineVisuals = new Map(mainlines
+      .filter((mainline) => mainline.type !== "branch")
+      .map((mainline) => [mainline.name, { color: mainline.color, icon: mainline.icon }]));
     for (const columnId of this.workbenchColumnOrder) {
-      this.renderWorkbenchColumn(columns, columnId, getWorkbenchColumnTasks(summary, columnId), mainlineColors);
+      this.renderWorkbenchColumn(columns, columnId, getWorkbenchColumnTasks(summary, columnId), mainlineVisuals);
     }
   }
 
@@ -799,7 +798,7 @@ export class FishboneTimelineView extends ItemView {
     parent: HTMLElement,
     columnId: WorkbenchColumnId,
     tasks: PlanningTask[],
-    mainlineColors: Map<string, string>
+    mainlineVisuals: Map<string, { color: string; icon: string }>
   ): void {
     const meta = WORKBENCH_COLUMN_META[columnId];
     const column = parent.createDiv({ cls: `fishbone-workbench-column fishbone-workbench-column-${columnId}` });
@@ -807,6 +806,7 @@ export class FishboneTimelineView extends ItemView {
     const header = column.createDiv({ cls: "fishbone-workbench-column-header" });
     header.draggable = true;
     header.setAttr("title", "拖动列标题可调整下方工作台顺序");
+    header.createSpan({ cls: "fishbone-workbench-drag-handle", text: "⋮⋮" });
     header.createSpan({ text: meta.title });
     header.createSpan({ cls: "fishbone-workbench-count", text: String(tasks.length) });
     this.bindWorkbenchColumnDrag(column, header, columnId);
@@ -817,16 +817,17 @@ export class FishboneTimelineView extends ItemView {
       return;
     }
     for (const task of tasks) {
-      this.renderWorkbenchTask(list, task, mainlineColors);
+      this.renderWorkbenchTask(list, task, mainlineVisuals);
     }
   }
 
-  private renderWorkbenchTask(parent: HTMLElement, task: PlanningTask, mainlineColors: Map<string, string>): void {
+  private renderWorkbenchTask(parent: HTMLElement, task: PlanningTask, mainlineVisuals: Map<string, { color: string; icon: string }>): void {
     const row = parent.createDiv({ cls: `fishbone-workbench-task fishbone-task-${task.status}` });
     row.draggable = true;
     row.setAttr("data-task-id", task.taskId);
     row.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"}`);
-    row.style.setProperty("--mainline-color", task.mainline ? mainlineColors.get(task.mainline) ?? "#94a3b8" : "#94a3b8");
+    const mainlineVisual = task.mainline ? mainlineVisuals.get(task.mainline) : undefined;
+    row.style.setProperty("--mainline-color", mainlineVisual?.color ?? "#94a3b8");
     row.addEventListener("click", () => {
       void this.plugin.taskRepository.openTask(task);
     });
@@ -851,16 +852,17 @@ export class FishboneTimelineView extends ItemView {
       event.stopPropagation();
       void this.updateDashboardTaskDone(task, checkbox.checked);
     });
+    const icon = row.createDiv({ cls: "fishbone-workbench-task-icon" });
+    setIcon(icon, mainlineVisual?.icon || "circle");
     const body = row.createDiv({ cls: "fishbone-workbench-task-body" });
     body.createDiv({ cls: "fishbone-workbench-task-title", text: task.title });
     const meta = body.createDiv({ cls: "fishbone-workbench-task-meta" });
-    meta.createSpan({ cls: "fishbone-workbench-mainline-dot" });
-    meta.createSpan({ text: task.mainline ?? "未分配" });
     meta.createSpan({ text: task.date ?? "无日期" });
     meta.createSpan({ cls: `fishbone-dashboard-priority is-${task.priority}`, text: formatPriority(task.priority) });
     if (task.status === "blocked") {
       meta.createSpan({ cls: "fishbone-dashboard-reason is-blocked", text: "阻塞" });
     }
+    row.createSpan({ cls: "fishbone-workbench-mainline-tag", text: task.mainline ?? "未分配" });
   }
 
   private bindWorkbenchColumnDrag(column: HTMLElement, header: HTMLElement, columnId: WorkbenchColumnId): void {
@@ -2719,7 +2721,7 @@ function isWorkbenchColumnId(value: string): value is WorkbenchColumnId {
 }
 
 function isDashboardProgressModule(moduleId: DashboardModuleId): boolean {
-  return moduleId === "today-progress" || moduleId === "week-progress";
+  return moduleId === "progress-overview";
 }
 
 function getWorkbenchColumnTasks(summary: DashboardSummary, columnId: WorkbenchColumnId): PlanningTask[] {

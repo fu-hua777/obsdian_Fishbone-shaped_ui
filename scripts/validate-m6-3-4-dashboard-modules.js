@@ -66,7 +66,7 @@ function main() {
     "weekFocusTasks",
     "getDashboardTaskReasons",
     "formatDashboardReason",
-    "fishbone-dashboard-mainline-meta"
+    "fishbone-dashboard-mainline-ring"
   ]);
   const view = read("plugin/src/views/FishboneTimelineView.ts");
   assert(!view.includes("状态速览"), "右侧辅助面板不应再渲染状态速览模块");
@@ -79,7 +79,7 @@ function main() {
     ".fishbone-dashboard-module-resize-handle",
     ".fishbone-dashboard-section.is-dashboard-module-resizing",
     ".is-dashboard-module-drop-target",
-    ".fishbone-dashboard-mainline-meta"
+    ".fishbone-dashboard-mainline-rings"
   ]);
   const viewAfterModules = read("plugin/src/views/FishboneTimelineView.ts");
   const stylesAfterModules = read("plugin/styles.css");
