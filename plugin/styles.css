@@ -1014,6 +1014,21 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 28%, transparent);
 }
 
+.fishbone-date-tick.is-axis-label-hidden {
+  min-width: 0;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.fishbone-date-tick.is-axis-label-hidden .fishbone-date-label,
+.fishbone-date-tick.is-axis-label-hidden .fishbone-date-detail {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .fishbone-date-tick::after {
   height: 820px;
   background: color-mix(in srgb, var(--background-modifier-border) 32%, transparent);

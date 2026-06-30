@@ -675,11 +675,51 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private updateFixedDateAxis(canvas: HTMLElement): void {
-    const dateTicks = canvas.querySelectorAll<HTMLElement>(".fishbone-fixed-date-axis-layer .fishbone-date-tick");
-    dateTicks.forEach((tick) => {
+    const viewportWidth = canvas.clientWidth;
+    const viewportCenter = viewportWidth / 2;
+    const labelGap = this.getFixedDateAxisLabelGap();
+    const positionedTicks = Array.from(canvas.querySelectorAll<HTMLElement>(".fishbone-fixed-date-axis-layer .fishbone-date-tick")).map((tick) => {
       const x = Number(tick.dataset.dateX ?? 0);
-      tick.style.left = `${this.viewport.panX + x * this.viewport.canvasZoom}px`;
+      const screenX = this.viewport.panX + x * this.viewport.canvasZoom;
+      tick.style.left = `${screenX}px`;
+      return {
+        tick,
+        screenX,
+        priority: this.getDateTickLabelPriority(tick),
+        distanceFromCenter: Math.abs(screenX - viewportCenter),
+        isVisibleInViewport: screenX >= -labelGap && screenX <= viewportWidth + labelGap
+      };
     });
+
+    const visibleTicks = positionedTicks
+      .filter((item) => item.isVisibleInViewport)
+      .sort((a, b) => b.priority - a.priority || a.distanceFromCenter - b.distanceFromCenter);
+    const shownTicks = new Set<HTMLElement>();
+    const occupiedPositions: number[] = [];
+    for (const item of visibleTicks) {
+      if (occupiedPositions.every((screenX) => Math.abs(screenX - item.screenX) >= labelGap)) {
+        shownTicks.add(item.tick);
+        occupiedPositions.push(item.screenX);
+      }
+    }
+
+    positionedTicks.forEach((item) => {
+      item.tick.classList.toggle("is-axis-label-hidden", !shownTicks.has(item.tick));
+    });
+  }
+
+  private getFixedDateAxisLabelGap(): number {
+    if (this.viewport.timeAxisMode === "overview") return 124;
+    if (this.viewport.timeAxisMode === "month") return 108;
+    return 96;
+  }
+
+  private getDateTickLabelPriority(tick: HTMLElement): number {
+    if (tick.classList.contains("is-center-date")) return 100;
+    if (tick.classList.contains("is-today")) return 90;
+    if (tick.classList.contains("is-major")) return 70;
+    if (tick.classList.contains("is-weekend")) return 20;
+    return 40;
   }
 
   private updateViewportReadouts(): void {
