@@ -24,6 +24,7 @@ function requireText(relativePath, patterns) {
 
 function main() {
   requireFile("PLANS/M6.3-M6.4-dashboard-modules.md");
+  requireFile("PLANS/M6-concept-gap-and-bottom-modules.md");
   requireFile("tests/plugin/m6-3-4-manual-test-checklist.md");
 
   requireText("plugin/src/dashboard/dashboardSummary.ts", [
@@ -51,22 +52,43 @@ function main() {
     "renderDashboardStatusSelect",
     "updateDashboardTaskDone",
     "updateDashboardTaskStatus",
+    "dashboardModuleOrder",
+    "dashboardModuleSpans",
+    "bindDashboardModuleDrag",
+    "moveDashboardModule",
+    "toggleDashboardModuleSpan",
+    "normalizeDashboardModuleOrder",
+    "normalizeDashboardModuleSpans",
     "setTaskDone",
     "setTaskStatus",
     "weekFocusTasks",
     "getDashboardTaskReasons",
     "formatDashboardReason",
-    "fishbone-dashboard-status-column",
     "fishbone-dashboard-mainline-meta"
   ]);
+  const view = read("plugin/src/views/FishboneTimelineView.ts");
+  assert(!view.includes("状态速览"), "右侧辅助面板不应再渲染状态速览模块");
+  assert(!view.includes("renderDashboardStatusSection"), "状态速览渲染方法应移除，避免和下方看板重复");
 
   requireText("plugin/styles.css", [
     ".fishbone-dashboard-task-checkbox",
     ".fishbone-dashboard-status-select",
     ".fishbone-dashboard-reason",
-    ".fishbone-dashboard-status-column",
-    ".fishbone-dashboard-status-task-list",
+    ".fishbone-dashboard-section.is-wide",
+    ".fishbone-dashboard-section.is-narrow",
+    ".fishbone-dashboard-module-width",
+    ".is-dashboard-module-drop-target",
     ".fishbone-dashboard-mainline-meta"
+  ]);
+
+  requireText("PLANS/M6-concept-gap-and-bottom-modules.md", [
+    "下方三列工作台",
+    "待办",
+    "进行中",
+    "已完成",
+    "快速笔记 / Codex 输入",
+    "每日总结",
+    "M6.5：下方状态工作台"
   ]);
 
   console.log("M6.3-M6.4 dashboard modules validation passed.");

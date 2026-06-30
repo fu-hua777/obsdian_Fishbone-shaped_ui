@@ -54,6 +54,18 @@ interface DashboardTaskRenderOptions {
   summary?: DashboardSummary;
 }
 
+type DashboardModuleId = "today-progress" | "week-progress" | "today-focus" | "week-focus" | "mainline-progress";
+type DashboardModuleSpan = "narrow" | "wide";
+
+const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["today-progress", "week-progress", "today-focus", "week-focus", "mainline-progress"];
+const DEFAULT_DASHBOARD_MODULE_SPANS: Record<DashboardModuleId, DashboardModuleSpan> = {
+  "today-progress": "narrow",
+  "week-progress": "narrow",
+  "today-focus": "wide",
+  "week-focus": "wide",
+  "mainline-progress": "wide"
+};
+
 export class FishboneTimelineView extends ItemView {
   private plugin: FishbonePlannerPlugin;
   private viewport: FishboneCanvasViewport = createDefaultFishboneCanvasViewport();
@@ -61,6 +73,8 @@ export class FishboneTimelineView extends ItemView {
   private showHiddenMainlines = false;
   private showDashboard = true;
   private dashboardWidth = 340;
+  private dashboardModuleOrder: DashboardModuleId[] = [...DASHBOARD_MODULE_IDS];
+  private dashboardModuleSpans: Record<DashboardModuleId, DashboardModuleSpan> = { ...DEFAULT_DASHBOARD_MODULE_SPANS };
   private expandedClusters = new Set<string>();
   private renderGeneration = 0;
   private persistViewStateTimer: number | null = null;
@@ -110,6 +124,8 @@ export class FishboneTimelineView extends ItemView {
     this.showHiddenMainlines = saved.showHiddenMainlines === true;
     this.showDashboard = plugin.settings.dashboardState?.showDashboard !== false;
     this.dashboardWidth = normalizeDashboardWidth(plugin.settings.dashboardState?.dashboardWidth);
+    this.dashboardModuleOrder = normalizeDashboardModuleOrder(plugin.settings.dashboardState?.moduleOrder);
+    this.dashboardModuleSpans = normalizeDashboardModuleSpans(plugin.settings.dashboardState?.moduleSpans);
     this.expandedClusters = new Set(saved.expandedClusters ?? []);
   }
 
@@ -358,27 +374,74 @@ export class FishboneTimelineView extends ItemView {
     header.createDiv({ cls: "fishbone-dashboard-subtitle", text: `${summary.today} · 本周 ${summary.weekStart} - ${summary.weekEnd}` });
 
     const modules = panel.createDiv({ cls: "fishbone-dashboard-modules" });
-    const progressGrid = modules.createDiv({ cls: "fishbone-dashboard-progress-grid" });
-    this.renderDashboardProgressSection(progressGrid, "今日进度", summary.todayProgress);
-    this.renderDashboardProgressSection(progressGrid, "本周进度", summary.weekProgress);
-    this.renderDashboardTaskSection(modules, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务", {
-      showCheckbox: true,
-      showStatusSelect: true
+    modules.addEventListener("dragover", (event) => {
+      if (this.getDraggedDashboardModuleId(event)) event.preventDefault();
     });
-    this.renderDashboardTaskSection(modules, "本周重点", summary.weekFocusTasks.slice(0, 8), "本周暂无重点任务", {
-      showStatusSelect: true,
-      showReasonChips: true,
-      summary
-    });
-    this.renderDashboardStatusSection(modules, summary);
-    this.renderDashboardMainlineProgress(modules, summary);
+    for (const moduleId of this.dashboardModuleOrder) {
+      this.renderDashboardModule(modules, moduleId, summary);
+    }
   }
 
-  private renderDashboardProgressSection(parent: HTMLElement, title: string, progress: DashboardProgress): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-progress-module" });
+  private renderDashboardModule(parent: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
+    const section = parent.createDiv({
+      cls: [
+        "fishbone-dashboard-section",
+        `fishbone-dashboard-module-${moduleId}`,
+        this.dashboardModuleSpans[moduleId] === "wide" ? "is-wide" : "is-narrow",
+        isDashboardProgressModule(moduleId) ? "fishbone-dashboard-progress-module" : "fishbone-dashboard-scroll-module"
+      ].join(" ")
+    });
+    section.draggable = true;
+    section.setAttr("data-dashboard-module-id", moduleId);
+    this.bindDashboardModuleDrag(section, moduleId);
+
+    switch (moduleId) {
+      case "today-progress":
+        this.renderDashboardProgressSection(section, moduleId, "今日进度", summary.todayProgress);
+        return;
+      case "week-progress":
+        this.renderDashboardProgressSection(section, moduleId, "本周进度", summary.weekProgress);
+        return;
+      case "today-focus":
+        this.renderDashboardTaskSection(section, moduleId, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务", {
+          showCheckbox: true,
+          showStatusSelect: true
+        });
+        return;
+      case "week-focus":
+        this.renderDashboardTaskSection(section, moduleId, "本周重点", summary.weekFocusTasks.slice(0, 8), "本周暂无重点任务", {
+          showStatusSelect: true,
+          showReasonChips: true,
+          summary
+        });
+        return;
+      case "mainline-progress":
+        this.renderDashboardMainlineProgress(section, moduleId, summary);
+        return;
+    }
+  }
+
+  private renderDashboardModuleHeader(section: HTMLElement, moduleId: DashboardModuleId, title: string, countText: string): HTMLElement {
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
+    header.setAttr("title", "拖动模块标题可调整模块位置");
     header.createSpan({ text: title });
-    header.createSpan({ text: `${progress.done}/${progress.total}` });
+    const controls = header.createDiv({ cls: "fishbone-dashboard-module-controls" });
+    controls.createSpan({ cls: "fishbone-dashboard-module-count", text: countText });
+    const widthButton = controls.createEl("button", {
+      cls: "fishbone-dashboard-module-width",
+      text: this.dashboardModuleSpans[moduleId] === "wide" ? "宽" : "窄"
+    });
+    widthButton.setAttr("title", "切换模块宽度");
+    widthButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void this.toggleDashboardModuleSpan(moduleId);
+    });
+    return header;
+  }
+
+  private renderDashboardProgressSection(section: HTMLElement, moduleId: DashboardModuleId, title: string, progress: DashboardProgress): void {
+    this.renderDashboardModuleHeader(section, moduleId, title, `${progress.done}/${progress.total}`);
     const bar = section.createDiv({ cls: "fishbone-dashboard-progress-bar" });
     const fill = bar.createDiv({ cls: "fishbone-dashboard-progress-fill" });
     fill.style.width = `${Math.round(progress.rate * 100)}%`;
@@ -389,16 +452,14 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderDashboardTaskSection(
-    parent: HTMLElement,
+    section: HTMLElement,
+    moduleId: DashboardModuleId,
     title: string,
     tasks: PlanningTask[],
     emptyText: string,
     options: DashboardTaskRenderOptions = {}
   ): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-scroll-module" });
-    const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
-    header.createSpan({ text: title });
-    header.createSpan({ text: String(tasks.length) });
+    this.renderDashboardModuleHeader(section, moduleId, title, String(tasks.length));
     if (tasks.length === 0) {
       section.createDiv({ cls: "fishbone-dashboard-empty", text: emptyText });
       return;
@@ -440,44 +501,8 @@ export class FishboneTimelineView extends ItemView {
     }
   }
 
-  private renderDashboardStatusSection(parent: HTMLElement, summary: DashboardSummary): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-status-module" });
-    const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
-    header.createSpan({ text: "状态速览" });
-    header.createSpan({ text: String(summary.todoTasks.length + summary.doingTasks.length + summary.blockedTasks.length) });
-    const grid = section.createDiv({ cls: "fishbone-dashboard-status-grid" });
-    this.renderDashboardStatusColumn(grid, "todo", "待办", summary.todoTasks.slice(0, 4));
-    this.renderDashboardStatusColumn(grid, "doing", "进行中", summary.doingTasks.slice(0, 4));
-    this.renderDashboardStatusColumn(grid, "blocked", "阻塞", summary.blockedTasks.slice(0, 4));
-    this.renderDashboardStatusColumn(grid, "done", "已完成", summary.doneTasks.slice(0, 4));
-  }
-
-  private renderDashboardStatusColumn(parent: HTMLElement, status: TaskStatus, label: string, tasks: PlanningTask[]): void {
-    const column = parent.createDiv({ cls: `fishbone-dashboard-status-column fishbone-task-${status}` });
-    const header = column.createDiv({ cls: "fishbone-dashboard-status-column-header" });
-    header.createSpan({ text: label });
-    header.createSpan({ text: String(tasks.length) });
-    const list = column.createDiv({ cls: "fishbone-dashboard-status-task-list" });
-    if (tasks.length === 0) {
-      list.createDiv({ cls: "fishbone-dashboard-empty", text: "无" });
-      return;
-    }
-    for (const task of tasks) {
-      const item = list.createDiv({ cls: "fishbone-dashboard-status-task" });
-      item.setAttr("title", task.title);
-      item.addEventListener("click", () => {
-        void this.plugin.taskRepository.openTask(task);
-      });
-      item.createDiv({ cls: "fishbone-dashboard-status-task-title", text: task.title });
-      this.renderDashboardStatusSelect(item, task);
-    }
-  }
-
-  private renderDashboardMainlineProgress(parent: HTMLElement, summary: DashboardSummary): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-scroll-module" });
-    const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
-    header.createSpan({ text: "主线进度" });
-    header.createSpan({ text: String(summary.mainlineProgress.length) });
+  private renderDashboardMainlineProgress(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
+    this.renderDashboardModuleHeader(section, moduleId, "主线进度", String(summary.mainlineProgress.length));
     const list = section.createDiv({ cls: "fishbone-dashboard-mainline-list" });
     for (const item of summary.mainlineProgress.slice(0, 8)) {
       const row = list.createDiv({ cls: "fishbone-dashboard-mainline-row" });
@@ -508,6 +533,63 @@ export class FishboneTimelineView extends ItemView {
       event.stopPropagation();
       void this.updateDashboardTaskStatus(task, select.value as TaskStatus);
     });
+  }
+
+  private bindDashboardModuleDrag(section: HTMLElement, moduleId: DashboardModuleId): void {
+    section.addEventListener("dragstart", (event) => {
+      event.dataTransfer?.setData("text/fishbone-dashboard-module-id", moduleId);
+      event.dataTransfer?.setData("text/plain", moduleId);
+      event.dataTransfer?.setDragImage(section, 12, 12);
+      section.addClass("is-dashboard-module-dragging");
+    });
+    section.addEventListener("dragend", () => {
+      section.removeClass("is-dashboard-module-dragging");
+      this.containerEl.querySelectorAll<HTMLElement>(".is-dashboard-module-drop-target").forEach((target) => {
+        target.removeClass("is-dashboard-module-drop-target");
+      });
+    });
+    section.addEventListener("dragover", (event) => {
+      const draggedId = this.getDraggedDashboardModuleId(event);
+      if (!draggedId || draggedId === moduleId) return;
+      event.preventDefault();
+      section.addClass("is-dashboard-module-drop-target");
+    });
+    section.addEventListener("dragleave", () => {
+      section.removeClass("is-dashboard-module-drop-target");
+    });
+    section.addEventListener("drop", (event) => {
+      const draggedId = this.getDraggedDashboardModuleId(event);
+      if (!draggedId || draggedId === moduleId) return;
+      event.preventDefault();
+      section.removeClass("is-dashboard-module-drop-target");
+      void this.moveDashboardModule(draggedId, moduleId, event);
+    });
+  }
+
+  private getDraggedDashboardModuleId(event: DragEvent): DashboardModuleId | null {
+    const value = event.dataTransfer?.getData("text/fishbone-dashboard-module-id") ?? "";
+    return isDashboardModuleId(value) ? value : null;
+  }
+
+  private async moveDashboardModule(sourceId: DashboardModuleId, targetId: DashboardModuleId, event: DragEvent): Promise<void> {
+    const order = this.dashboardModuleOrder.filter((id) => id !== sourceId);
+    const targetIndex = order.indexOf(targetId);
+    if (targetIndex < 0) return;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const insertAfter = event.clientY > rect.top + rect.height / 2;
+    order.splice(targetIndex + (insertAfter ? 1 : 0), 0, sourceId);
+    this.dashboardModuleOrder = normalizeDashboardModuleOrder(order);
+    await this.persistDashboardState();
+    await this.render();
+  }
+
+  private async toggleDashboardModuleSpan(moduleId: DashboardModuleId): Promise<void> {
+    this.dashboardModuleSpans = {
+      ...this.dashboardModuleSpans,
+      [moduleId]: this.dashboardModuleSpans[moduleId] === "wide" ? "narrow" : "wide"
+    };
+    await this.persistDashboardState();
+    await this.render();
   }
 
   private async updateDashboardTaskDone(task: PlanningTask, done: boolean): Promise<void> {
@@ -1883,7 +1965,9 @@ export class FishboneTimelineView extends ItemView {
   private async persistDashboardState(): Promise<void> {
     this.plugin.settings.dashboardState = {
       showDashboard: this.showDashboard,
-      dashboardWidth: normalizeDashboardWidth(this.dashboardWidth)
+      dashboardWidth: normalizeDashboardWidth(this.dashboardWidth),
+      moduleOrder: [...this.dashboardModuleOrder],
+      moduleSpans: { ...this.dashboardModuleSpans }
     };
     if (typeof this.plugin.saveFishboneViewState === "function") {
       await this.plugin.saveFishboneViewState();
@@ -2232,13 +2316,32 @@ function normalizeDashboardWidth(value: unknown): number {
   return Math.max(280, Math.min(520, Math.round(numeric)));
 }
 
-function uniqueDashboardTasks(tasks: PlanningTask[]): PlanningTask[] {
-  const seen = new Set<string>();
-  return tasks.filter((task) => {
-    if (seen.has(task.taskId)) return false;
-    seen.add(task.taskId);
-    return true;
-  });
+function normalizeDashboardModuleOrder(value: unknown): DashboardModuleId[] {
+  if (!Array.isArray(value)) return [...DASHBOARD_MODULE_IDS];
+  const order = value.filter((item): item is DashboardModuleId => isDashboardModuleId(item));
+  for (const moduleId of DASHBOARD_MODULE_IDS) {
+    if (!order.includes(moduleId)) order.push(moduleId);
+  }
+  return order.filter((moduleId, index) => order.indexOf(moduleId) === index);
+}
+
+function normalizeDashboardModuleSpans(value: unknown): Record<DashboardModuleId, DashboardModuleSpan> {
+  const source = typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
+  const spans = { ...DEFAULT_DASHBOARD_MODULE_SPANS };
+  for (const moduleId of DASHBOARD_MODULE_IDS) {
+    spans[moduleId] = source[moduleId] === "wide" || source[moduleId] === "narrow"
+      ? source[moduleId]
+      : DEFAULT_DASHBOARD_MODULE_SPANS[moduleId];
+  }
+  return spans;
+}
+
+function isDashboardModuleId(value: string): value is DashboardModuleId {
+  return (DASHBOARD_MODULE_IDS as string[]).includes(value);
+}
+
+function isDashboardProgressModule(moduleId: DashboardModuleId): boolean {
+  return moduleId === "today-progress" || moduleId === "week-progress";
 }
 
 function getDashboardTaskReasons(task: PlanningTask, summary: DashboardSummary): string[] {

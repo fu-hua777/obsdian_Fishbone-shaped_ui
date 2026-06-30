@@ -220,18 +220,12 @@
 
 .fishbone-dashboard-modules {
   display: grid;
-  grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 1.2fr) auto minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(86px, auto);
   gap: 8px;
   flex: 1 1 auto;
   min-height: 0;
   padding-top: 8px;
-}
-
-.fishbone-dashboard-progress-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  min-height: 0;
 }
 
 .fishbone-dashboard-section {
@@ -244,6 +238,23 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--background-primary) 90%, var(--background-secondary));
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.fishbone-dashboard-section.is-wide {
+  grid-column: 1 / -1;
+}
+
+.fishbone-dashboard-section.is-narrow {
+  grid-column: span 1;
+}
+
+.fishbone-dashboard-section.is-dashboard-module-dragging {
+  opacity: 0.54;
+}
+
+.fishbone-dashboard-section.is-dashboard-module-drop-target {
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -2px;
 }
 
 .fishbone-dashboard-progress-module,
@@ -266,9 +277,34 @@
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
+  cursor: grab;
 }
 
-.fishbone-dashboard-section-header span:last-child,
+.fishbone-dashboard-section-header:active {
+  cursor: grabbing;
+}
+
+.fishbone-dashboard-module-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.fishbone-dashboard-module-count {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.fishbone-dashboard-module-width {
+  min-width: 28px;
+  min-height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
 .fishbone-dashboard-meta-row,
 .fishbone-dashboard-task-meta,
 .fishbone-dashboard-mainline-top span:last-child {
@@ -1609,6 +1645,15 @@
 
   .fishbone-dashboard-resizer {
     display: none;
+  }
+
+  .fishbone-dashboard-modules {
+    grid-template-columns: 1fr;
+  }
+
+  .fishbone-dashboard-section.is-narrow,
+  .fishbone-dashboard-section.is-wide {
+    grid-column: 1;
   }
 
   .fishbone-viewport-controls,
