@@ -4,6 +4,7 @@ import FishbonePlannerPlugin from "./main";
 export interface FishbonePlannerSettings {
   planningSystemPath: string;
   fishboneViewState: FishbonePersistedViewState;
+  dashboardState: FishboneDashboardState;
 }
 
 export interface FishbonePersistedViewState {
@@ -20,9 +21,18 @@ export interface FishbonePersistedViewState {
   expandedClusters?: string[];
 }
 
+export interface FishboneDashboardState {
+  showDashboard?: boolean;
+  dashboardWidth?: number;
+}
+
 export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
   planningSystemPath: "PlanningSystem",
-  fishboneViewState: {}
+  fishboneViewState: {},
+  dashboardState: {
+    showDashboard: true,
+    dashboardWidth: 340
+  }
 };
 
 export class FishbonePlannerSettingTab extends PluginSettingTab {

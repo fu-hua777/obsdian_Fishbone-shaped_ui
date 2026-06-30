@@ -141,6 +141,235 @@
   padding: 10px 12px;
 }
 
+.fishbone-workspace {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-height: 0;
+}
+
+.fishbone-workspace.is-dashboard-hidden .fishbone-canvas-shell {
+  min-width: 100%;
+}
+
+.fishbone-canvas-shell {
+  flex: 1 1 auto;
+  min-width: 420px;
+}
+
+.fishbone-dashboard-panel {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 280px;
+  max-width: 520px;
+  height: calc(100vh - 180px);
+  min-height: 560px;
+  overflow: hidden auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-primary) 90%, var(--background-secondary));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.fishbone-dashboard-panel.is-resizing {
+  user-select: none;
+}
+
+.fishbone-dashboard-resizer {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.fishbone-dashboard-resizer::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: transparent;
+}
+
+.fishbone-dashboard-resizer:hover::after,
+.fishbone-dashboard-panel.is-resizing .fishbone-dashboard-resizer::after {
+  background: var(--interactive-accent);
+}
+
+.fishbone-dashboard-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--background-secondary));
+}
+
+.fishbone-dashboard-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.fishbone-dashboard-subtitle {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.fishbone-dashboard-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+.fishbone-dashboard-section-header,
+.fishbone-dashboard-meta-row,
+.fishbone-dashboard-mainline-top,
+.fishbone-dashboard-task-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fishbone-dashboard-section-header {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fishbone-dashboard-section-header span:last-child,
+.fishbone-dashboard-meta-row,
+.fishbone-dashboard-task-meta,
+.fishbone-dashboard-mainline-top span:last-child {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.fishbone-dashboard-progress-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+.fishbone-dashboard-progress-fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--mainline-color, var(--interactive-accent));
+}
+
+.fishbone-dashboard-meta-row {
+  margin-top: 7px;
+}
+
+.fishbone-dashboard-task-list,
+.fishbone-dashboard-mainline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fishbone-dashboard-task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 7px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+  cursor: pointer;
+}
+
+.fishbone-dashboard-task:hover {
+  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--background-secondary) 86%, var(--interactive-accent));
+}
+
+.fishbone-dashboard-task-title,
+.fishbone-dashboard-mainline-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-dashboard-task-title {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.fishbone-dashboard-task-meta {
+  justify-content: flex-start;
+}
+
+.fishbone-dashboard-priority {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+}
+
+.fishbone-dashboard-priority.is-high {
+  color: var(--text-on-accent);
+  background: var(--text-error);
+}
+
+.fishbone-dashboard-priority.is-medium {
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--color-yellow) 55%, var(--background-modifier-border));
+}
+
+.fishbone-dashboard-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fishbone-dashboard-status-tile {
+  min-width: 0;
+  padding: 7px 4px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  text-align: center;
+  background: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+}
+
+.fishbone-dashboard-status-value {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.fishbone-dashboard-status-label,
+.fishbone-dashboard-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.fishbone-dashboard-mainline-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fishbone-dashboard-mainline-top {
+  font-size: 12px;
+}
+
+.fishbone-dashboard-mainline-name::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: var(--mainline-color);
+}
+
 .fishbone-diagnostic-panel,
 .fishbone-inline-error {
   border: 1px solid color-mix(in srgb, var(--text-error) 55%, var(--background-modifier-border));
@@ -1215,6 +1444,25 @@
 @media (max-width: 900px) {
   .fishbone-timeline-toolbar {
     align-items: stretch;
+  }
+
+  .fishbone-workspace {
+    flex-direction: column;
+  }
+
+  .fishbone-canvas-shell {
+    min-width: 0;
+  }
+
+  .fishbone-dashboard-panel {
+    width: 100% !important;
+    max-width: none;
+    min-height: 260px;
+    height: min(420px, 42vh);
+  }
+
+  .fishbone-dashboard-resizer {
+    display: none;
   }
 
   .fishbone-viewport-controls,

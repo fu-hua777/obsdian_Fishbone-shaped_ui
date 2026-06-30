@@ -1,5 +1,6 @@
 import { ItemView, Menu, Modal, Notice, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
+import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { TaskFieldPatch } from "../data/taskRepository";
 import { Mainline, PlanningTask, TaskPriority, TaskStatus } from "../data/taskTypes";
 import {
@@ -51,9 +52,12 @@ export class FishboneTimelineView extends ItemView {
   private viewport: FishboneCanvasViewport = createDefaultFishboneCanvasViewport();
   private showRelations = true;
   private showHiddenMainlines = false;
+  private showDashboard = true;
+  private dashboardWidth = 340;
   private expandedClusters = new Set<string>();
   private renderGeneration = 0;
   private persistViewStateTimer: number | null = null;
+  private dashboardResizeDrag: { pointerId: number; startX: number; startWidth: number; panel: HTMLElement } | null = null;
   private panDrag: { pointerId: number; x: number; y: number } | null = null;
   private suppressNextMainlineClick = false;
   private suppressNextTaskClick = false;
@@ -97,6 +101,8 @@ export class FishboneTimelineView extends ItemView {
     this.viewport = normalizeFishboneCanvasViewport(saved);
     this.showRelations = saved.showRelations !== false;
     this.showHiddenMainlines = saved.showHiddenMainlines === true;
+    this.showDashboard = plugin.settings.dashboardState?.showDashboard !== false;
+    this.dashboardWidth = normalizeDashboardWidth(plugin.settings.dashboardState?.dashboardWidth);
     this.expandedClusters = new Set(saved.expandedClusters ?? []);
   }
 
@@ -134,6 +140,7 @@ export class FishboneTimelineView extends ItemView {
         ...tasks.map((task) => task.date),
         ...mainlines.flatMap((mainline) => mainline.type === "branch" ? [mainline.startDate, mainline.endDate] : [])
       ]);
+      const dashboardSummary = buildDashboardSummary(tasks, mainlines, { today: getLocalDateString(new Date()) });
 
       const toolbar = container.createDiv({ cls: "fishbone-timeline-toolbar" });
       const titleGroup = toolbar.createDiv({ cls: "fishbone-title-group" });
@@ -159,7 +166,17 @@ export class FishboneTimelineView extends ItemView {
         });
       }
 
-      this.renderCanvas(container, layout, mainlines, tasks);
+      const workspace = container.createDiv({
+        cls: [
+          "fishbone-workspace",
+          this.showDashboard ? "" : "is-dashboard-hidden"
+        ].filter(Boolean).join(" ")
+      });
+      const canvasShell = workspace.createDiv({ cls: "fishbone-canvas-shell" });
+      this.renderCanvas(canvasShell, layout, mainlines, tasks);
+      if (this.showDashboard) {
+        this.renderDashboardPanel(workspace, dashboardSummary);
+      }
     } catch (error) {
       if (renderId !== this.renderGeneration) return;
       container.empty();
@@ -221,6 +238,13 @@ export class FishboneTimelineView extends ItemView {
       await this.persistViewState();
       relationButton.textContent = this.showRelations ? "隐藏关系" : "显示关系";
       this.updateRelationLayerVisibility();
+    });
+    const dashboardButton = controls.createEl("button", { text: this.showDashboard ? "隐藏辅助" : "显示辅助" });
+    dashboardButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      this.showDashboard = !this.showDashboard;
+      await this.persistDashboardState();
+      await this.render();
     });
 
     const zoomGroup = controls.createDiv({ cls: "fishbone-zoom-readout" });
@@ -314,6 +338,135 @@ export class FishboneTimelineView extends ItemView {
   private renderInlineError(container: Element, error: unknown): void {
     const panel = container.createDiv({ cls: "fishbone-inline-error" });
     panel.createSpan({ text: `Fishbone Planner 错误：${formatError(error)}` });
+  }
+
+  private renderDashboardPanel(parent: HTMLElement, summary: DashboardSummary): void {
+    const panel = parent.createDiv({ cls: "fishbone-dashboard-panel" });
+    panel.style.width = `${this.dashboardWidth}px`;
+    const resizer = panel.createDiv({ cls: "fishbone-dashboard-resizer" });
+    this.bindDashboardResize(resizer, panel);
+
+    const header = panel.createDiv({ cls: "fishbone-dashboard-header" });
+    header.createDiv({ cls: "fishbone-dashboard-title", text: "辅助面板" });
+    header.createDiv({ cls: "fishbone-dashboard-subtitle", text: `${summary.today} · 本周 ${summary.weekStart} - ${summary.weekEnd}` });
+
+    this.renderDashboardProgressSection(panel, "今日进度", summary.todayProgress);
+    this.renderDashboardProgressSection(panel, "本周进度", summary.weekProgress);
+    this.renderDashboardTaskSection(panel, "今日聚焦", summary.todayTasks.slice(0, 6), "今日暂无任务");
+    this.renderDashboardTaskSection(panel, "本周重点", uniqueDashboardTasks(summary.highPriorityWeekTasks.concat(summary.blockedTasks, summary.doingTasks)).slice(0, 6), "本周暂无重点任务");
+    this.renderDashboardStatusSection(panel, summary);
+    this.renderDashboardMainlineProgress(panel, summary);
+  }
+
+  private renderDashboardProgressSection(parent: HTMLElement, title: string, progress: DashboardProgress): void {
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
+    header.createSpan({ text: title });
+    header.createSpan({ text: `${progress.done}/${progress.total}` });
+    const bar = section.createDiv({ cls: "fishbone-dashboard-progress-bar" });
+    const fill = bar.createDiv({ cls: "fishbone-dashboard-progress-fill" });
+    fill.style.width = `${Math.round(progress.rate * 100)}%`;
+    const meta = section.createDiv({ cls: "fishbone-dashboard-meta-row" });
+    meta.createSpan({ text: `进行中 ${progress.doing}` });
+    meta.createSpan({ text: `阻塞 ${progress.blocked}` });
+    meta.createSpan({ text: `待办 ${progress.todo}` });
+  }
+
+  private renderDashboardTaskSection(parent: HTMLElement, title: string, tasks: PlanningTask[], emptyText: string): void {
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
+    header.createSpan({ text: title });
+    header.createSpan({ text: String(tasks.length) });
+    if (tasks.length === 0) {
+      section.createDiv({ cls: "fishbone-dashboard-empty", text: emptyText });
+      return;
+    }
+    const list = section.createDiv({ cls: "fishbone-dashboard-task-list" });
+    for (const task of tasks) {
+      const row = list.createDiv({ cls: `fishbone-dashboard-task fishbone-task-${task.status}` });
+      row.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"}`);
+      row.addEventListener("click", () => {
+        void this.plugin.taskRepository.openTask(task);
+      });
+      row.createDiv({ cls: "fishbone-dashboard-task-title", text: task.title });
+      const meta = row.createDiv({ cls: "fishbone-dashboard-task-meta" });
+      meta.createSpan({ text: task.mainline ?? "未分配" });
+      meta.createSpan({ text: task.date ?? "无日期" });
+      meta.createSpan({ cls: `fishbone-dashboard-priority is-${task.priority}`, text: formatPriority(task.priority) });
+    }
+  }
+
+  private renderDashboardStatusSection(parent: HTMLElement, summary: DashboardSummary): void {
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
+    header.createSpan({ text: "状态速览" });
+    header.createSpan({ text: String(summary.todoTasks.length + summary.doingTasks.length + summary.blockedTasks.length) });
+    const grid = section.createDiv({ cls: "fishbone-dashboard-status-grid" });
+    this.renderDashboardStatusTile(grid, "待办", summary.todoTasks.length);
+    this.renderDashboardStatusTile(grid, "进行中", summary.doingTasks.length);
+    this.renderDashboardStatusTile(grid, "阻塞", summary.blockedTasks.length);
+    this.renderDashboardStatusTile(grid, "已完成", summary.doneTasks.length);
+  }
+
+  private renderDashboardStatusTile(parent: HTMLElement, label: string, value: number): void {
+    const tile = parent.createDiv({ cls: "fishbone-dashboard-status-tile" });
+    tile.createDiv({ cls: "fishbone-dashboard-status-value", text: String(value) });
+    tile.createDiv({ cls: "fishbone-dashboard-status-label", text: label });
+  }
+
+  private renderDashboardMainlineProgress(parent: HTMLElement, summary: DashboardSummary): void {
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
+    header.createSpan({ text: "主线进度" });
+    header.createSpan({ text: String(summary.mainlineProgress.length) });
+    const list = section.createDiv({ cls: "fishbone-dashboard-mainline-list" });
+    for (const item of summary.mainlineProgress.slice(0, 8)) {
+      const row = list.createDiv({ cls: "fishbone-dashboard-mainline-row" });
+      row.style.setProperty("--mainline-color", item.color);
+      const top = row.createDiv({ cls: "fishbone-dashboard-mainline-top" });
+      top.createSpan({ cls: "fishbone-dashboard-mainline-name", text: item.name });
+      top.createSpan({ text: `${Math.round(item.rate * 100)}%` });
+      const bar = row.createDiv({ cls: "fishbone-dashboard-progress-bar" });
+      const fill = bar.createDiv({ cls: "fishbone-dashboard-progress-fill" });
+      fill.style.width = `${Math.round(item.rate * 100)}%`;
+    }
+  }
+
+  private bindDashboardResize(resizer: HTMLElement, panel: HTMLElement): void {
+    resizer.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      resizer.setPointerCapture(event.pointerId);
+      this.dashboardResizeDrag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startWidth: this.dashboardWidth,
+        panel
+      };
+      panel.addClass("is-resizing");
+    });
+    resizer.addEventListener("pointermove", (event) => {
+      const drag = this.dashboardResizeDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      const nextWidth = normalizeDashboardWidth(drag.startWidth - (event.clientX - drag.startX));
+      this.dashboardWidth = nextWidth;
+      drag.panel.style.width = `${nextWidth}px`;
+    });
+    const finish = async (event: PointerEvent) => {
+      const drag = this.dashboardResizeDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      this.dashboardResizeDrag = null;
+      drag.panel.removeClass("is-resizing");
+      await this.persistDashboardState();
+    };
+    resizer.addEventListener("pointerup", (event) => {
+      void finish(event);
+    });
+    resizer.addEventListener("pointercancel", (event) => {
+      void finish(event);
+    });
   }
 
   private renderCanvas(container: Element, layout: FishboneCanvasLayout, mainlines: Mainline[], tasks: PlanningTask[]): void {
@@ -1638,6 +1791,18 @@ export class FishboneTimelineView extends ItemView {
     }
     await this.plugin.saveData(this.plugin.settings);
   }
+
+  private async persistDashboardState(): Promise<void> {
+    this.plugin.settings.dashboardState = {
+      showDashboard: this.showDashboard,
+      dashboardWidth: normalizeDashboardWidth(this.dashboardWidth)
+    };
+    if (typeof this.plugin.saveFishboneViewState === "function") {
+      await this.plugin.saveFishboneViewState();
+      return;
+    }
+    await this.plugin.saveData(this.plugin.settings);
+  }
 }
 
 interface MainlineEditorOptions {
@@ -1972,6 +2137,20 @@ function formatPriority(priority: PlanningTask["priority"]): string {
     default:
       return priority;
   }
+}
+
+function normalizeDashboardWidth(value: unknown): number {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : 340;
+  return Math.max(280, Math.min(520, Math.round(numeric)));
+}
+
+function uniqueDashboardTasks(tasks: PlanningTask[]): PlanningTask[] {
+  const seen = new Set<string>();
+  return tasks.filter((task) => {
+    if (seen.has(task.taskId)) return false;
+    seen.add(task.taskId);
+    return true;
+  });
 }
 
 function formatMode(mode: TimeAxisMode): string {
