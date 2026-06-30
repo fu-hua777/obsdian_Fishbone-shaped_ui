@@ -72,7 +72,7 @@ function main() {
     "bindCanvasKeyboard",
     "persistViewState",
     "updateMainlineFlags",
-    "const targetDate = drag.taskNode.task.date"
+    "const targetDate = canvasPointToDate(point, this.viewport) ?? drag.taskNode.task.date"
   ]);
 
   requireText("plugin/src/data/mainlineRepository.ts", [

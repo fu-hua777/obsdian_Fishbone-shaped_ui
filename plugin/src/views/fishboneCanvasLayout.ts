@@ -30,6 +30,9 @@ export const TASK_CLUSTER_HEIGHT = 46;
 const COMPACT_BUCKET_THRESHOLD = 10;
 const COMPACT_BUCKET_VISIBLE_LIMIT = 8;
 const TASK_NODE_COLUMN_GAP = 24;
+const TASK_SIDE_BASE_OFFSET = 46;
+const TASK_SIDE_TRACK_GAP = 44;
+const TASK_TRACK_COLLISION_GAP = 18;
 
 export interface FishboneCanvasLayoutOptions {
   showHiddenMainlines: boolean;
@@ -111,6 +114,7 @@ export interface FishboneCanvasBranchMainline {
   xEnd: number;
   y: number;
   parentY: number;
+  side: "above" | "below";
   taskCount: number;
   isCollapsed: boolean;
   startDate: string;
@@ -178,7 +182,9 @@ export function buildFishboneCanvasLayout(
   const stageHeight = Math.max(
     900,
     ...lanes.map((lane) => lane.y + lane.height + 220),
-    ...branchMainlines.map((branch) => branch.y + 220)
+    ...branchMainlines.map((branch) => branch.y + 220),
+    ...taskNodes.map((node) => node.y + node.height + 220),
+    ...clusters.map((cluster) => cluster.y + TASK_CLUSTER_HEIGHT + 220)
   );
 
   return {
@@ -416,6 +422,7 @@ function buildCanvasBranchMainlines(
           xEnd: Math.max(xStart, xEnd),
           y,
           parentY: parentLane.spineY,
+          side: y < parentLane.spineY ? "above" : "below",
           taskCount: tasks.filter((task) => task.branchMainlineId === branch.id || task.branchMainline === branch.name).length,
           isCollapsed: branch.collapsed,
           startDate: normalizedStart,
@@ -471,7 +478,13 @@ function buildCanvasTasks(
 
   const taskNodes: FishboneCanvasTaskNode[] = [];
   const clusters: FishboneCanvasTaskCluster[] = [];
-  for (const [bucketId, bucket] of bucketTasks) {
+  const sortedBuckets = [...bucketTasks.entries()].sort(([, a], [, b]) => {
+    const laneCompare = a.lane.id.localeCompare(b.lane.id);
+    if (laneCompare !== 0) return laneCompare;
+    return dateToCanvasXWithScale(a.date, viewport, dateScale) - dateToCanvasXWithScale(b.date, viewport, dateScale);
+  });
+
+  for (const [bucketId, bucket] of sortedBuckets) {
     const expanded = options.expandedClusters.has(bucketId);
     const compacted = bucket.tasks.length >= COMPACT_BUCKET_THRESHOLD && !expanded;
     const visibleTasks = compacted ? bucket.tasks.slice(0, COMPACT_BUCKET_VISIBLE_LIMIT) : bucket.tasks;
@@ -495,6 +508,7 @@ function buildCanvasTasks(
     }
   }
 
+  resolveTaskNodeTracks(taskNodes);
   return { taskNodes, clusters };
 }
 
@@ -578,11 +592,64 @@ function createTaskNodeForBucket(
   branchMainlineId: string | null
 ): FishboneCanvasTaskNode {
   const x = dateToCanvasXWithScale(date, viewport, dateScale) + getDenseBucketOffset(index, bucketSize);
-  const branchSide = index % 2 === 0 ? "above" : "below";
+  const baseSide = getBucketBaseSide(lane.id, date);
+  const branchSide = index % 2 === 0 ? baseSide : getOppositeBranchSide(baseSide);
   const branchIndex = Math.floor(index / 2);
-  const branchOffset = isCompacted ? 34 + branchIndex * 36 : 42 + branchIndex * 40;
+  const branchOffset = isCompacted ? 34 + branchIndex * 36 : TASK_SIDE_BASE_OFFSET + branchIndex * TASK_SIDE_TRACK_GAP;
   const y = branchSide === "above" ? lane.spineY - branchOffset : lane.spineY + branchOffset;
   return createTaskNode(task, lane.id, bucketId, x, y, branchIndex, branchSide, lane.color, lane.spineY, isCompacted, branchMainlineId, date);
+}
+
+function resolveTaskNodeTracks(taskNodes: FishboneCanvasTaskNode[]): void {
+  const groups = new Map<string, FishboneCanvasTaskNode[]>();
+  for (const node of taskNodes) {
+    const key = `${node.laneId}:${node.branchSide}`;
+    const group = groups.get(key) ?? [];
+    group.push(node);
+    groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    const trackRightEdges: number[] = [];
+    group
+      .sort((a, b) => a.x - b.x || a.y - b.y || a.task.title.localeCompare(b.task.title))
+      .forEach((node) => {
+        const left = node.x - node.width / 2;
+        const right = node.x + node.width / 2;
+        let track = trackRightEdges.findIndex((edge) => left >= edge + TASK_TRACK_COLLISION_GAP);
+        if (track < 0) {
+          track = trackRightEdges.length;
+          trackRightEdges.push(Number.NEGATIVE_INFINITY);
+        }
+        trackRightEdges[track] = right;
+        moveTaskNodeToTrack(node, track);
+      });
+  }
+}
+
+function moveTaskNodeToTrack(node: FishboneCanvasTaskNode, track: number): void {
+  const offset = (node.isCompacted ? 34 : TASK_SIDE_BASE_OFFSET) + track * TASK_SIDE_TRACK_GAP;
+  const y = node.branchSide === "above" ? node.spineAnchor.y - offset : node.spineAnchor.y + offset;
+  node.y = y;
+  node.branchIndex = track;
+  const halfWidth = node.width / 2;
+  const halfHeight = node.height / 2;
+  node.anchorTop = { x: node.x, y: y - halfHeight };
+  node.anchorBottom = { x: node.x, y: y + halfHeight };
+  node.anchorLeft = { x: node.x - halfWidth, y };
+  node.anchorRight = { x: node.x + halfWidth, y };
+}
+
+function getBucketBaseSide(laneId: string, date: string | null): "above" | "below" {
+  if (!date) return laneId === UNASSIGNED_LANE_ID ? "above" : "below";
+  const parsed = parseDateString(date);
+  if (!parsed) return "below";
+  const seed = parsed.getDate() + laneId.length;
+  return seed % 2 === 0 ? "above" : "below";
+}
+
+function getOppositeBranchSide(side: "above" | "below"): "above" | "below" {
+  return side === "above" ? "below" : "above";
 }
 
 function getDenseBucketOffset(index: number, bucketSize: number): number {
@@ -693,11 +760,12 @@ function buildRelationLines(
     source.task.relations.forEach((relation, index) => {
       const target = resolveRelationTarget(relation.target, byTaskId, byPath, byTitle);
       if (!target || target.task.taskId === source.task.taskId) return;
-      const start = source.x <= target.x ? source.anchorRight : source.anchorLeft;
-      const end = source.x <= target.x ? target.anchorLeft : target.anchorRight;
+      const { start, end } = getRelationAnchors(source, target);
       const distance = Math.max(80, Math.abs(end.x - start.x));
-      const bend = Math.min(220, distance * 0.42);
-      const direction = source.x <= target.x ? 1 : -1;
+      const verticalDistance = Math.abs(end.y - start.y);
+      const bend = Math.min(260, Math.max(90, distance * 0.38));
+      const direction = start.x <= end.x ? 1 : -1;
+      const routeOffset = getRelationRouteOffset(index, start, end, verticalDistance);
       const style = getRelationStyle(relation.type);
       lines.push({
         id: `${source.task.taskId}:${target.task.taskId}:${index}`,
@@ -715,12 +783,32 @@ function buildRelationLines(
         arrow: relation.direction === "both" ? "both" : relation.direction === "in" ? "source" : "target",
         start,
         end,
-        control1: { x: start.x + bend * direction, y: start.y },
-        control2: { x: end.x - bend * direction, y: end.y }
+        control1: { x: start.x + bend * direction, y: start.y + routeOffset },
+        control2: { x: end.x - bend * direction, y: end.y + routeOffset }
       });
     });
   }
   return lines;
+}
+
+function getRelationAnchors(source: FishboneCanvasTaskNode, target: FishboneCanvasTaskNode): { start: FishboneCanvasAnchor; end: FishboneCanvasAnchor } {
+  const horizontalDistance = Math.abs(source.x - target.x);
+  const verticalDistance = Math.abs(source.y - target.y);
+  if (horizontalDistance < TASK_NODE_WIDTH * 0.75 && verticalDistance > TASK_NODE_HEIGHT) {
+    return source.y <= target.y
+      ? { start: source.anchorBottom, end: target.anchorTop }
+      : { start: source.anchorTop, end: target.anchorBottom };
+  }
+  return source.x <= target.x
+    ? { start: source.anchorRight, end: target.anchorLeft }
+    : { start: source.anchorLeft, end: target.anchorRight };
+}
+
+function getRelationRouteOffset(index: number, start: FishboneCanvasAnchor, end: FishboneCanvasAnchor, verticalDistance: number): number {
+  const laneSide = start.y <= end.y ? -1 : 1;
+  const alternating = index % 2 === 0 ? 1 : -1;
+  const congestionOffset = Math.min(90, verticalDistance * 0.18);
+  return (24 + congestionOffset + Math.floor(index / 2) * 14) * laneSide * alternating;
 }
 
 function resolveRelationTarget(

@@ -98,6 +98,7 @@ function main() {
     "branchMainlines",
     "canvasPointToBranchMainline",
     "buildCanvasBranchMainlines",
+    "side: \"above\" | \"below\"",
     "resolveTaskBranch",
     "resolveTaskBranchMainline",
     "createBranchTaskLane",
@@ -115,7 +116,10 @@ function main() {
     "转换为分支主线",
     "移出分支主线",
     "renderCanvasBranchMainline",
+    "getBranchConnectorPath",
+    "getBranchConnectorBounds",
     "fishbone-branch-mainline-layer",
+    "fishbone-branch-mainline-connector-path",
     "is-branch-task",
     "分支主线",
     "显示日期"
@@ -124,6 +128,7 @@ function main() {
   requireText("plugin/styles.css", [
     ".fishbone-branch-mainline-layer",
     ".fishbone-branch-mainline-connector",
+    ".fishbone-branch-mainline-connector-path",
     ".fishbone-branch-mainline",
     ".fishbone-branch-mainline-line",
     ".fishbone-branch-mainline-label",

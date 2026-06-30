@@ -422,15 +422,26 @@ export class FishboneTimelineView extends ItemView {
 
   private renderCanvasBranchMainline(parent: HTMLElement, branch: FishboneCanvasBranchMainline, mainlines: Mainline[], tasks: PlanningTask[]): void {
     const branchMainline = mainlines.find((mainline) => mainline.id === branch.id);
-    const connector = parent.createDiv({ cls: "fishbone-branch-mainline-connector" });
+    const connectorBounds = this.getBranchConnectorBounds(branch);
+    const connector = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    connector.addClass("fishbone-branch-mainline-connector");
+    connector.addClass(`fishbone-branch-${branch.side}`);
     connector.style.setProperty("--lane-color", branch.color);
-    connector.style.left = `${branch.xStart}px`;
-    connector.style.top = `${Math.min(branch.parentY, branch.y)}px`;
-    connector.style.height = `${Math.max(8, Math.abs(branch.y - branch.parentY))}px`;
+    connector.style.left = `${connectorBounds.left}px`;
+    connector.style.top = `${connectorBounds.top}px`;
+    connector.style.width = `${connectorBounds.width}px`;
+    connector.style.height = `${connectorBounds.height}px`;
+    connector.setAttribute("viewBox", `0 0 ${connectorBounds.width} ${connectorBounds.height}`);
+    const connectorPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    connectorPath.addClass("fishbone-branch-mainline-connector-path");
+    connectorPath.setAttribute("d", this.getBranchConnectorPath(branch, connectorBounds.left, connectorBounds.top));
+    connector.appendChild(connectorPath);
+    parent.appendChild(connector);
 
     const spine = parent.createDiv({
       cls: [
         "fishbone-branch-mainline",
+        `fishbone-branch-${branch.side}`,
         branch.isCollapsed ? "is-collapsed" : ""
       ].filter(Boolean).join(" ")
     });
@@ -455,6 +466,29 @@ export class FishboneTimelineView extends ItemView {
       this.bindBranchMainlineContextMenu(spine, branchMainline, mainlines, tasks);
       this.bindBranchMainlineDrag(spine, branch);
     }
+  }
+
+  private getBranchConnectorBounds(branch: FishboneCanvasBranchMainline): { left: number; top: number; width: number; height: number } {
+    const left = branch.xStart - 44;
+    const right = branch.xStart + 76;
+    const top = Math.min(branch.parentY, branch.y) - 30;
+    const bottom = Math.max(branch.parentY, branch.y) + 30;
+    return {
+      left,
+      top,
+      width: Math.max(96, right - left),
+      height: Math.max(64, bottom - top)
+    };
+  }
+
+  private getBranchConnectorPath(branch: FishboneCanvasBranchMainline, left: number, top: number): string {
+    const startX = branch.xStart - left;
+    const startY = branch.parentY - top;
+    const endX = branch.xStart + 32 - left;
+    const endY = branch.y - top;
+    const direction = branch.side === "above" ? -1 : 1;
+    const curveY = Math.max(24, Math.abs(endY - startY) * 0.42) * direction;
+    return `M ${startX} ${startY} C ${startX + 18} ${startY + curveY}, ${endX - 30} ${endY}, ${endX} ${endY}`;
   }
 
   private renderRelationLayer(stage: HTMLElement, relationLines: FishboneCanvasRelationLine[]): void {
@@ -1045,9 +1079,11 @@ export class FishboneTimelineView extends ItemView {
         return;
       }
 
-      const targetDate = drag.taskNode.task.date;
+      const targetDate = canvasPointToDate(point, this.viewport) ?? drag.taskNode.task.date;
       const targetMainline = canvasPointToMainline(drag.layout.lanes, point);
       if (typeof targetMainline === "undefined") {
+        drag.element.style.left = `${drag.taskNode.x}px`;
+        drag.element.style.top = `${drag.taskNode.y}px`;
         this.applyCanvasTransform(drag.canvas);
         return;
       }
@@ -1118,7 +1154,7 @@ export class FishboneTimelineView extends ItemView {
       return;
     }
     const lane = canvasPointToLane(layout.lanes, point);
-    const date = lockedDate ?? canvasPointToDate(point, this.viewport);
+    const date = canvasPointToDate(point, this.viewport) ?? lockedDate;
     hint.setText(`${date ?? "无日期"} · ${lane?.name ?? "无主线"}`);
     hint.addClass("is-visible");
     hint.removeClass("is-branch-target");
