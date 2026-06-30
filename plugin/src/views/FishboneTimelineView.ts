@@ -137,7 +137,7 @@ export class FishboneTimelineView extends ItemView {
       titleGroup.createDiv({ cls: "fishbone-timeline-title", text: "鱼骨画布视图" });
       titleGroup.createDiv({ cls: "fishbone-toolbar-subtitle", text: `${formatMode(this.viewport.timeAxisMode)} · 中心 ${this.viewport.centerDate}` });
       this.renderViewportControls(toolbar, tasks, dateRange);
-      this.renderMainlineControls(toolbar);
+      this.renderMainlineControls(toolbar, mainlines);
 
       const summary = container.createDiv({ cls: "fishbone-timeline-summary" });
       summary.createSpan({ text: `任务 ${tasks.length}` });
@@ -225,19 +225,24 @@ export class FishboneTimelineView extends ItemView {
     zoomGroup.createSpan({ text: `${Math.round(this.viewport.timeScale)}px/天` });
   }
 
-  private renderMainlineControls(toolbar: HTMLElement): void {
+  private renderMainlineControls(toolbar: HTMLElement, mainlines: Mainline[]): void {
     const actionGroup = toolbar.createDiv({ cls: "fishbone-toolbar-actions" });
-    this.createToolbarButton(actionGroup, this.showHiddenMainlines ? "隐藏已隐藏" : "管理隐藏", async () => {
-      this.showHiddenMainlines = !this.showHiddenMainlines;
-      await this.persistViewState();
-      await this.render();
-    });
-    this.createToolbarButton(actionGroup, "显示全部主线", async () => {
-      await this.plugin.mainlineRepository.showAllMainlines();
-      this.showHiddenMainlines = false;
-      await this.persistViewState();
-      await this.render();
-    });
+    const hasHiddenMainlines = mainlines.some((mainline) => mainline.visible === false);
+    if (hasHiddenMainlines || this.showHiddenMainlines) {
+      this.createToolbarButton(actionGroup, this.showHiddenMainlines ? "隐藏已隐藏" : "管理隐藏", async () => {
+        this.showHiddenMainlines = !this.showHiddenMainlines;
+        await this.persistViewState();
+        await this.render();
+      });
+    }
+    if (hasHiddenMainlines) {
+      this.createToolbarButton(actionGroup, "显示全部主线", async () => {
+        await this.plugin.mainlineRepository.showAllMainlines();
+        this.showHiddenMainlines = false;
+        await this.persistViewState();
+        await this.render();
+      });
+    }
     this.createToolbarButton(actionGroup, "新建主线", async () => {
       new MainlineEditorModal(this.plugin, {
         title: "新建主线",
@@ -366,6 +371,15 @@ export class FishboneTimelineView extends ItemView {
       }
     }
 
+    const branchMainlineLabelLayer = stage.createDiv({ cls: "fishbone-branch-mainline-label-layer" });
+    for (const branch of layout.branchMainlines) {
+      try {
+        this.renderCanvasBranchMainlineLabel(branchMainlineLabelLayer, branch, mainlines, tasks);
+      } catch (error) {
+        console.error("Fishbone Planner: failed to render branch mainline label", branch.id, error);
+      }
+    }
+
     const labelLayer = canvas.createDiv({ cls: "fishbone-canvas-label-layer" });
     for (const lane of layout.lanes) {
       try {
@@ -453,9 +467,6 @@ export class FishboneTimelineView extends ItemView {
     spine.setAttr("title", `${branch.name}\n${branch.startDate} - ${branch.endDate}`);
     spine.createDiv({ cls: "fishbone-branch-mainline-line" });
 
-    const label = spine.createDiv({ cls: "fishbone-branch-mainline-label" });
-    label.createSpan({ cls: "fishbone-branch-mainline-name", text: branch.name });
-    label.createSpan({ cls: "fishbone-branch-mainline-meta", text: `${branch.startDate} - ${branch.endDate} · ${branch.taskCount}` });
     if (branchMainline) {
       spine.addEventListener("click", (event) => {
         event.preventDefault();
@@ -465,6 +476,35 @@ export class FishboneTimelineView extends ItemView {
       });
       this.bindBranchMainlineContextMenu(spine, branchMainline, mainlines, tasks);
       this.bindBranchMainlineDrag(spine, branch);
+    }
+  }
+
+  private renderCanvasBranchMainlineLabel(parent: HTMLElement, branch: FishboneCanvasBranchMainline, mainlines: Mainline[], tasks: PlanningTask[]): void {
+    const branchMainline = mainlines.find((mainline) => mainline.id === branch.id);
+    const label = parent.createDiv({
+      cls: [
+        "fishbone-branch-mainline-label",
+        "fishbone-branch-mainline-floating-label",
+        `fishbone-branch-${branch.side}`,
+        branch.isCollapsed ? "is-collapsed" : ""
+      ].filter(Boolean).join(" ")
+    });
+    label.style.setProperty("--lane-color", branch.color);
+    label.style.left = `${branch.xStart + 8}px`;
+    label.style.top = `${branch.side === "above" ? branch.y - 50 : branch.y + 15}px`;
+    label.setAttr("data-branch-mainline-id", branch.id);
+    label.setAttr("title", `${branch.name}\n${branch.startDate} - ${branch.endDate}`);
+    label.createSpan({ cls: "fishbone-branch-mainline-name", text: branch.name });
+    label.createSpan({ cls: "fishbone-branch-mainline-meta", text: `${branch.startDate} - ${branch.endDate} · ${branch.taskCount}` });
+    if (branchMainline) {
+      label.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (this.suppressNextBranchClick) return;
+        this.openEditBranchMainlineModal(branchMainline, mainlines);
+      });
+      this.bindBranchMainlineContextMenu(label, branchMainline, mainlines, tasks);
+      this.bindBranchMainlineDrag(label, branch);
     }
   }
 

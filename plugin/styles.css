@@ -204,6 +204,7 @@
 .fishbone-relation-layer,
 .fishbone-mainline-layer,
 .fishbone-branch-mainline-layer,
+.fishbone-branch-mainline-label-layer,
 .fishbone-task-branch-layer,
 .fishbone-task-layer {
   position: absolute;
@@ -233,7 +234,12 @@
 }
 
 .fishbone-branch-mainline-layer {
-  z-index: 5;
+  z-index: 3;
+}
+
+.fishbone-branch-mainline-label-layer {
+  z-index: 6;
+  pointer-events: none;
 }
 
 .fishbone-relation-layer.is-hidden {
@@ -487,6 +493,11 @@
 
 .fishbone-branch-mainline.fishbone-branch-below .fishbone-branch-mainline-label {
   top: 19px;
+}
+
+.fishbone-branch-mainline-floating-label {
+  pointer-events: auto;
+  max-width: 320px;
 }
 
 .fishbone-branch-mainline-name {

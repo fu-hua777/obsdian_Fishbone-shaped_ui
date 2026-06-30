@@ -59,17 +59,22 @@ function main() {
   requireText("plugin/src/views/FishboneTimelineView.ts", [
     "getBranchConnectorBounds",
     "getBranchConnectorPath",
+    "renderCanvasBranchMainlineLabel",
     "fishbone-branch-mainline-connector-path",
+    "fishbone-branch-mainline-label-layer",
     "const targetDate = canvasPointToDate(point, this.viewport) ?? drag.taskNode.task.date",
     "drag.element.style.left = `${drag.taskNode.x}px`",
-    "branch.side"
+    "branch.side",
+    "hasHiddenMainlines",
+    "renderMainlineControls(toolbar, mainlines)"
   ]);
 
   requireText("plugin/styles.css", [
     ".fishbone-branch-mainline-connector-path",
-    ".fishbone-branch-mainline.fishbone-branch-below .fishbone-branch-mainline-label",
     ".fishbone-branch-mainline-layer",
-    "z-index: 5"
+    ".fishbone-branch-mainline-label-layer",
+    ".fishbone-branch-mainline-floating-label",
+    "z-index: 6"
   ]);
 
   console.log("M5.5-M5.7 canvas polish validation passed.");

@@ -116,9 +116,11 @@ function main() {
     "转换为分支主线",
     "移出分支主线",
     "renderCanvasBranchMainline",
+    "renderCanvasBranchMainlineLabel",
     "getBranchConnectorPath",
     "getBranchConnectorBounds",
     "fishbone-branch-mainline-layer",
+    "fishbone-branch-mainline-label-layer",
     "fishbone-branch-mainline-connector-path",
     "is-branch-task",
     "分支主线",
@@ -127,6 +129,7 @@ function main() {
 
   requireText("plugin/styles.css", [
     ".fishbone-branch-mainline-layer",
+    ".fishbone-branch-mainline-label-layer",
     ".fishbone-branch-mainline-connector",
     ".fishbone-branch-mainline-connector-path",
     ".fishbone-branch-mainline",
