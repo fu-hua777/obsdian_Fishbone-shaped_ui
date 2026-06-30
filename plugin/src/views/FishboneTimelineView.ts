@@ -85,6 +85,9 @@ export class FishboneTimelineView extends ItemView {
     active: boolean;
     canvas: HTMLElement;
     element: HTMLElement;
+    startCanvasY: number;
+    startBranchOffset: number;
+    elementStartTop: number;
   } | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FishbonePlannerPlugin) {
@@ -509,8 +512,8 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private getBranchConnectorBounds(branch: FishboneCanvasBranchMainline): { left: number; top: number; width: number; height: number } {
-    const left = branch.xStart - 44;
-    const right = branch.xStart + 76;
+    const left = branch.xStart - 84;
+    const right = branch.xStart + 112;
     const top = Math.min(branch.parentY, branch.y) - 30;
     const bottom = Math.max(branch.parentY, branch.y) + 30;
     return {
@@ -524,11 +527,11 @@ export class FishboneTimelineView extends ItemView {
   private getBranchConnectorPath(branch: FishboneCanvasBranchMainline, left: number, top: number): string {
     const startX = branch.xStart - left;
     const startY = branch.parentY - top;
-    const endX = branch.xStart + 32 - left;
+    const endX = branch.xStart - left;
     const endY = branch.y - top;
-    const direction = branch.side === "above" ? -1 : 1;
-    const curveY = Math.max(24, Math.abs(endY - startY) * 0.42) * direction;
-    return `M ${startX} ${startY} C ${startX + 18} ${startY + curveY}, ${endX - 30} ${endY}, ${endX} ${endY}`;
+    const bendX = startX - 36;
+    const tailX = endX + 56;
+    return `M ${startX} ${startY} C ${bendX} ${startY}, ${bendX} ${endY}, ${endX} ${endY} L ${tailX} ${endY}`;
   }
 
   private renderRelationLayer(stage: HTMLElement, relationLines: FishboneCanvasRelationLine[]): void {
@@ -1372,7 +1375,7 @@ export class FishboneTimelineView extends ItemView {
       }, 250);
 
       const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
-      const nextOffset = drag.branch.branchOffset + (point.y - drag.branch.y);
+      const nextOffset = drag.startBranchOffset + (point.y - drag.startCanvasY);
       await this.plugin.mainlineRepository.updateBranchMainlineOffset(drag.branch.id, nextOffset);
       await this.render();
     };
@@ -1383,6 +1386,7 @@ export class FishboneTimelineView extends ItemView {
       clearTimer();
       const canvas = node.closest(".fishbone-canvas-viewport") as HTMLElement | null;
       if (!canvas) return;
+      const startPoint = clientPointToCanvasPoint(event.clientX, event.clientY, canvas.getBoundingClientRect(), this.viewport);
       node.setPointerCapture(event.pointerId);
       this.branchPointerDrag = {
         branch,
@@ -1390,7 +1394,10 @@ export class FishboneTimelineView extends ItemView {
         timer: null,
         active: false,
         canvas,
-        element: node
+        element: node,
+        startCanvasY: startPoint.y,
+        startBranchOffset: branch.branchOffset,
+        elementStartTop: Number.parseFloat(node.style.top) || branch.y
       };
       timer = window.setTimeout(() => {
         if (!this.branchPointerDrag || this.branchPointerDrag.pointerId !== event.pointerId) return;
@@ -1405,7 +1412,7 @@ export class FishboneTimelineView extends ItemView {
       event.preventDefault();
       event.stopPropagation();
       const point = clientPointToCanvasPoint(event.clientX, event.clientY, drag.canvas.getBoundingClientRect(), this.viewport);
-      node.style.top = `${point.y}px`;
+      node.style.top = `${drag.elementStartTop + point.y - drag.startCanvasY}px`;
     });
     node.addEventListener("pointerup", (event) => {
       void finishBranchDrag(event);

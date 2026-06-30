@@ -62,11 +62,17 @@ function main() {
     "renderCanvasBranchMainlineLabel",
     "fishbone-branch-mainline-connector-path",
     "fishbone-branch-mainline-label-layer",
+    "const bendX = startX - 36",
+    "const tailX = endX + 56",
+    "L ${tailX} ${endY}",
     "const targetDate = canvasPointToDate(point, this.viewport) ?? drag.taskNode.task.date",
     "drag.element.style.left = `${drag.taskNode.x}px`",
     "branch.side",
     "hasHiddenMainlines",
-    "renderMainlineControls(toolbar, mainlines)"
+    "renderMainlineControls(toolbar, mainlines)",
+    "startCanvasY",
+    "startBranchOffset",
+    "elementStartTop"
   ]);
 
   requireText("plugin/styles.css", [
