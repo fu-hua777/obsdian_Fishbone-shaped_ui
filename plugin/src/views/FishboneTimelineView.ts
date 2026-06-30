@@ -468,8 +468,6 @@ export class FishboneTimelineView extends ItemView {
     spine.style.width = `${Math.max(80, branch.xEnd - branch.xStart)}px`;
     spine.setAttr("data-branch-mainline-id", branch.id);
     spine.setAttr("title", `${branch.name}\n${branch.startDate} - ${branch.endDate}`);
-    spine.createDiv({ cls: "fishbone-branch-mainline-junction" });
-    spine.createDiv({ cls: "fishbone-branch-mainline-line" });
 
     if (branchMainline) {
       spine.addEventListener("click", (event) => {
@@ -513,7 +511,7 @@ export class FishboneTimelineView extends ItemView {
 
   private getBranchConnectorBounds(branch: FishboneCanvasBranchMainline): { left: number; top: number; width: number; height: number } {
     const left = branch.xStart - 84;
-    const right = branch.xStart + 32;
+    const right = branch.xEnd + 16;
     const top = Math.min(branch.parentY, branch.y) - 30;
     const bottom = Math.max(branch.parentY, branch.y) + 30;
     return {
@@ -530,7 +528,8 @@ export class FishboneTimelineView extends ItemView {
     const endX = branch.xStart - left;
     const endY = branch.y - top;
     const bendX = startX - 36;
-    return `M ${startX} ${startY} C ${bendX} ${startY}, ${bendX} ${endY}, ${endX} ${endY}`;
+    const tailX = branch.xEnd - left;
+    return `M ${startX} ${startY} C ${bendX} ${startY}, ${bendX} ${endY}, ${endX} ${endY} L ${tailX} ${endY}`;
   }
 
   private renderRelationLayer(stage: HTMLElement, relationLines: FishboneCanvasRelationLine[]): void {

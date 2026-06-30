@@ -133,7 +133,6 @@ function main() {
     ".fishbone-branch-mainline-connector",
     ".fishbone-branch-mainline-connector-path",
     ".fishbone-branch-mainline",
-    ".fishbone-branch-mainline-line",
     ".fishbone-branch-mainline-label",
     ".fishbone-task-node.is-branch-task",
     ".fishbone-branch-mainline.fishbone-branch-dragging",

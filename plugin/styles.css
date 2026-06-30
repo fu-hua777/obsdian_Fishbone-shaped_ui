@@ -448,43 +448,10 @@
   cursor: pointer;
 }
 
-.fishbone-branch-mainline:hover .fishbone-branch-mainline-line,
-.fishbone-branch-mainline.fishbone-branch-dragging .fishbone-branch-mainline-line {
-  height: 4px;
-  background: color-mix(in srgb, var(--lane-color) 82%, var(--background-modifier-border));
-  box-shadow: 0 0 16px color-mix(in srgb, var(--lane-color) 44%, transparent);
-}
-
 .fishbone-branch-mainline.fishbone-branch-dragging {
   z-index: 6;
   opacity: 0.78;
   cursor: grabbing;
-}
-
-.fishbone-branch-mainline-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 3px;
-  transform: translateY(-50%);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--lane-color) 64%, var(--background-modifier-border));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--lane-color) 24%, transparent);
-}
-
-.fishbone-branch-mainline-junction {
-  position: absolute;
-  left: -4px;
-  top: 50%;
-  z-index: 2;
-  width: 8px;
-  height: 8px;
-  transform: translateY(-50%);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--lane-color) 78%, var(--background-modifier-border));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--lane-color) 36%, transparent);
-  pointer-events: none;
 }
 
 .fishbone-branch-mainline-label {
