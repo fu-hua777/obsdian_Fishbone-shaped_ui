@@ -350,16 +350,18 @@ export class FishboneTimelineView extends ItemView {
     header.createDiv({ cls: "fishbone-dashboard-title", text: "辅助面板" });
     header.createDiv({ cls: "fishbone-dashboard-subtitle", text: `${summary.today} · 本周 ${summary.weekStart} - ${summary.weekEnd}` });
 
-    this.renderDashboardProgressSection(panel, "今日进度", summary.todayProgress);
-    this.renderDashboardProgressSection(panel, "本周进度", summary.weekProgress);
-    this.renderDashboardTaskSection(panel, "今日聚焦", summary.todayTasks.slice(0, 6), "今日暂无任务");
-    this.renderDashboardTaskSection(panel, "本周重点", uniqueDashboardTasks(summary.highPriorityWeekTasks.concat(summary.blockedTasks, summary.doingTasks)).slice(0, 6), "本周暂无重点任务");
-    this.renderDashboardStatusSection(panel, summary);
-    this.renderDashboardMainlineProgress(panel, summary);
+    const modules = panel.createDiv({ cls: "fishbone-dashboard-modules" });
+    const progressGrid = modules.createDiv({ cls: "fishbone-dashboard-progress-grid" });
+    this.renderDashboardProgressSection(progressGrid, "今日进度", summary.todayProgress);
+    this.renderDashboardProgressSection(progressGrid, "本周进度", summary.weekProgress);
+    this.renderDashboardTaskSection(modules, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务");
+    this.renderDashboardTaskSection(modules, "本周重点", uniqueDashboardTasks(summary.highPriorityWeekTasks.concat(summary.blockedTasks, summary.doingTasks)).slice(0, 8), "本周暂无重点任务");
+    this.renderDashboardStatusSection(modules, summary);
+    this.renderDashboardMainlineProgress(modules, summary);
   }
 
   private renderDashboardProgressSection(parent: HTMLElement, title: string, progress: DashboardProgress): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-progress-module" });
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
     header.createSpan({ text: title });
     header.createSpan({ text: `${progress.done}/${progress.total}` });
@@ -373,7 +375,7 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderDashboardTaskSection(parent: HTMLElement, title: string, tasks: PlanningTask[], emptyText: string): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-scroll-module" });
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
     header.createSpan({ text: title });
     header.createSpan({ text: String(tasks.length) });
@@ -397,7 +399,7 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderDashboardStatusSection(parent: HTMLElement, summary: DashboardSummary): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-status-module" });
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
     header.createSpan({ text: "状态速览" });
     header.createSpan({ text: String(summary.todoTasks.length + summary.doingTasks.length + summary.blockedTasks.length) });
@@ -415,7 +417,7 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderDashboardMainlineProgress(parent: HTMLElement, summary: DashboardSummary): void {
-    const section = parent.createDiv({ cls: "fishbone-dashboard-section" });
+    const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-scroll-module" });
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
     header.createSpan({ text: "主线进度" });
     header.createSpan({ text: String(summary.mainlineProgress.length) });
