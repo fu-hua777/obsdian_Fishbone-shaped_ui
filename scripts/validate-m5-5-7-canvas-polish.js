@@ -69,10 +69,14 @@ function main() {
     "moveTaskNodeToTrack",
     "getBucketBaseSide",
     "getRelationAnchors",
-    "getRelationRouteOffset",
+    "getRelationRoute",
+    "getRelationAnchorCandidates",
+    "getAnchorOutwardNormal",
+    "getRoutePerpendicular",
     "buildRelationRouteCandidates",
-    "countRelationObstacleHits",
     "relationCurveIntersectsTask",
+    "relationLabelIntersectsTask",
+    "labelAnchor",
     "cubicBezierPoint",
     "...taskNodes.map((node) => node.y + node.height + 220)",
     "side: \"above\" | \"below\""
@@ -87,6 +91,8 @@ function main() {
     "task-obstacle",
     "relationCurveIntersectsTask",
     "关系线不应穿过非端点任务标签",
+    "relationLabelIntersectsTask",
+    "关系文字不应覆盖任务标签或任务图标",
     "M5.5-M5.7 layout regression passed."
   ]);
 
@@ -102,6 +108,8 @@ function main() {
     "renderCanvasBranchMainlineLabel",
     "fishbone-branch-mainline-connector-path",
     "fishbone-branch-mainline-label-layer",
+    "fishbone-relation-hit-area",
+    "label.setAttribute(\"text-anchor\", \"middle\")",
     "const targetDate = canvasPointToDate(point, this.viewport) ?? drag.taskNode.task.date",
     "drag.element.style.left = `${drag.taskNode.x}px`",
     "branch.side",

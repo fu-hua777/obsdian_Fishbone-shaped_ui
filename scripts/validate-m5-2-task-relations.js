@@ -65,6 +65,8 @@ function main() {
     "group.addClass(line.className)",
     "fishbone-relation-hit-area",
     "hitArea.setAttribute(\"d\", relationPath)",
+    "line.labelAnchor.x",
+    "label.setAttribute(\"text-anchor\", \"middle\")",
     "renderTaskBranchLine",
     "fishbone-task-branch-line",
     "bindTaskDrag",

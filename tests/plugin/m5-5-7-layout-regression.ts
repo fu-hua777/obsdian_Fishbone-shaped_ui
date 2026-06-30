@@ -141,6 +141,9 @@ assert(relationLine.control1.y !== relationLine.start.y || relationLine.control2
 const obstacleNode = taskNodes.find((node) => node.task.taskId === "task-obstacle");
 assert(obstacleNode, "应生成关系线避障测试任务");
 assert(!relationCurveIntersectsTask(relationLine, obstacleNode, 12), "关系线不应穿过非端点任务标签");
+for (const node of taskNodes) {
+  assert(!relationLabelIntersectsTask(relationLine.labelAnchor, relationLine.label, node, 12), "关系文字不应覆盖任务标签或任务图标");
+}
 
 const maxTaskBottom = Math.max(...taskNodes.map((node) => node.y + node.height / 2));
 assert(layout.stageHeight >= maxTaskBottom + 180, "stageHeight 应覆盖避让后最底部任务节点");
@@ -176,6 +179,20 @@ function relationCurveIntersectsTask(line: { start: FishboneCanvasAnchor; contro
     if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) return true;
   }
   return false;
+}
+
+function relationLabelIntersectsTask(anchor: FishboneCanvasAnchor, label: string, taskNode: FishboneCanvasTaskNode, padding: number): boolean {
+  const labelWidth = Math.min(128, Math.max(46, label.length * 14));
+  const labelHeight = 18;
+  const labelLeft = anchor.x - labelWidth / 2 - padding;
+  const labelRight = anchor.x + labelWidth / 2 + padding;
+  const labelTop = anchor.y - labelHeight - padding;
+  const labelBottom = anchor.y + padding;
+  const taskLeft = taskNode.x - taskNode.width / 2;
+  const taskRight = taskNode.x + taskNode.width / 2;
+  const taskTop = taskNode.y - taskNode.height / 2;
+  const taskBottom = taskNode.y + taskNode.height / 2;
+  return !(labelRight < taskLeft || labelLeft > taskRight || labelBottom < taskTop || labelTop > taskBottom);
 }
 
 function cubicBezierPoint(start: FishboneCanvasAnchor, control1: FishboneCanvasAnchor, control2: FishboneCanvasAnchor, end: FishboneCanvasAnchor, t: number): FishboneCanvasAnchor {

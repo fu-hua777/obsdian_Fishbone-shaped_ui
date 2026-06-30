@@ -608,8 +608,9 @@ export class FishboneTimelineView extends ItemView {
 
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
       label.addClass("fishbone-relation-label");
-      label.setAttribute("x", String((line.start.x + line.end.x) / 2));
-      label.setAttribute("y", String((line.start.y + line.end.y) / 2 - 8));
+      label.setAttribute("x", String(line.labelAnchor.x));
+      label.setAttribute("y", String(line.labelAnchor.y));
+      label.setAttribute("text-anchor", "middle");
       label.textContent = line.label;
       group.appendChild(label);
 
