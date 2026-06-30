@@ -31,8 +31,8 @@ function requireBranchConnectorContinuity() {
   assert(method.includes("const startY = branch.parentY - top"), "分支连接线起点必须落在父主线 y");
   assert(method.includes("const endX = branch.xStart - left"), "分支连接线终点必须落在分支线起点 x，避免断开");
   assert(method.includes("const endY = branch.y - top"), "分支连接线终点必须落在分支线 y");
-  assert(method.includes("const tailX = branch.xEnd - left"), "分支连接线必须覆盖到分支线末端");
-  assert(method.includes("L ${tailX} ${endY}"), "分支连接线 path 必须包含贴合分支线的尾段");
+  assert(!method.includes("const tailX"), "分支连接线不能再渲染横向尾段，避免重复生成一条分支主线");
+  assert(!method.includes("L ${tailX} ${endY}"), "分支连接线 path 不能包含贴合整条分支线的尾段");
   assert(!method.includes("branch.xStart + 32 - left"), "分支连接线不能停在分支线附近而不是分支线本体");
   assert(!method.includes("endX + 56"), "分支连接线不能只使用固定短尾巴");
 }
@@ -93,6 +93,7 @@ function main() {
     "renderCanvasBranchMainlineLabel",
     "fishbone-branch-mainline-connector-path",
     "fishbone-branch-mainline-label-layer",
+    "fishbone-branch-mainline-junction",
     "const targetDate = canvasPointToDate(point, this.viewport) ?? drag.taskNode.task.date",
     "drag.element.style.left = `${drag.taskNode.x}px`",
     "branch.side",
@@ -108,6 +109,7 @@ function main() {
   requireText("plugin/styles.css", [
     ".fishbone-branch-mainline-connector-path",
     ".fishbone-branch-mainline-layer",
+    ".fishbone-branch-mainline-junction",
     ".fishbone-branch-mainline-label-layer",
     ".fishbone-branch-mainline-floating-label",
     "z-index: 6"
