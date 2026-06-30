@@ -494,11 +494,10 @@ export class FishboneTimelineView extends ItemView {
     });
     label.style.setProperty("--lane-color", branch.color);
     label.style.left = `${branch.xStart + 8}px`;
-    label.style.top = `${branch.side === "above" ? branch.y - 50 : branch.y + 15}px`;
+    label.style.top = `${branch.y - 24}px`;
     label.setAttr("data-branch-mainline-id", branch.id);
     label.setAttr("title", `${branch.name}\n${branch.startDate} - ${branch.endDate}`);
     label.createSpan({ cls: "fishbone-branch-mainline-name", text: branch.name });
-    label.createSpan({ cls: "fishbone-branch-mainline-meta", text: `${branch.startDate} - ${branch.endDate} · ${branch.taskCount}` });
     if (branchMainline) {
       label.addEventListener("click", (event) => {
         event.preventDefault();
@@ -513,7 +512,7 @@ export class FishboneTimelineView extends ItemView {
 
   private getBranchConnectorBounds(branch: FishboneCanvasBranchMainline): { left: number; top: number; width: number; height: number } {
     const left = branch.xStart - 84;
-    const right = branch.xStart + 112;
+    const right = branch.xEnd + 16;
     const top = Math.min(branch.parentY, branch.y) - 30;
     const bottom = Math.max(branch.parentY, branch.y) + 30;
     return {
@@ -530,7 +529,7 @@ export class FishboneTimelineView extends ItemView {
     const endX = branch.xStart - left;
     const endY = branch.y - top;
     const bendX = startX - 36;
-    const tailX = endX + 56;
+    const tailX = branch.xEnd - left;
     return `M ${startX} ${startY} C ${bendX} ${startY}, ${bendX} ${endY}, ${endX} ${endY} L ${tailX} ${endY}`;
   }
 

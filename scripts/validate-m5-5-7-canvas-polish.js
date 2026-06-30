@@ -31,9 +31,26 @@ function requireBranchConnectorContinuity() {
   assert(method.includes("const startY = branch.parentY - top"), "分支连接线起点必须落在父主线 y");
   assert(method.includes("const endX = branch.xStart - left"), "分支连接线终点必须落在分支线起点 x，避免断开");
   assert(method.includes("const endY = branch.y - top"), "分支连接线终点必须落在分支线 y");
-  assert(method.includes("const tailX = endX + 56"), "分支连接线必须沿分支线重叠一段");
+  assert(method.includes("const tailX = branch.xEnd - left"), "分支连接线必须覆盖到分支线末端");
   assert(method.includes("L ${tailX} ${endY}"), "分支连接线 path 必须包含贴合分支线的尾段");
   assert(!method.includes("branch.xStart + 32 - left"), "分支连接线不能停在分支线附近而不是分支线本体");
+  assert(!method.includes("endX + 56"), "分支连接线不能只使用固定短尾巴");
+}
+
+function requireBranchLabelPolish() {
+  const view = read("plugin/src/views/FishboneTimelineView.ts");
+  const labelMethodMatch = view.match(/private renderCanvasBranchMainlineLabel[\s\S]*?\n  \}/);
+  assert(labelMethodMatch, "缺少 renderCanvasBranchMainlineLabel 方法");
+  const labelMethod = labelMethodMatch[0];
+  assert(labelMethod.includes("label.createSpan({ cls: \"fishbone-branch-mainline-name\", text: branch.name })"), "短期主线标签应只显示名称");
+  assert(!labelMethod.includes("fishbone-branch-mainline-meta"), "短期主线标签不应直接显示日期或数量元信息");
+  assert(!labelMethod.includes("branch.startDate} - ${branch.endDate} · ${branch.taskCount}"), "短期主线标签不应显示时间范围");
+
+  const styles = read("plugin/styles.css");
+  assert(styles.includes(".fishbone-branch-mainline-label"), "缺少短期主线标签样式");
+  assert(styles.includes("background: transparent"), "短期主线标签应为透明背景");
+  assert(styles.includes("box-shadow: none"), "短期主线标签不应使用实体卡片阴影");
+  assert(styles.includes("border: 0"), "短期主线标签不应使用实体边框");
 }
 
 function main() {
@@ -86,6 +103,7 @@ function main() {
     "elementStartTop"
   ]);
   requireBranchConnectorContinuity();
+  requireBranchLabelPolish();
 
   requireText("plugin/styles.css", [
     ".fishbone-branch-mainline-connector-path",

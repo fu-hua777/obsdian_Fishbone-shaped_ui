@@ -480,14 +480,19 @@
   z-index: 7;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  max-width: min(340px, 100%);
-  padding: 3px 7px;
-  border: 1px solid color-mix(in srgb, var(--lane-color) 42%, var(--background-modifier-border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--background-secondary) 88%, var(--lane-color));
+  gap: 4px;
+  max-width: min(220px, 100%);
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text-normal);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--background-modifier-box-shadow) 18%, transparent);
+  box-shadow: none;
+  text-shadow:
+    0 1px 2px var(--background-primary),
+    0 -1px 2px var(--background-primary),
+    1px 0 2px var(--background-primary),
+    -1px 0 2px var(--background-primary);
   white-space: nowrap;
 }
 
@@ -497,14 +502,14 @@
 
 .fishbone-branch-mainline-floating-label {
   pointer-events: auto;
-  max-width: 320px;
+  max-width: 220px;
 }
 
 .fishbone-branch-mainline-name {
   overflow: hidden;
-  max-width: 170px;
+  max-width: 210px;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
