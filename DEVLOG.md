@@ -252,5 +252,5 @@ M3 未做：
 ### M6 修正：右侧模块布局与概念图差距分析
 - 移除右侧 `状态速览` 模块，避免和后续底部 `待办 / 进行中 / 已完成` 工作台重复。
 - 右侧辅助模块支持拖拽排序，并将模块顺序保存到 `dashboardState.moduleOrder`。
-- 每个右侧模块支持 `宽 / 窄` 切换，并将模块宽度保存到 `dashboardState.moduleSpans`。
+- 每个右侧模块支持长按下边缘上下拖动调整高度，并将模块高度保存到 `dashboardState.moduleHeights`。
 - 新增 `PLANS/M6-concept-gap-and-bottom-modules.md`，对比概念图梳理剩余缺口：下方三列工作台、快速笔记/Codex 输入、每日总结、时间天气和顶部工具细节。

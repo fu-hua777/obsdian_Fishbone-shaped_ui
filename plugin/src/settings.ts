@@ -25,7 +25,7 @@ export interface FishboneDashboardState {
   showDashboard?: boolean;
   dashboardWidth?: number;
   moduleOrder?: string[];
-  moduleSpans?: Record<string, "narrow" | "wide">;
+  moduleHeights?: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
@@ -35,12 +35,12 @@ export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
     showDashboard: true,
     dashboardWidth: 340,
     moduleOrder: ["today-progress", "week-progress", "today-focus", "week-focus", "mainline-progress"],
-    moduleSpans: {
-      "today-progress": "narrow",
-      "week-progress": "narrow",
-      "today-focus": "wide",
-      "week-focus": "wide",
-      "mainline-progress": "wide"
+    moduleHeights: {
+      "today-progress": 112,
+      "week-progress": 112,
+      "today-focus": 188,
+      "week-focus": 188,
+      "mainline-progress": 156
     }
   }
 };

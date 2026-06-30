@@ -55,15 +55,14 @@ interface DashboardTaskRenderOptions {
 }
 
 type DashboardModuleId = "today-progress" | "week-progress" | "today-focus" | "week-focus" | "mainline-progress";
-type DashboardModuleSpan = "narrow" | "wide";
 
 const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["today-progress", "week-progress", "today-focus", "week-focus", "mainline-progress"];
-const DEFAULT_DASHBOARD_MODULE_SPANS: Record<DashboardModuleId, DashboardModuleSpan> = {
-  "today-progress": "narrow",
-  "week-progress": "narrow",
-  "today-focus": "wide",
-  "week-focus": "wide",
-  "mainline-progress": "wide"
+const DEFAULT_DASHBOARD_MODULE_HEIGHTS: Record<DashboardModuleId, number> = {
+  "today-progress": 112,
+  "week-progress": 112,
+  "today-focus": 188,
+  "week-focus": 188,
+  "mainline-progress": 156
 };
 
 export class FishboneTimelineView extends ItemView {
@@ -74,11 +73,20 @@ export class FishboneTimelineView extends ItemView {
   private showDashboard = true;
   private dashboardWidth = 340;
   private dashboardModuleOrder: DashboardModuleId[] = [...DASHBOARD_MODULE_IDS];
-  private dashboardModuleSpans: Record<DashboardModuleId, DashboardModuleSpan> = { ...DEFAULT_DASHBOARD_MODULE_SPANS };
+  private dashboardModuleHeights: Record<DashboardModuleId, number> = { ...DEFAULT_DASHBOARD_MODULE_HEIGHTS };
   private expandedClusters = new Set<string>();
   private renderGeneration = 0;
   private persistViewStateTimer: number | null = null;
   private dashboardResizeDrag: { pointerId: number; startX: number; startWidth: number; panel: HTMLElement } | null = null;
+  private dashboardModuleResizeDrag: {
+    moduleId: DashboardModuleId;
+    pointerId: number;
+    timer: number | null;
+    active: boolean;
+    startY: number;
+    startHeight: number;
+    section: HTMLElement;
+  } | null = null;
   private panDrag: { pointerId: number; x: number; y: number } | null = null;
   private suppressNextMainlineClick = false;
   private suppressNextTaskClick = false;
@@ -125,7 +133,7 @@ export class FishboneTimelineView extends ItemView {
     this.showDashboard = plugin.settings.dashboardState?.showDashboard !== false;
     this.dashboardWidth = normalizeDashboardWidth(plugin.settings.dashboardState?.dashboardWidth);
     this.dashboardModuleOrder = normalizeDashboardModuleOrder(plugin.settings.dashboardState?.moduleOrder);
-    this.dashboardModuleSpans = normalizeDashboardModuleSpans(plugin.settings.dashboardState?.moduleSpans);
+    this.dashboardModuleHeights = normalizeDashboardModuleHeights(plugin.settings.dashboardState?.moduleHeights);
     this.expandedClusters = new Set(saved.expandedClusters ?? []);
   }
 
@@ -387,10 +395,10 @@ export class FishboneTimelineView extends ItemView {
       cls: [
         "fishbone-dashboard-section",
         `fishbone-dashboard-module-${moduleId}`,
-        this.dashboardModuleSpans[moduleId] === "wide" ? "is-wide" : "is-narrow",
         isDashboardProgressModule(moduleId) ? "fishbone-dashboard-progress-module" : "fishbone-dashboard-scroll-module"
       ].join(" ")
     });
+    section.style.height = `${this.dashboardModuleHeights[moduleId]}px`;
     section.draggable = true;
     section.setAttr("data-dashboard-module-id", moduleId);
     this.bindDashboardModuleDrag(section, moduleId);
@@ -398,27 +406,28 @@ export class FishboneTimelineView extends ItemView {
     switch (moduleId) {
       case "today-progress":
         this.renderDashboardProgressSection(section, moduleId, "今日进度", summary.todayProgress);
-        return;
+        break;
       case "week-progress":
         this.renderDashboardProgressSection(section, moduleId, "本周进度", summary.weekProgress);
-        return;
+        break;
       case "today-focus":
         this.renderDashboardTaskSection(section, moduleId, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务", {
           showCheckbox: true,
           showStatusSelect: true
         });
-        return;
+        break;
       case "week-focus":
         this.renderDashboardTaskSection(section, moduleId, "本周重点", summary.weekFocusTasks.slice(0, 8), "本周暂无重点任务", {
           showStatusSelect: true,
           showReasonChips: true,
           summary
         });
-        return;
+        break;
       case "mainline-progress":
         this.renderDashboardMainlineProgress(section, moduleId, summary);
-        return;
+        break;
     }
+    this.renderDashboardModuleResizeHandle(section, moduleId);
   }
 
   private renderDashboardModuleHeader(section: HTMLElement, moduleId: DashboardModuleId, title: string, countText: string): HTMLElement {
@@ -427,16 +436,6 @@ export class FishboneTimelineView extends ItemView {
     header.createSpan({ text: title });
     const controls = header.createDiv({ cls: "fishbone-dashboard-module-controls" });
     controls.createSpan({ cls: "fishbone-dashboard-module-count", text: countText });
-    const widthButton = controls.createEl("button", {
-      cls: "fishbone-dashboard-module-width",
-      text: this.dashboardModuleSpans[moduleId] === "wide" ? "宽" : "窄"
-    });
-    widthButton.setAttr("title", "切换模块宽度");
-    widthButton.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      void this.toggleDashboardModuleSpan(moduleId);
-    });
     return header;
   }
 
@@ -583,13 +582,74 @@ export class FishboneTimelineView extends ItemView {
     await this.render();
   }
 
-  private async toggleDashboardModuleSpan(moduleId: DashboardModuleId): Promise<void> {
-    this.dashboardModuleSpans = {
-      ...this.dashboardModuleSpans,
-      [moduleId]: this.dashboardModuleSpans[moduleId] === "wide" ? "narrow" : "wide"
+  private renderDashboardModuleResizeHandle(section: HTMLElement, moduleId: DashboardModuleId): void {
+    const handle = section.createDiv({ cls: "fishbone-dashboard-module-resize-handle" });
+    handle.setAttr("title", "长按后上下拖动调整模块高度");
+    handle.draggable = false;
+    handle.addEventListener("dragstart", (event) => event.preventDefault());
+    this.bindDashboardModuleResize(handle, section, moduleId);
+  }
+
+  private bindDashboardModuleResize(handle: HTMLElement, section: HTMLElement, moduleId: DashboardModuleId): void {
+    const clearTimer = () => {
+      const drag = this.dashboardModuleResizeDrag;
+      if (drag?.timer !== null && drag?.timer !== undefined) {
+        window.clearTimeout(drag.timer);
+        drag.timer = null;
+      }
     };
-    await this.persistDashboardState();
-    await this.render();
+    const finish = async (event: PointerEvent) => {
+      const drag = this.dashboardModuleResizeDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      clearTimer();
+      const shouldSave = drag.active;
+      drag.section.removeClass("is-dashboard-module-resizing");
+      this.dashboardModuleResizeDrag = null;
+      if (shouldSave) await this.persistDashboardState();
+    };
+
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handle.setPointerCapture(event.pointerId);
+      clearTimer();
+      const startHeight = this.dashboardModuleHeights[moduleId];
+      this.dashboardModuleResizeDrag = {
+        moduleId,
+        pointerId: event.pointerId,
+        timer: null,
+        active: false,
+        startY: event.clientY,
+        startHeight,
+        section
+      };
+      const timer = window.setTimeout(() => {
+        const drag = this.dashboardModuleResizeDrag;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        drag.active = true;
+        drag.timer = null;
+        section.addClass("is-dashboard-module-resizing");
+      }, 220);
+      this.dashboardModuleResizeDrag.timer = timer;
+    });
+
+    handle.addEventListener("pointermove", (event) => {
+      const drag = this.dashboardModuleResizeDrag;
+      if (!drag || drag.pointerId !== event.pointerId || !drag.active) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const nextHeight = normalizeDashboardModuleHeight(drag.startHeight + event.clientY - drag.startY);
+      this.dashboardModuleHeights[drag.moduleId] = nextHeight;
+      drag.section.style.height = `${nextHeight}px`;
+    });
+
+    handle.addEventListener("pointerup", (event) => {
+      void finish(event);
+    });
+    handle.addEventListener("pointercancel", (event) => {
+      void finish(event);
+    });
   }
 
   private async updateDashboardTaskDone(task: PlanningTask, done: boolean): Promise<void> {
@@ -1967,7 +2027,7 @@ export class FishboneTimelineView extends ItemView {
       showDashboard: this.showDashboard,
       dashboardWidth: normalizeDashboardWidth(this.dashboardWidth),
       moduleOrder: [...this.dashboardModuleOrder],
-      moduleSpans: { ...this.dashboardModuleSpans }
+      moduleHeights: { ...this.dashboardModuleHeights }
     };
     if (typeof this.plugin.saveFishboneViewState === "function") {
       await this.plugin.saveFishboneViewState();
@@ -2325,15 +2385,18 @@ function normalizeDashboardModuleOrder(value: unknown): DashboardModuleId[] {
   return order.filter((moduleId, index) => order.indexOf(moduleId) === index);
 }
 
-function normalizeDashboardModuleSpans(value: unknown): Record<DashboardModuleId, DashboardModuleSpan> {
+function normalizeDashboardModuleHeights(value: unknown): Record<DashboardModuleId, number> {
   const source = typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
-  const spans = { ...DEFAULT_DASHBOARD_MODULE_SPANS };
+  const heights = { ...DEFAULT_DASHBOARD_MODULE_HEIGHTS };
   for (const moduleId of DASHBOARD_MODULE_IDS) {
-    spans[moduleId] = source[moduleId] === "wide" || source[moduleId] === "narrow"
-      ? source[moduleId]
-      : DEFAULT_DASHBOARD_MODULE_SPANS[moduleId];
+    heights[moduleId] = normalizeDashboardModuleHeight(source[moduleId], DEFAULT_DASHBOARD_MODULE_HEIGHTS[moduleId]);
   }
-  return spans;
+  return heights;
+}
+
+function normalizeDashboardModuleHeight(value: unknown, fallback = 156): number {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  return Math.max(86, Math.min(360, Math.round(numeric)));
 }
 
 function isDashboardModuleId(value: string): value is DashboardModuleId {

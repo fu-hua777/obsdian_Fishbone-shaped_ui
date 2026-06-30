@@ -53,12 +53,14 @@ function main() {
     "updateDashboardTaskDone",
     "updateDashboardTaskStatus",
     "dashboardModuleOrder",
-    "dashboardModuleSpans",
+    "dashboardModuleHeights",
     "bindDashboardModuleDrag",
     "moveDashboardModule",
-    "toggleDashboardModuleSpan",
+    "renderDashboardModuleResizeHandle",
+    "bindDashboardModuleResize",
     "normalizeDashboardModuleOrder",
-    "normalizeDashboardModuleSpans",
+    "normalizeDashboardModuleHeights",
+    "normalizeDashboardModuleHeight",
     "setTaskDone",
     "setTaskStatus",
     "weekFocusTasks",
@@ -74,12 +76,17 @@ function main() {
     ".fishbone-dashboard-task-checkbox",
     ".fishbone-dashboard-status-select",
     ".fishbone-dashboard-reason",
-    ".fishbone-dashboard-section.is-wide",
-    ".fishbone-dashboard-section.is-narrow",
-    ".fishbone-dashboard-module-width",
+    ".fishbone-dashboard-module-resize-handle",
+    ".fishbone-dashboard-section.is-dashboard-module-resizing",
     ".is-dashboard-module-drop-target",
     ".fishbone-dashboard-mainline-meta"
   ]);
+  const viewAfterModules = read("plugin/src/views/FishboneTimelineView.ts");
+  const stylesAfterModules = read("plugin/styles.css");
+  assert(!viewAfterModules.includes("toggleDashboardModuleSpan"), "右侧模块不应保留宽/窄切换逻辑");
+  assert(!viewAfterModules.includes("fishbone-dashboard-module-width"), "右侧模块不应保留宽/窄按钮");
+  assert(!stylesAfterModules.includes(".fishbone-dashboard-section.is-wide"), "右侧模块不应保留宽模块样式");
+  assert(!stylesAfterModules.includes(".fishbone-dashboard-section.is-narrow"), "右侧模块不应保留窄模块样式");
 
   requireText("PLANS/M6-concept-gap-and-bottom-modules.md", [
     "下方三列工作台",

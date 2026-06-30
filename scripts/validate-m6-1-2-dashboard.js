@@ -46,7 +46,7 @@ function main() {
     "showDashboard",
     "dashboardWidth",
     "moduleOrder",
-    "moduleSpans"
+    "moduleHeights"
   ]);
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
@@ -54,13 +54,15 @@ function main() {
     "showDashboard",
     "dashboardWidth",
     "dashboardModuleOrder",
-    "dashboardModuleSpans",
+    "dashboardModuleHeights",
     "renderDashboardPanel",
     "fishbone-workspace",
     "fishbone-canvas-shell",
     "fishbone-dashboard-modules",
     "fishbone-dashboard-panel",
     "fishbone-dashboard-resizer",
+    "renderDashboardModuleResizeHandle",
+    "bindDashboardModuleResize",
     "persistDashboardState",
     "隐藏辅助",
     "显示辅助"
@@ -73,6 +75,7 @@ function main() {
     ".fishbone-dashboard-modules",
     ".fishbone-dashboard-resizer",
     ".fishbone-dashboard-section",
+    ".fishbone-dashboard-module-resize-handle",
     ".fishbone-dashboard-progress-bar"
   ]);
 
@@ -81,9 +84,11 @@ function main() {
   assert(panelMatch, "缺少 fishbone-dashboard-panel 样式块");
   assert(panelMatch[0].includes("overflow: hidden;"), "右侧面板外层必须隐藏整体滚动");
   assert(!panelMatch[0].includes("overflow: hidden auto"), "右侧面板外层不能使用整体纵向滚动");
-  assert(styles.includes("grid-template-columns: repeat(2, minmax(0, 1fr))"), "辅助面板模块应支持两列自定义格局");
-  assert(styles.includes(".fishbone-dashboard-section.is-wide"), "辅助面板模块应支持宽模块");
-  assert(styles.includes(".fishbone-dashboard-section.is-narrow"), "辅助面板模块应支持窄模块");
+  assert(styles.includes("flex-direction: column;"), "辅助面板模块应按纵向堆叠");
+  assert(styles.includes("cursor: ns-resize;"), "辅助面板模块应支持上下高度调节");
+  assert(!styles.includes(".fishbone-dashboard-section.is-wide"), "辅助面板不应保留宽模块样式");
+  assert(!styles.includes(".fishbone-dashboard-section.is-narrow"), "辅助面板不应保留窄模块样式");
+  assert(!read("plugin/src/views/FishboneTimelineView.ts").includes("fishbone-dashboard-module-width"), "辅助面板不应保留宽/窄按钮");
   assert(styles.includes("overflow: hidden auto;"), "任务列表或主线列表模块内部应允许独立滚动");
 
   console.log("M6.1-M6.2 dashboard foundation validation passed.");

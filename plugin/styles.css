@@ -219,18 +219,20 @@
 }
 
 .fishbone-dashboard-modules {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: minmax(86px, auto);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
   padding-top: 8px;
 }
 
 .fishbone-dashboard-section {
+  position: relative;
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
   min-height: 0;
   padding: 10px 12px;
   overflow: hidden;
@@ -240,14 +242,6 @@
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
-.fishbone-dashboard-section.is-wide {
-  grid-column: 1 / -1;
-}
-
-.fishbone-dashboard-section.is-narrow {
-  grid-column: span 1;
-}
-
 .fishbone-dashboard-section.is-dashboard-module-dragging {
   opacity: 0.54;
 }
@@ -255,6 +249,12 @@
 .fishbone-dashboard-section.is-dashboard-module-drop-target {
   outline: 1px solid var(--interactive-accent);
   outline-offset: -2px;
+}
+
+.fishbone-dashboard-section.is-dashboard-module-resizing {
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -2px;
+  user-select: none;
 }
 
 .fishbone-dashboard-progress-module,
@@ -297,12 +297,30 @@
   font-weight: 500;
 }
 
-.fishbone-dashboard-module-width {
-  min-width: 28px;
-  min-height: 22px;
-  padding: 0 6px;
-  border-radius: 6px;
-  font-size: 11px;
+.fishbone-dashboard-module-resize-handle {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 8px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.fishbone-dashboard-module-resize-handle::after {
+  content: "";
+  position: absolute;
+  left: 36%;
+  right: 36%;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 34%, transparent);
+}
+
+.fishbone-dashboard-module-resize-handle:hover::after,
+.fishbone-dashboard-section.is-dashboard-module-resizing .fishbone-dashboard-module-resize-handle::after {
+  background: var(--interactive-accent);
 }
 
 .fishbone-dashboard-meta-row,
@@ -1645,15 +1663,6 @@
 
   .fishbone-dashboard-resizer {
     display: none;
-  }
-
-  .fishbone-dashboard-modules {
-    grid-template-columns: 1fr;
-  }
-
-  .fishbone-dashboard-section.is-narrow,
-  .fishbone-dashboard-section.is-wide {
-    grid-column: 1;
   }
 
   .fishbone-viewport-controls,
