@@ -201,3 +201,6 @@ M3 未做：
 - 普通任务拖拽现在按落点写回日期和主线；无效落点会回到原位，不写入任务文件。
 - 分支主线新增上下方向语义，父主线到分支的连接线改为 SVG 平滑曲线，分支标签层级提升以避免被分支任务遮挡。
 - 新增 `scripts/validate-m5-5-7-canvas-polish.js` 和 M5.5-M5.7 手动验收清单。
+### M5.5-M5.7 验证增强：布局回归
+- 新增 `tests/plugin/m5-5-7-layout-regression.ts`，直接调用 `buildFishboneCanvasLayout` 验证密集任务避让、分支日期吸附、分支上下方向和 relation 锚点。
+- 新增 `scripts/validate-m5-5-7-layout-regression.js`，使用项目已有 esbuild 临时编译并执行布局回归，不引入额外运行依赖。

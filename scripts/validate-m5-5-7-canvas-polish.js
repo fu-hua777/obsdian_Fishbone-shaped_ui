@@ -25,6 +25,8 @@ function requireText(relativePath, patterns) {
 function main() {
   requireFile("PLANS/M5.5-M5.7-fishbone-canvas-polish.md");
   requireFile("tests/plugin/m5-5-7-manual-test-checklist.md");
+  requireFile("tests/plugin/m5-5-7-layout-regression.ts");
+  requireFile("scripts/validate-m5-5-7-layout-regression.js");
 
   requireText("plugin/src/views/fishboneCanvasLayout.ts", [
     "TASK_SIDE_BASE_OFFSET",
@@ -37,6 +39,21 @@ function main() {
     "getRelationRouteOffset",
     "...taskNodes.map((node) => node.y + node.height + 220)",
     "side: \"above\" | \"below\""
+  ]);
+
+  requireText("tests/plugin/m5-5-7-layout-regression.ts", [
+    "rectsOverlap",
+    "isNodeEdgeAnchor",
+    "branch.side === \"above\"",
+    "effectiveDate === \"2026-07-05\"",
+    "layout.relationLines.length === 1",
+    "M5.5-M5.7 layout regression passed."
+  ]);
+
+  requireText("scripts/validate-m5-5-7-layout-regression.js", [
+    "esbuild.buildSync",
+    "m5-5-7-layout-regression.ts",
+    "layout-regression.cjs"
   ]);
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
