@@ -48,6 +48,9 @@ function main() {
     "setIcon(icon, mainlineVisual?.icon || \"circle\")",
     "moveWorkbenchTaskToColumn",
     "moveWorkbenchColumn",
+    "draggedDashboardModuleId",
+    "draggedWorkbenchColumnId",
+    "draggedWorkbenchTaskId",
     "bindWorkbenchResize",
     "setTaskStatus(task, status)",
     "隐藏工作台",
@@ -77,6 +80,7 @@ function main() {
   assert(!view.includes("text: \"辅助面板\""), "右侧不应渲染辅助面板头块");
   assert(!view.includes("case \"today-progress\"") && !view.includes("case \"week-progress\""), "今日/本周进度应整合为一个模块");
   assert(view.includes("header.draggable = true") && view.includes("bindDashboardModuleDrag(section, header, moduleId)"), "右侧模块应通过标题手柄拖拽排序");
+  assert(view.includes("event.dataTransfer.effectAllowed = \"move\"") && view.includes("event.dataTransfer.dropEffect = \"move\""), "拖拽排序应明确使用 move 效果");
   assert(view.includes("status: \"inbox\""), "快速输入候选任务应默认进入 inbox");
   assert(!view.includes("createQuickInputTask"), "M6.5 不应直接写入快速输入任务");
 
