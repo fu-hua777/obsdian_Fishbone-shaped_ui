@@ -437,7 +437,14 @@
   stroke: color-mix(in srgb, var(--lane-color) 68%, transparent);
   stroke-width: 3;
   stroke-linecap: round;
+  transition: stroke 120ms ease, stroke-width 120ms ease, filter 120ms ease;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--lane-color) 30%, transparent));
+}
+
+.fishbone-branch-mainline-connector.is-branch-active .fishbone-branch-mainline-connector-path {
+  stroke: color-mix(in srgb, var(--lane-color) 88%, var(--text-normal));
+  stroke-width: 4;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--lane-color) 44%, transparent));
 }
 
 .fishbone-branch-mainline {

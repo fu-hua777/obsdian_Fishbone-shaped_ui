@@ -444,6 +444,7 @@ export class FishboneTimelineView extends ItemView {
     connector.addClass("fishbone-branch-mainline-connector");
     connector.addClass(`fishbone-branch-${branch.side}`);
     connector.style.setProperty("--lane-color", branch.color);
+    connector.setAttribute("data-branch-mainline-id", branch.id);
     connector.style.left = `${connectorBounds.left}px`;
     connector.style.top = `${connectorBounds.top}px`;
     connector.style.width = `${connectorBounds.width}px`;
@@ -478,6 +479,7 @@ export class FishboneTimelineView extends ItemView {
       });
       this.bindBranchMainlineContextMenu(spine, branchMainline, mainlines, tasks);
       this.bindBranchMainlineDrag(spine, branch);
+      this.bindBranchVisualActivation(spine, branch.id);
     }
   }
 
@@ -506,7 +508,24 @@ export class FishboneTimelineView extends ItemView {
       });
       this.bindBranchMainlineContextMenu(label, branchMainline, mainlines, tasks);
       this.bindBranchMainlineDrag(label, branch);
+      this.bindBranchVisualActivation(label, branch.id);
     }
+  }
+
+  private bindBranchVisualActivation(node: HTMLElement, branchId: string): void {
+    node.addEventListener("mouseenter", () => this.setBranchVisualActive(branchId, true));
+    node.addEventListener("mouseleave", () => {
+      if (this.branchPointerDrag?.branch.id === branchId && this.branchPointerDrag.active) return;
+      this.setBranchVisualActive(branchId, false);
+    });
+  }
+
+  private setBranchVisualActive(branchId: string, active: boolean): void {
+    this.containerEl.querySelectorAll<HTMLElement | SVGElement>("[data-branch-mainline-id]").forEach((element) => {
+      if (element.getAttribute("data-branch-mainline-id") === branchId) {
+        element.classList.toggle("is-branch-active", active);
+      }
+    });
   }
 
   private getBranchConnectorBounds(branch: FishboneCanvasBranchMainline): { left: number; top: number; width: number; height: number } {
@@ -1363,6 +1382,7 @@ export class FishboneTimelineView extends ItemView {
         node.releasePointerCapture(event.pointerId);
       }
       node.removeClass("fishbone-branch-dragging");
+      this.setBranchVisualActive(drag.branch.id, false);
       if (!drag.active) return;
 
       event.preventDefault();
@@ -1401,6 +1421,7 @@ export class FishboneTimelineView extends ItemView {
         if (!this.branchPointerDrag || this.branchPointerDrag.pointerId !== event.pointerId) return;
         this.branchPointerDrag.active = true;
         node.addClass("fishbone-branch-dragging");
+        this.setBranchVisualActive(branch.id, true);
       }, 220);
     });
 

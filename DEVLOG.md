@@ -219,3 +219,7 @@ M3 未做：
 ### M5.5-M5.7 修正：统一分支线渲染
 - 短期主线的曲线接入和横向分支线改为同一个 SVG path 渲染，避免 DOM 分支线与 SVG 连接线分属两套坐标造成错位。
 - DOM 分支主线保留为透明交互命中区，不再额外绘制第二条可见横线或接头点。
+### M5.8-M5.9：鱼骨画布视觉 QA 与验收辅助
+- 新增 `PLANS/M5.8-M5.9-fishbone-visual-qa.md`，明确 M5.8 处理分支视觉一致性，M5.9 处理验收辅助与回归防护。
+- 短期主线 SVG 分支线、透明命中区和透明标签共享 `data-branch-mainline-id`，悬停或拖拽任意一处都会高亮同一条 SVG path。
+- 新增 `scripts/validate-m5-8-9-visual-qa.js` 和 `tests/plugin/m5-8-9-manual-test-checklist.md`，防止 DOM 分支横线、接头点、重复线和实体标签样式回归。
