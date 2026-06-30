@@ -11,6 +11,7 @@ const mainlines: Mainline[] = [
 ];
 
 const tasks: PlanningTask[] = [
+  task("t0", "昨日遗留高优先", "2026-06-29", "项目", "todo", "high"),
   task("t1", "今日高优先进行中", "2026-06-30", "项目", "doing", "high"),
   task("t2", "今日完成任务", "2026-06-30", "项目", "done", "medium"),
   task("t3", "本周阻塞任务", "2026-07-02", "学习", "blocked", "high"),
@@ -24,8 +25,10 @@ const summary = buildDashboardSummary(tasks, mainlines, { today: "2026-06-30" })
 assert(summary.weekStart === "2026-06-29", `周起始应为 2026-06-29，实际 ${summary.weekStart}`);
 assert(summary.weekEnd === "2026-07-05", `周结束应为 2026-07-05，实际 ${summary.weekEnd}`);
 assert(summary.todayTasks.length === 4, `今日任务应为 4，实际 ${summary.todayTasks.length}`);
-assert(summary.weekTasks.length === 5, `本周任务应为 5，实际 ${summary.weekTasks.length}`);
-assert(summary.highPriorityWeekTasks.map((taskItem) => taskItem.taskId).join(",") === "t1,t3", "本周高优先任务应排除完成和取消任务");
+assert(summary.weekTasks.length === 6, `本周任务应为 6，实际 ${summary.weekTasks.length}`);
+assert(summary.highPriorityWeekTasks.map((taskItem) => taskItem.taskId).join(",") === "t0,t1,t3", "本周高优先任务应排除完成和取消任务");
+assert(summary.overdueTasks.length === 1 && summary.overdueTasks[0].taskId === "t0", "应识别今日之前未完成的过期任务");
+assert(summary.weekFocusTasks.map((taskItem) => taskItem.taskId).join(",") === "t0,t1,t3", "本周重点应合并过期、高优先、阻塞和进行中任务并去重");
 assert(summary.blockedTasks.length === 1 && summary.blockedTasks[0].taskId === "t3", "应识别阻塞任务");
 assert(summary.doingTasks.length === 1 && summary.doingTasks[0].taskId === "t1", "应识别进行中任务");
 assert(summary.todayProgress.total === 3, `今日有效任务数应排除 canceled，实际 ${summary.todayProgress.total}`);
@@ -34,8 +37,10 @@ assert(Math.abs(summary.todayProgress.rate - 1 / 3) < 0.001, `今日完成率应
 
 const projectProgress = summary.mainlineProgress.find((item) => item.name === "项目");
 assert(projectProgress, "应生成项目主线进度");
-assert(projectProgress.total === 2, `项目有效任务应为 2，实际 ${projectProgress.total}`);
+assert(projectProgress.total === 3, `项目有效任务应为 3，实际 ${projectProgress.total}`);
 assert(projectProgress.done === 1, "项目完成数应为 1");
+assert(projectProgress.highPriority === 2, "项目高优先未完成任务应为 2");
+assert(projectProgress.overdue === 1, "项目过期未完成任务应为 1");
 
 const unassignedProgress = summary.mainlineProgress.find((item) => item.name === "未分配");
 assert(unassignedProgress, "应生成未分配进度分组");

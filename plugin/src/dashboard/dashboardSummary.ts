@@ -20,6 +20,8 @@ export interface DashboardMainlineProgress extends DashboardProgress {
   color: string;
   visible: boolean;
   pinned: boolean;
+  highPriority: number;
+  overdue: number;
 }
 
 export interface DashboardSummary {
@@ -28,7 +30,9 @@ export interface DashboardSummary {
   weekEnd: string;
   todayTasks: PlanningTask[];
   weekTasks: PlanningTask[];
+  weekFocusTasks: PlanningTask[];
   highPriorityWeekTasks: PlanningTask[];
+  overdueTasks: PlanningTask[];
   blockedTasks: PlanningTask[];
   doingTasks: PlanningTask[];
   todoTasks: PlanningTask[];
@@ -53,6 +57,10 @@ export function buildDashboardSummary(
   const sortedTasks = [...tasks].sort(compareTasksForDashboard);
   const todayTasks = sortedTasks.filter((task) => task.date === today);
   const weekTasks = sortedTasks.filter((task) => Boolean(task.date) && task.date! >= weekStart && task.date! <= weekEnd);
+  const overdueTasks = sortedTasks.filter((task) => Boolean(task.date) && task.date! < today && isActiveTask(task));
+  const highPriorityWeekTasks = weekTasks.filter((task) => task.priority === "high" && isActiveTask(task));
+  const blockedTasks = sortedTasks.filter((task) => task.status === "blocked");
+  const doingTasks = sortedTasks.filter((task) => task.status === "doing");
 
   return {
     today,
@@ -60,13 +68,16 @@ export function buildDashboardSummary(
     weekEnd,
     todayTasks,
     weekTasks,
-    highPriorityWeekTasks: weekTasks.filter((task) => task.priority === "high" && isActiveTask(task)),
-    blockedTasks: sortedTasks.filter((task) => task.status === "blocked"),
-    doingTasks: sortedTasks.filter((task) => task.status === "doing"),
+    weekFocusTasks: uniqueTasks([...overdueTasks, ...highPriorityWeekTasks, ...blockedTasks, ...doingTasks])
+      .filter((task) => task.date === null || task.date <= weekEnd),
+    highPriorityWeekTasks,
+    overdueTasks,
+    blockedTasks,
+    doingTasks,
     todoTasks: sortedTasks.filter((task) => task.status === "todo"),
     doneTasks: sortedTasks.filter((task) => task.status === "done"),
     inboxTasks: sortedTasks.filter((task) => task.status === "inbox"),
-    mainlineProgress: buildMainlineProgress(sortedTasks, mainlines),
+    mainlineProgress: buildMainlineProgress(sortedTasks, mainlines, today),
     todayProgress: buildProgress(todayTasks),
     weekProgress: buildProgress(weekTasks)
   };
@@ -89,7 +100,7 @@ export function buildProgress(tasks: PlanningTask[]): DashboardProgress {
   };
 }
 
-function buildMainlineProgress(tasks: PlanningTask[], mainlines: Mainline[]): DashboardMainlineProgress[] {
+function buildMainlineProgress(tasks: PlanningTask[], mainlines: Mainline[], today: string): DashboardMainlineProgress[] {
   const normalMainlines = mainlines
     .filter((mainline) => mainline.type === "mainline")
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
@@ -100,31 +111,38 @@ function buildMainlineProgress(tasks: PlanningTask[], mainlines: Mainline[]): Da
 
   const groups: DashboardMainlineProgress[] = [];
   for (const mainline of normalMainlines) {
-    const progress = buildProgress(tasks.filter((task) => task.mainline === mainline.name));
+    const groupTasks = tasks.filter((task) => task.mainline === mainline.name);
+    const progress = buildProgress(groupTasks);
     groups.push({
       ...progress,
       id: mainline.id,
       name: mainline.name,
       color: mainline.color,
       visible: mainline.visible,
-      pinned: mainline.pinned
+      pinned: mainline.pinned,
+      highPriority: countHighPriority(groupTasks),
+      overdue: countOverdue(groupTasks, today)
     });
   }
 
   for (const name of orphanNames) {
     const mainline = configuredByName.get(name);
-    const progress = buildProgress(tasks.filter((task) => task.mainline === name));
+    const groupTasks = tasks.filter((task) => task.mainline === name);
+    const progress = buildProgress(groupTasks);
     groups.push({
       ...progress,
       id: `orphan:${name}`,
       name,
       color: mainline?.color ?? UNASSIGNED_MAINLINE_COLOR,
       visible: mainline?.visible ?? true,
-      pinned: mainline?.pinned ?? false
+      pinned: mainline?.pinned ?? false,
+      highPriority: countHighPriority(groupTasks),
+      overdue: countOverdue(groupTasks, today)
     });
   }
 
-  const unassignedProgress = buildProgress(tasks.filter((task) => !task.mainline));
+  const unassignedTasks = tasks.filter((task) => !task.mainline);
+  const unassignedProgress = buildProgress(unassignedTasks);
   if (unassignedProgress.total > 0 || groups.length === 0) {
     groups.push({
       ...unassignedProgress,
@@ -132,11 +150,30 @@ function buildMainlineProgress(tasks: PlanningTask[], mainlines: Mainline[]): Da
       name: UNASSIGNED_MAINLINE_NAME,
       color: UNASSIGNED_MAINLINE_COLOR,
       visible: true,
-      pinned: false
+      pinned: false,
+      highPriority: countHighPriority(unassignedTasks),
+      overdue: countOverdue(unassignedTasks, today)
     });
   }
 
   return groups;
+}
+
+function uniqueTasks(tasks: PlanningTask[]): PlanningTask[] {
+  const seen = new Set<string>();
+  return tasks.filter((task) => {
+    if (seen.has(task.taskId)) return false;
+    seen.add(task.taskId);
+    return true;
+  });
+}
+
+function countHighPriority(tasks: PlanningTask[]): number {
+  return tasks.filter((task) => task.priority === "high" && isActiveTask(task)).length;
+}
+
+function countOverdue(tasks: PlanningTask[], today: string): number {
+  return tasks.filter((task) => Boolean(task.date) && task.date! < today && isActiveTask(task)).length;
 }
 
 function compareTasksForDashboard(a: PlanningTask, b: PlanningTask): number {

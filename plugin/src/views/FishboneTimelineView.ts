@@ -47,6 +47,13 @@ const TIME_AXIS_MODES: Array<{ id: TimeAxisMode; label: string }> = [
   { id: "overview", label: "总览" }
 ];
 
+interface DashboardTaskRenderOptions {
+  showCheckbox?: boolean;
+  showStatusSelect?: boolean;
+  showReasonChips?: boolean;
+  summary?: DashboardSummary;
+}
+
 export class FishboneTimelineView extends ItemView {
   private plugin: FishbonePlannerPlugin;
   private viewport: FishboneCanvasViewport = createDefaultFishboneCanvasViewport();
@@ -354,8 +361,15 @@ export class FishboneTimelineView extends ItemView {
     const progressGrid = modules.createDiv({ cls: "fishbone-dashboard-progress-grid" });
     this.renderDashboardProgressSection(progressGrid, "今日进度", summary.todayProgress);
     this.renderDashboardProgressSection(progressGrid, "本周进度", summary.weekProgress);
-    this.renderDashboardTaskSection(modules, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务");
-    this.renderDashboardTaskSection(modules, "本周重点", uniqueDashboardTasks(summary.highPriorityWeekTasks.concat(summary.blockedTasks, summary.doingTasks)).slice(0, 8), "本周暂无重点任务");
+    this.renderDashboardTaskSection(modules, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务", {
+      showCheckbox: true,
+      showStatusSelect: true
+    });
+    this.renderDashboardTaskSection(modules, "本周重点", summary.weekFocusTasks.slice(0, 8), "本周暂无重点任务", {
+      showStatusSelect: true,
+      showReasonChips: true,
+      summary
+    });
     this.renderDashboardStatusSection(modules, summary);
     this.renderDashboardMainlineProgress(modules, summary);
   }
@@ -374,7 +388,13 @@ export class FishboneTimelineView extends ItemView {
     meta.createSpan({ text: `待办 ${progress.todo}` });
   }
 
-  private renderDashboardTaskSection(parent: HTMLElement, title: string, tasks: PlanningTask[], emptyText: string): void {
+  private renderDashboardTaskSection(
+    parent: HTMLElement,
+    title: string,
+    tasks: PlanningTask[],
+    emptyText: string,
+    options: DashboardTaskRenderOptions = {}
+  ): void {
     const section = parent.createDiv({ cls: "fishbone-dashboard-section fishbone-dashboard-scroll-module" });
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
     header.createSpan({ text: title });
@@ -390,11 +410,33 @@ export class FishboneTimelineView extends ItemView {
       row.addEventListener("click", () => {
         void this.plugin.taskRepository.openTask(task);
       });
-      row.createDiv({ cls: "fishbone-dashboard-task-title", text: task.title });
+      const top = row.createDiv({ cls: "fishbone-dashboard-task-top" });
+      if (options.showCheckbox) {
+        const checkbox = top.createEl("input", { type: "checkbox", cls: "fishbone-dashboard-task-checkbox" });
+        checkbox.checked = task.status === "done";
+        checkbox.addEventListener("click", (event) => event.stopPropagation());
+        checkbox.addEventListener("change", (event) => {
+          event.stopPropagation();
+          void this.updateDashboardTaskDone(task, checkbox.checked);
+        });
+      }
+      top.createDiv({ cls: "fishbone-dashboard-task-title", text: task.title });
+      if (options.showStatusSelect) {
+        this.renderDashboardStatusSelect(top, task);
+      }
       const meta = row.createDiv({ cls: "fishbone-dashboard-task-meta" });
       meta.createSpan({ text: task.mainline ?? "未分配" });
       meta.createSpan({ text: task.date ?? "无日期" });
       meta.createSpan({ cls: `fishbone-dashboard-priority is-${task.priority}`, text: formatPriority(task.priority) });
+      if (options.showReasonChips && options.summary) {
+        const reasons = getDashboardTaskReasons(task, options.summary);
+        if (reasons.length > 0) {
+          const chips = row.createDiv({ cls: "fishbone-dashboard-reason-row" });
+          for (const reason of reasons) {
+            chips.createSpan({ cls: `fishbone-dashboard-reason is-${reason}`, text: formatDashboardReason(reason) });
+          }
+        }
+      }
     }
   }
 
@@ -404,16 +446,31 @@ export class FishboneTimelineView extends ItemView {
     header.createSpan({ text: "状态速览" });
     header.createSpan({ text: String(summary.todoTasks.length + summary.doingTasks.length + summary.blockedTasks.length) });
     const grid = section.createDiv({ cls: "fishbone-dashboard-status-grid" });
-    this.renderDashboardStatusTile(grid, "待办", summary.todoTasks.length);
-    this.renderDashboardStatusTile(grid, "进行中", summary.doingTasks.length);
-    this.renderDashboardStatusTile(grid, "阻塞", summary.blockedTasks.length);
-    this.renderDashboardStatusTile(grid, "已完成", summary.doneTasks.length);
+    this.renderDashboardStatusColumn(grid, "todo", "待办", summary.todoTasks.slice(0, 4));
+    this.renderDashboardStatusColumn(grid, "doing", "进行中", summary.doingTasks.slice(0, 4));
+    this.renderDashboardStatusColumn(grid, "blocked", "阻塞", summary.blockedTasks.slice(0, 4));
+    this.renderDashboardStatusColumn(grid, "done", "已完成", summary.doneTasks.slice(0, 4));
   }
 
-  private renderDashboardStatusTile(parent: HTMLElement, label: string, value: number): void {
-    const tile = parent.createDiv({ cls: "fishbone-dashboard-status-tile" });
-    tile.createDiv({ cls: "fishbone-dashboard-status-value", text: String(value) });
-    tile.createDiv({ cls: "fishbone-dashboard-status-label", text: label });
+  private renderDashboardStatusColumn(parent: HTMLElement, status: TaskStatus, label: string, tasks: PlanningTask[]): void {
+    const column = parent.createDiv({ cls: `fishbone-dashboard-status-column fishbone-task-${status}` });
+    const header = column.createDiv({ cls: "fishbone-dashboard-status-column-header" });
+    header.createSpan({ text: label });
+    header.createSpan({ text: String(tasks.length) });
+    const list = column.createDiv({ cls: "fishbone-dashboard-status-task-list" });
+    if (tasks.length === 0) {
+      list.createDiv({ cls: "fishbone-dashboard-empty", text: "无" });
+      return;
+    }
+    for (const task of tasks) {
+      const item = list.createDiv({ cls: "fishbone-dashboard-status-task" });
+      item.setAttr("title", task.title);
+      item.addEventListener("click", () => {
+        void this.plugin.taskRepository.openTask(task);
+      });
+      item.createDiv({ cls: "fishbone-dashboard-status-task-title", text: task.title });
+      this.renderDashboardStatusSelect(item, task);
+    }
   }
 
   private renderDashboardMainlineProgress(parent: HTMLElement, summary: DashboardSummary): void {
@@ -431,7 +488,36 @@ export class FishboneTimelineView extends ItemView {
       const bar = row.createDiv({ cls: "fishbone-dashboard-progress-bar" });
       const fill = bar.createDiv({ cls: "fishbone-dashboard-progress-fill" });
       fill.style.width = `${Math.round(item.rate * 100)}%`;
+      const meta = row.createDiv({ cls: "fishbone-dashboard-mainline-meta" });
+      meta.createSpan({ text: `总 ${item.total}` });
+      meta.createSpan({ text: `进 ${item.doing}` });
+      meta.createSpan({ text: `阻 ${item.blocked}` });
+      meta.createSpan({ text: `高 ${item.highPriority}` });
+      meta.createSpan({ text: `期 ${item.overdue}` });
     }
+  }
+
+  private renderDashboardStatusSelect(parent: HTMLElement, task: PlanningTask): void {
+    const select = parent.createEl("select", { cls: "fishbone-dashboard-status-select" });
+    for (const status of TASK_STATUSES) {
+      select.createEl("option", { text: status, value: status });
+    }
+    select.value = task.status;
+    select.addEventListener("click", (event) => event.stopPropagation());
+    select.addEventListener("change", (event) => {
+      event.stopPropagation();
+      void this.updateDashboardTaskStatus(task, select.value as TaskStatus);
+    });
+  }
+
+  private async updateDashboardTaskDone(task: PlanningTask, done: boolean): Promise<void> {
+    await this.plugin.taskRepository.setTaskDone(task, done);
+    await this.render();
+  }
+
+  private async updateDashboardTaskStatus(task: PlanningTask, status: TaskStatus): Promise<void> {
+    await this.plugin.taskRepository.setTaskStatus(task, status);
+    await this.render();
   }
 
   private bindDashboardResize(resizer: HTMLElement, panel: HTMLElement): void {
@@ -2153,6 +2239,38 @@ function uniqueDashboardTasks(tasks: PlanningTask[]): PlanningTask[] {
     seen.add(task.taskId);
     return true;
   });
+}
+
+function getDashboardTaskReasons(task: PlanningTask, summary: DashboardSummary): string[] {
+  const reasons: string[] = [];
+  if (task.date && task.date < summary.today && task.status !== "done" && task.status !== "canceled") {
+    reasons.push("overdue");
+  }
+  if (task.priority === "high" && task.status !== "done" && task.status !== "canceled") {
+    reasons.push("high");
+  }
+  if (task.status === "blocked") {
+    reasons.push("blocked");
+  }
+  if (task.status === "doing") {
+    reasons.push("doing");
+  }
+  return reasons;
+}
+
+function formatDashboardReason(reason: string): string {
+  switch (reason) {
+    case "overdue":
+      return "过期";
+    case "high":
+      return "高优先";
+    case "blocked":
+      return "阻塞";
+    case "doing":
+      return "进行中";
+    default:
+      return reason;
+  }
 }
 
 function formatMode(mode: TimeAxisMode): string {

@@ -316,6 +316,20 @@
   cursor: pointer;
 }
 
+.fishbone-dashboard-task-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fishbone-dashboard-task-checkbox {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
 .fishbone-dashboard-task:hover {
   border-color: var(--interactive-accent);
   background: color-mix(in srgb, var(--background-secondary) 86%, var(--interactive-accent));
@@ -330,12 +344,22 @@
 }
 
 .fishbone-dashboard-task-title {
+  flex: 1 1 auto;
   font-size: 13px;
   font-weight: 650;
 }
 
 .fishbone-dashboard-task-meta {
   justify-content: flex-start;
+}
+
+.fishbone-dashboard-status-select {
+  flex: 0 0 auto;
+  max-width: 74px;
+  min-height: 22px;
+  padding: 0 18px 0 6px;
+  border-radius: 6px;
+  font-size: 11px;
 }
 
 .fishbone-dashboard-priority {
@@ -354,27 +378,105 @@
   background: color-mix(in srgb, var(--color-yellow) 55%, var(--background-modifier-border));
 }
 
+.fishbone-dashboard-reason-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.fishbone-dashboard-reason {
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  font-size: 10px;
+}
+
+.fishbone-dashboard-reason.is-overdue,
+.fishbone-dashboard-reason.is-blocked {
+  color: var(--text-on-accent);
+  background: var(--text-error);
+}
+
+.fishbone-dashboard-reason.is-high {
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--color-yellow) 58%, var(--background-modifier-border));
+}
+
+.fishbone-dashboard-reason.is-doing {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+
 .fishbone-dashboard-status-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-.fishbone-dashboard-status-tile {
+.fishbone-dashboard-status-column {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  padding: 7px 4px;
+  min-height: 0;
+  padding: 6px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
-  text-align: center;
   background: color-mix(in srgb, var(--background-secondary) 72%, transparent);
 }
 
-.fishbone-dashboard-status-value {
-  font-size: 16px;
-  font-weight: 750;
+.fishbone-dashboard-status-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
-.fishbone-dashboard-status-label,
+.fishbone-dashboard-status-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden auto;
+  margin-top: 6px;
+}
+
+.fishbone-dashboard-status-task {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--background-primary) 72%, transparent);
+  cursor: pointer;
+}
+
+.fishbone-dashboard-status-task:hover {
+  background: color-mix(in srgb, var(--background-primary) 84%, var(--interactive-accent));
+}
+
+.fishbone-dashboard-status-task-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fishbone-dashboard-status-task .fishbone-dashboard-status-select {
+  width: 28px;
+  max-width: 28px;
+  color: transparent;
+}
+
 .fishbone-dashboard-empty {
   color: var(--text-muted);
   font-size: 12px;
@@ -384,6 +486,20 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+.fishbone-dashboard-mainline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.fishbone-dashboard-mainline-meta span {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
 }
 
 .fishbone-dashboard-mainline-top {
