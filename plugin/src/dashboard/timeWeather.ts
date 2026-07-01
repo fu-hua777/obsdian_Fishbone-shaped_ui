@@ -3,8 +3,11 @@ export interface WeatherDisplayData {
   temperature: number;
   unit: "celsius" | "fahrenheit";
   weatherCode: number;
+  conditionLabel?: string;
   windSpeed: number | null;
   networkTime: string | null;
+  provider?: string;
+  observedAt?: string | null;
   fetchedAt: string;
 }
 
@@ -21,6 +24,8 @@ export function formatCurrentDate(date: Date): string {
 
 export function parseNetworkWeatherTime(value: string | null): Date | null {
   if (!value) return null;
+  const direct = new Date(value);
+  if (!Number.isNaN(direct.getTime())) return direct;
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
   const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -29,7 +34,8 @@ export function parseNetworkWeatherTime(value: string | null): Date | null {
 export function formatWeatherSummary(data: WeatherDisplayData): string {
   const unit = data.unit === "fahrenheit" ? "°F" : "°C";
   const wind = data.windSpeed === null ? "" : `，风速 ${Math.round(data.windSpeed)}km/h`;
-  return `${data.locationName} ${Math.round(data.temperature)}${unit}，${weatherCodeLabel(data.weatherCode)}${wind}`;
+  const condition = data.conditionLabel || weatherCodeLabel(data.weatherCode);
+  return `${data.locationName} ${Math.round(data.temperature)}${unit}，${condition}${wind}`;
 }
 
 export function weatherCodeLabel(code: number): string {

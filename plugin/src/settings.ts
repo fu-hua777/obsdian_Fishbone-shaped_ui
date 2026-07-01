@@ -10,6 +10,7 @@ export interface FishbonePlannerSettings {
   weatherLatitude: string;
   weatherLongitude: string;
   weatherUnit: "celsius" | "fahrenheit";
+  weatherOnlineProvider: "auto" | "open-meteo" | "wttr";
 }
 
 export interface FishbonePersistedViewState {
@@ -74,7 +75,8 @@ export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
   weatherLocationName: "北京",
   weatherLatitude: "39.9042",
   weatherLongitude: "116.4074",
-  weatherUnit: "celsius"
+  weatherUnit: "celsius",
+  weatherOnlineProvider: "auto"
 };
 
 export class FishbonePlannerSettingTab extends PluginSettingTab {
@@ -175,6 +177,21 @@ export class FishbonePlannerSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.weatherUnit)
           .onChange(async (value) => {
             this.plugin.settings.weatherUnit = value === "fahrenheit" ? "fahrenheit" : "celsius";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("联网天气源")
+      .setDesc("自动模式会先尝试 Open-Meteo，失败后尝试 wttr.in。时间同步使用网络响应头 Date。")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("auto", "自动")
+          .addOption("open-meteo", "Open-Meteo")
+          .addOption("wttr", "wttr.in")
+          .setValue(this.plugin.settings.weatherOnlineProvider || "auto")
+          .onChange(async (value) => {
+            this.plugin.settings.weatherOnlineProvider = value === "open-meteo" || value === "wttr" ? value : "auto";
             await this.plugin.saveSettings();
           })
       );

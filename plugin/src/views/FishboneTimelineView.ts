@@ -700,8 +700,6 @@ export class FishboneTimelineView extends ItemView {
     weather.setText("读取天气缓存中...");
     void this.plugin.weatherRepository.readCachedWeather(summary.today).then((cached) => {
       if (cached) {
-        const synced = updateTimeWeatherDisplay(clock, date, cached.networkTime);
-        this.timeWeatherSyncedOffsetMs = synced ? synced.getTime() - Date.now() : this.timeWeatherSyncedOffsetMs;
         weather.setText(`${formatWeatherSummary(cached)} · ${cached.fetchedAt}`);
       } else {
         weather.setText("今日暂无天气缓存");
@@ -719,10 +717,11 @@ export class FishboneTimelineView extends ItemView {
           locationName,
           latitude,
           longitude,
-          unit: this.plugin.settings.weatherUnit
+          unit: this.plugin.settings.weatherUnit,
+          provider: this.plugin.settings.weatherOnlineProvider
         });
         const synced = updateTimeWeatherDisplay(clock, date, data.networkTime);
-        this.timeWeatherSyncedOffsetMs = synced ? synced.getTime() - Date.now() : this.timeWeatherSyncedOffsetMs;
+        this.timeWeatherSyncedOffsetMs = synced ? synced.getTime() - Date.now() : null;
         weather.setText(`${formatWeatherSummary(data)} · ${data.fetchedAt}`);
         new Notice("时间和天气已同步");
       } catch (error) {
@@ -732,6 +731,14 @@ export class FishboneTimelineView extends ItemView {
         sync.disabled = false;
         sync.setText("同步");
       }
+    });
+    const localTime = actions.createEl("button", { text: "本机时间" });
+    localTime.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.timeWeatherSyncedOffsetMs = null;
+      updateTimeWeatherDisplay(clock, date, null);
+      new Notice("已切换为本机时间");
     });
   }
 

@@ -43,6 +43,9 @@ function main() {
     "requestUrlWithTimeout",
     "联网同步超时",
     "api.open-meteo.com/v1/forecast",
+    "wttr.in",
+    "readNetworkDateHeader",
+    "getProviderOrder",
     "current=time,temperature_2m,weather_code,wind_speed_10m",
     "WeatherCache",
     "readCachedWeather",
@@ -56,6 +59,7 @@ function main() {
     "weatherLatitude",
     "weatherLongitude",
     "weatherUnit",
+    "weatherOnlineProvider",
     "time-weather"
   ]);
 
@@ -75,6 +79,7 @@ function main() {
     "fetchAndCacheCurrentWeather",
     "同步",
     "正在联网同步",
+    "本机时间",
     "sync.disabled = false"
   ]);
 
@@ -90,6 +95,7 @@ function main() {
   assert(!view.includes("settings.enableWeather"), "Time/weather module should always render weather state without an enable gate.");
   assert(view.includes("window.setInterval") && view.includes("window.clearInterval"), "Time module should update without full canvas render and clear timer on close.");
   assert(view.indexOf("fetchAndCacheCurrentWeather") > view.indexOf("sync.addEventListener"), "Weather fetch should be user-triggered by the sync button.");
+  assert(!view.includes("cached.networkTime"), "Cached weather observation time must not offset the clock.");
 
   console.log("M6.8 time/weather validation passed.");
 }
