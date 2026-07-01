@@ -5,7 +5,6 @@ export interface FishbonePlannerSettings {
   planningSystemPath: string;
   fishboneViewState: FishbonePersistedViewState;
   dashboardState: FishboneDashboardState;
-  enableWeather: boolean;
   weatherLocationName: string;
   weatherLatitude: string;
   weatherLongitude: string;
@@ -50,17 +49,16 @@ export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
       "week-focus": 188,
       "mainline-progress": 190,
       "daily-summary": 156,
-      "time-weather": 132
+      "time-weather": 104
     },
     moduleVisibility: {},
     moduleCollapsed: {},
     workbenchHeight: 260,
     workbenchColumnOrder: ["todo", "doing", "done"]
   },
-  enableWeather: false,
-  weatherLocationName: "",
-  weatherLatitude: "",
-  weatherLongitude: "",
+  weatherLocationName: "北京",
+  weatherLatitude: "39.9042",
+  weatherLongitude: "116.4074",
   weatherUnit: "celsius"
 };
 
@@ -87,18 +85,6 @@ export class FishbonePlannerSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.planningSystemPath)
           .onChange(async (value) => {
             this.plugin.settings.planningSystemPath = normalizePlanningPath(value);
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("启用天气")
-      .setDesc("关闭时，时间 / 天气模块只显示本地时间，不请求网络。")
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.enableWeather)
-          .onChange(async (value) => {
-            this.plugin.settings.enableWeather = value;
             await this.plugin.saveSettings();
           })
       );

@@ -63,6 +63,9 @@ function main() {
     ".fishbone-module-manager-desc"
   ]);
 
+  const view = read("plugin/src/views/FishboneTimelineView.ts");
+  assert(!view.includes("折叠模块"), "Module manager should not render a second collapse-toggle column.");
+
   console.log("M6.9 module management validation passed.");
 }
 

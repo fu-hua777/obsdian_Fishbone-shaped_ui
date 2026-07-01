@@ -645,7 +645,7 @@
 .fishbone-daily-summary-module {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   min-height: 0;
   overflow: hidden;
 }
@@ -654,25 +654,6 @@
   overflow: hidden;
   color: var(--text-muted);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fishbone-daily-summary-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.fishbone-daily-summary-metrics span {
-  min-width: 0;
-  padding: 4px 6px;
-  overflow: hidden;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
-  color: var(--text-muted);
-  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -696,13 +677,13 @@
     "date actions"
     "weather weather";
   align-items: center;
-  gap: 5px 8px;
+  gap: 3px 7px;
   min-height: 0;
 }
 
 .fishbone-time-weather-clock {
   grid-area: clock;
-  font-size: 28px;
+  font-size: 23px;
   font-weight: 760;
   line-height: 1;
 }
@@ -710,7 +691,7 @@
 .fishbone-time-weather-date {
   grid-area: date;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .fishbone-time-weather-summary {
@@ -718,7 +699,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -730,8 +711,10 @@
 }
 
 .fishbone-time-weather-actions button {
-  min-width: 74px;
-  font-size: 12px;
+  min-width: 66px;
+  min-height: 24px;
+  padding: 2px 7px;
+  font-size: 11px;
 }
 
 .fishbone-workbench-panel {

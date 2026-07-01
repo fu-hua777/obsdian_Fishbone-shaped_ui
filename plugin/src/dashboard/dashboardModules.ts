@@ -21,7 +21,7 @@ export const DASHBOARD_MODULES: DashboardModuleMeta[] = [
   { id: "week-focus", title: "本周重点", area: "right", defaultHeight: 188, minHeight: 86, defaultVisible: true },
   { id: "mainline-progress", title: "主线进度", area: "right", defaultHeight: 190, minHeight: 86, defaultVisible: true },
   { id: "daily-summary", title: "每日总结", area: "right", defaultHeight: 156, minHeight: 86, defaultVisible: true },
-  { id: "time-weather", title: "时间 / 天气", area: "right", defaultHeight: 132, minHeight: 86, defaultVisible: true }
+  { id: "time-weather", title: "时间 / 天气", area: "right", defaultHeight: 104, minHeight: 86, defaultVisible: true }
 ];
 
 export const DASHBOARD_MODULE_IDS = DASHBOARD_MODULES.map((module) => module.id);

@@ -1,6 +1,6 @@
 import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
-import { buildDailySummaryMarkdown, buildDailySummaryStats } from "../dashboard/dailySummary";
+import { buildDailySummaryMarkdown } from "../dashboard/dailySummary";
 import { DASHBOARD_MODULE_IDS, DEFAULT_DASHBOARD_MODULE_HEIGHTS, DashboardModuleId, getDashboardModuleTitle } from "../dashboard/dashboardModules";
 import { formatCurrentDate, formatCurrentTime, formatWeatherSummary } from "../dashboard/timeWeather";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
@@ -650,17 +650,11 @@ export class FishboneTimelineView extends ItemView {
   ): void {
     const file = this.plugin.dailySummaryRepository.getSummaryFile(summary.today);
     this.renderDashboardModuleHeader(section, moduleId, "每日总结", file ? "已生成" : "未生成");
-    const stats = buildDailySummaryStats(tasks, summary.today);
     const body = section.createDiv({ cls: "fishbone-daily-summary-module" });
     body.createDiv({
       cls: "fishbone-daily-summary-status",
       text: file ? `已生成 ${formatLocalDateTimeForSummary(new Date(file.stat.mtime))}` : "今日总结尚未生成"
     });
-    const metrics = body.createDiv({ cls: "fishbone-daily-summary-metrics" });
-    metrics.createSpan({ text: `任务 ${stats.taskCount}` });
-    metrics.createSpan({ text: `完成 ${stats.doneCount}` });
-    metrics.createSpan({ text: `阻塞 ${stats.blockedCount}` });
-    metrics.createSpan({ text: `快输 ${stats.quickInputCount}` });
     const actions = body.createDiv({ cls: "fishbone-daily-summary-actions" });
     const generateButton = actions.createEl("button", { text: file ? "重新生成" : "生成总结" });
     generateButton.addEventListener("click", async (event) => {
@@ -688,17 +682,13 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderTimeWeatherModule(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
-    this.renderDashboardModuleHeader(section, moduleId, "时间 / 天气", this.plugin.settings.enableWeather ? "天气开" : "仅时间");
+    this.renderDashboardModuleHeader(section, moduleId, "时间 / 天气", "常显");
     const body = section.createDiv({ cls: "fishbone-time-weather-module" });
     const now = new Date();
     body.createDiv({ cls: "fishbone-time-weather-clock", text: formatCurrentTime(now) });
     body.createDiv({ cls: "fishbone-time-weather-date", text: formatCurrentDate(now) });
-    const weather = body.createDiv({ cls: "fishbone-time-weather-summary", text: "天气未启用" });
+    const weather = body.createDiv({ cls: "fishbone-time-weather-summary", text: "读取天气缓存中..." });
     const actions = body.createDiv({ cls: "fishbone-time-weather-actions" });
-    if (!this.plugin.settings.enableWeather) {
-      weather.setText("设置中启用天气后可手动刷新");
-      return;
-    }
     const latitude = Number(this.plugin.settings.weatherLatitude);
     const longitude = Number(this.plugin.settings.weatherLongitude);
     const locationName = this.plugin.settings.weatherLocationName.trim() || "当前位置";
@@ -2692,7 +2682,7 @@ class DashboardModuleManagerModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", { text: "模块管理" });
-    contentEl.createDiv({ cls: "fishbone-module-manager-desc", text: "可调整右侧模块的显示和折叠状态；拖动排序和高度调整仍在工作台内完成。" });
+    contentEl.createDiv({ cls: "fishbone-module-manager-desc", text: "可调整右侧模块的显示状态；拖动排序、高度调整和折叠仍在工作台内完成。" });
 
     for (const moduleId of DASHBOARD_MODULE_IDS) {
       new Setting(contentEl)
@@ -2700,11 +2690,6 @@ class DashboardModuleManagerModal extends Modal {
         .addToggle((toggle) => {
           toggle.setTooltip("显示模块").setValue(this.visibility[moduleId]).onChange((value) => {
             this.visibility[moduleId] = value;
-          });
-        })
-        .addToggle((toggle) => {
-          toggle.setTooltip("折叠模块").setValue(this.collapsed[moduleId]).onChange((value) => {
-            this.collapsed[moduleId] = value;
           });
         });
     }

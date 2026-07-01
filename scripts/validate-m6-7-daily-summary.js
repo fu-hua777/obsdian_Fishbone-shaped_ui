@@ -63,7 +63,6 @@ function main() {
     "daily-summary",
     "renderDailySummaryModule",
     "buildDailySummaryMarkdown",
-    "buildDailySummaryStats",
     "dailySummaryRepository.writeSummary",
     "dailySummaryRepository.openSummary",
     "生成总结",
@@ -72,9 +71,11 @@ function main() {
 
   requireText("plugin/styles.css", [
     ".fishbone-daily-summary-module",
-    ".fishbone-daily-summary-metrics",
     ".fishbone-daily-summary-actions"
   ]);
+
+  const view = read("plugin/src/views/FishboneTimelineView.ts");
+  assert(!view.includes("fishbone-daily-summary-metrics"), "Daily summary module should not render the four metric tags.");
 
   console.log("M6.7 daily summary validation passed.");
 }
