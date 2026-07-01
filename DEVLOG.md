@@ -286,3 +286,9 @@ M3 未做：
 - 新增 `TaskRepository.createTask()`，按标准 planning-task frontmatter 写入任务 md，默认来源为 `manual`，并保留 relations、review_status、confidence 等字段。
 - 新建任务弹窗支持填写标题、日期、主线、状态、优先级和描述；日期留空时写入 inbox 目录。
 - 创建后刷新鱼骨视图并打开新任务文件，便于继续编辑正文。
+### M6.6：快速输入写入闭环
+- 快速输入从“候选预览”推进为用户确认后的标准任务 md 写入，复用 `TaskRepository.createTask()`。
+- 新增轻量解析：支持今天/明天/后天、`YYYY-MM-DD`、已有主线匹配、优先级、状态和多条输入提示。
+- 候选可直接确认写入，也可进入新建任务弹窗编辑后创建；写入时使用 `source_type: quick-input` 并保留原始输入到 `source_excerpt`。
+- 不存在的主线不会自动创建，候选显示为未分配并提示用户确认。
+- 新增 M6.6 静态校验脚本和手动验收清单；本阶段不做外部 LLM、批量拆分或 relation 自动推断。

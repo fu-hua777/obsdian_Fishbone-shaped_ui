@@ -53,7 +53,7 @@ function main() {
     "setTaskDone",
     "updateTaskFields",
     "type: planning-task",
-    "source_type: manual",
+    "source_type: ${input.sourceType ?? \"manual\"}",
     "frontmatter.mainline",
     "frontmatter.status",
     "frontmatter.updated"

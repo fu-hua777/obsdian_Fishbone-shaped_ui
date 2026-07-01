@@ -20,6 +20,7 @@ export interface CreatePlanningTaskInput {
   branchMainlineId?: string | null;
   status: TaskStatus;
   priority: TaskPriority;
+  sourceType?: "manual" | "quick-input";
   sourceExcerpt?: string;
 }
 
@@ -213,7 +214,7 @@ function buildTaskMarkdown(input: CreatePlanningTaskInput & { taskId: string; cr
     `branch_mainline_id: ${branchMainlineId}`,
     `status: ${input.status}`,
     `priority: ${input.priority}`,
-    "source_type: manual",
+    `source_type: ${input.sourceType ?? "manual"}`,
     'source_file: ""',
     `source_excerpt: ${yamlString(sourceExcerpt)}`,
     "relations: []",

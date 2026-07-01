@@ -58,7 +58,7 @@ function main() {
     "draggedWorkbenchTaskId",
     "bindWorkbenchResize",
     "setTaskStatus(task, status)",
-    "M6.5"
+    "fishbone-quick-input-preview"
   ]);
 
   requireText("plugin/styles.css", [
@@ -91,7 +91,6 @@ function main() {
   assert(view.includes("bindWorkbenchColumnDrag(column, header, columnId)") && view.includes("this.workbenchColumnSortDrag"), "Workbench column ordering should use pointer drag state.");
   assert(view.includes("event.dataTransfer.effectAllowed = \"move\"") && view.includes("event.dataTransfer.dropEffect = \"move\""), "Task cross-column drag should keep explicit move feedback.");
   assert(view.includes("status: \"inbox\""), "Quick-input candidate should default to inbox.");
-  assert(!view.includes("createQuickInputTask"), "M6.5 should not write quick-input candidates to task md yet.");
 
   const styles = read("plugin/styles.css");
   assert(!styles.includes(".fishbone-dashboard-header"), "Old dashboard header styles should be removed.");

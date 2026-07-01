@@ -74,10 +74,12 @@ const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; targetSt
 interface QuickInputCandidate {
   text: string;
   title: string;
-  date: string;
-  mainline: string;
+  date: string | null;
+  mainline: string | null;
   priority: TaskPriority;
   status: TaskStatus;
+  hasMultipleCandidates: boolean;
+  warnings: string[];
 }
 
 export class FishboneTimelineView extends ItemView {
@@ -833,7 +835,10 @@ export class FishboneTimelineView extends ItemView {
       event.preventDefault();
       const text = input.value.trim();
       if (!text) return;
-      this.quickInputCandidate = buildQuickInputCandidate(text, summary, mainlines);
+      this.quickInputCandidate = buildQuickInputCandidateV2(text, summary, mainlines);
+      if (this.quickInputCandidate.hasMultipleCandidates) {
+        new Notice("检测到多条输入，M6.6 暂按一条候选处理，批量创建会在后续阶段补充。");
+      }
       void this.render();
     });
 
@@ -851,15 +856,48 @@ export class FishboneTimelineView extends ItemView {
     });
     preview.createDiv({ cls: "fishbone-quick-input-title", text: candidate.title });
     const meta = preview.createDiv({ cls: "fishbone-quick-input-meta" });
-    meta.createSpan({ text: candidate.date });
-    meta.createSpan({ text: candidate.mainline });
+    meta.createSpan({ text: candidate.date ?? "未定日期" });
+    meta.createSpan({ text: candidate.mainline ?? "未分配" });
     meta.createSpan({ text: formatPriority(candidate.priority) });
     meta.createSpan({ text: candidate.status });
+    for (const warning of candidate.warnings) {
+      preview.createDiv({ cls: "fishbone-quick-input-warning", text: warning });
+    }
     const actions = preview.createDiv({ cls: "fishbone-quick-input-actions" });
     const confirm = actions.createEl("button", { text: "确认写入" });
-    confirm.addEventListener("click", (event) => {
+    confirm.addEventListener("click", async (event) => {
       event.preventDefault();
-      new Notice("M6.5 仅提供候选预览；写入标准任务 md 将在 M6.6 实现");
+      await this.plugin.taskRepository.createTask({
+        title: candidate.title,
+        date: candidate.date,
+        mainline: candidate.mainline,
+        status: candidate.status,
+        priority: candidate.priority,
+        sourceType: "quick-input",
+        sourceExcerpt: candidate.text
+      });
+      this.quickInputCandidate = null;
+      new Notice("已通过快速输入创建任务");
+      await this.render();
+    });
+
+    const edit = actions.createEl("button", { text: "编辑后创建" });
+    edit.addEventListener("click", (event) => {
+      event.preventDefault();
+      new NewTaskModal(this.plugin, mainlines, async (input) => {
+        await this.plugin.taskRepository.createTask(input);
+        this.quickInputCandidate = null;
+        new Notice(`已创建任务：${input.title}`);
+        await this.render();
+      }, {
+        title: candidate.title,
+        date: candidate.date,
+        mainline: candidate.mainline,
+        status: candidate.status,
+        priority: candidate.priority,
+        sourceType: "quick-input",
+        sourceExcerpt: candidate.text
+      }).open();
     });
   }
 
@@ -2656,15 +2694,26 @@ class NewTaskModal extends Modal {
   private status: TaskStatus = "todo";
   private priority: TaskPriority = "medium";
   private sourceExcerpt = "";
+  private sourceType: CreatePlanningTaskInput["sourceType"] = "manual";
 
   constructor(
     plugin: FishbonePlannerPlugin,
     mainlines: Mainline[],
-    onSubmit: (input: CreatePlanningTaskInput) => Promise<void>
+    onSubmit: (input: CreatePlanningTaskInput) => Promise<void>,
+    initial?: Partial<CreatePlanningTaskInput>
   ) {
     super(plugin.app);
     this.mainlines = mainlines;
     this.onSubmit = onSubmit;
+    if (initial) {
+      this.title = initial.title ?? this.title;
+      this.date = initial.date ?? "";
+      this.mainline = initial.mainline ?? "";
+      this.status = initial.status ?? this.status;
+      this.priority = initial.priority ?? this.priority;
+      this.sourceType = initial.sourceType ?? this.sourceType;
+      this.sourceExcerpt = initial.sourceExcerpt ?? this.sourceExcerpt;
+    }
   }
 
   onOpen(): void {
@@ -2758,6 +2807,7 @@ class NewTaskModal extends Modal {
                 mainline: this.mainline.length > 0 ? this.mainline : null,
                 status: this.status,
                 priority: this.priority,
+                sourceType: this.sourceType,
                 sourceExcerpt: this.sourceExcerpt.trim() || "手动新建任务"
               });
               this.close();
@@ -2987,6 +3037,101 @@ function getWorkbenchColumnTasks(summary: DashboardSummary, columnId: WorkbenchC
   }
 }
 
+function buildQuickInputCandidateV2(text: string, summary: DashboardSummary, mainlines: Mainline[]): QuickInputCandidate {
+  const warnings: string[] = [];
+  const source = text.trim();
+  let working = source;
+  const hasMultipleCandidates = /[\n;；]/.test(source);
+  if (hasMultipleCandidates) {
+    warnings.push("检测到多条输入，本阶段仅按一条候选写入。");
+  }
+
+  const explicitDate = working.match(/\b\d{4}-\d{2}-\d{2}\b/);
+  let date: string | null = summary.today;
+  if (explicitDate) {
+    date = explicitDate[0];
+    working = removeToken(working, explicitDate[0]);
+  } else if (/后天/.test(working)) {
+    date = addDaysToIsoDate(summary.today, 2);
+    working = removePattern(working, /后天/g);
+  } else if (/明天/.test(working)) {
+    date = addDaysToIsoDate(summary.today, 1);
+    working = removePattern(working, /明天/g);
+  } else if (/今天|今日/.test(working)) {
+    date = summary.today;
+    working = removePattern(working, /今天|今日/g);
+  } else if (/inbox|收件箱|未定日期/i.test(working)) {
+    date = null;
+    working = removePattern(working, /inbox|收件箱|未定日期/gi);
+  }
+
+  let priority: TaskPriority = "medium";
+  if (/高优先级|高优先|重要|紧急|\bhigh\b/i.test(working)) {
+    priority = "high";
+    working = removePattern(working, /高优先级|高优先|重要|紧急|\bhigh\b/gi);
+  } else if (/低优先级|低优先|不急|\blow\b/i.test(working)) {
+    priority = "low";
+    working = removePattern(working, /低优先级|低优先|不急|\blow\b/gi);
+  } else {
+    working = removePattern(working, /中优先级|中优先|\bmedium\b/gi);
+  }
+
+  let status: TaskStatus = "inbox";
+  if (/进行中|\bdoing\b/i.test(working)) {
+    status = "doing";
+    working = removePattern(working, /进行中|\bdoing\b/gi);
+  } else if (/已完成|完成|\bdone\b/i.test(working)) {
+    status = "done";
+    working = removePattern(working, /已完成|完成|\bdone\b/gi);
+  } else if (/阻塞|卡住|\bblocked\b/i.test(working)) {
+    status = "blocked";
+    working = removePattern(working, /阻塞|卡住|\bblocked\b/gi);
+  } else if (/待办|\btodo\b/i.test(working)) {
+    status = "todo";
+    working = removePattern(working, /待办|\btodo\b/gi);
+  }
+
+  const visibleMainlines = mainlines
+    .filter((mainline) => mainline.type === "mainline" && mainline.visible !== false)
+    .sort((a, b) => b.name.length - a.name.length);
+  const matchedMainline = visibleMainlines.find((mainline) => working.includes(mainline.name) || source.includes(mainline.name));
+  const mainline = matchedMainline?.name ?? null;
+  if (matchedMainline) {
+    working = removeToken(working, matchedMainline.name);
+  } else {
+    warnings.push("未匹配到现有主线，将创建为未分配任务。");
+  }
+
+  const title = normalizeQuickInputTitle(working) || normalizeQuickInputTitle(source) || "快速输入任务";
+  return {
+    text: source,
+    title,
+    date,
+    mainline,
+    priority,
+    status,
+    hasMultipleCandidates,
+    warnings
+  };
+}
+
+function normalizeQuickInputTitle(value: string): string {
+  return value
+    .replace(/[\n;；]+/g, " ")
+    .replace(/[，,。.!！?？:：]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
+function removeToken(value: string, token: string): string {
+  return value.split(token).join(" ");
+}
+
+function removePattern(value: string, pattern: RegExp): string {
+  return value.replace(pattern, " ");
+}
+
 function buildQuickInputCandidate(text: string, summary: DashboardSummary, mainlines: Mainline[]): QuickInputCandidate {
   const firstMainline = mainlines.find((mainline) => mainline.type === "mainline" && mainline.visible !== false);
   return {
@@ -2995,7 +3140,9 @@ function buildQuickInputCandidate(text: string, summary: DashboardSummary, mainl
     date: summary.today,
     mainline: firstMainline?.name ?? "待确认",
     priority: "medium",
-    status: "inbox"
+    status: "inbox",
+    hasMultipleCandidates: false,
+    warnings: []
   };
 }
 
