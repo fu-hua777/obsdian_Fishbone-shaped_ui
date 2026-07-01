@@ -5,6 +5,7 @@ export interface FishbonePlannerSettings {
   planningSystemPath: string;
   fishboneViewState: FishbonePersistedViewState;
   dashboardState: FishboneDashboardState;
+  weatherRegionPreset: string;
   weatherLocationName: string;
   weatherLatitude: string;
   weatherLongitude: string;
@@ -36,6 +37,19 @@ export interface FishboneDashboardState {
   workbenchColumnOrder?: string[];
 }
 
+const WEATHER_REGION_PRESETS: Array<{ id: string; name: string; latitude: string; longitude: string }> = [
+  { id: "beijing", name: "北京", latitude: "39.9042", longitude: "116.4074" },
+  { id: "shanghai", name: "上海", latitude: "31.2304", longitude: "121.4737" },
+  { id: "guangzhou", name: "广州", latitude: "23.1291", longitude: "113.2644" },
+  { id: "shenzhen", name: "深圳", latitude: "22.5431", longitude: "114.0579" },
+  { id: "hangzhou", name: "杭州", latitude: "30.2741", longitude: "120.1551" },
+  { id: "chengdu", name: "成都", latitude: "30.5728", longitude: "104.0668" },
+  { id: "wuhan", name: "武汉", latitude: "30.5928", longitude: "114.3055" },
+  { id: "xian", name: "西安", latitude: "34.3416", longitude: "108.9398" },
+  { id: "nanjing", name: "南京", latitude: "32.0603", longitude: "118.7969" },
+  { id: "custom", name: "自定义", latitude: "", longitude: "" }
+];
+
 export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
   planningSystemPath: "PlanningSystem",
   fishboneViewState: {},
@@ -56,6 +70,7 @@ export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
     workbenchHeight: 260,
     workbenchColumnOrder: ["todo", "doing", "done"]
   },
+  weatherRegionPreset: "beijing",
   weatherLocationName: "北京",
   weatherLatitude: "39.9042",
   weatherLongitude: "116.4074",
@@ -90,6 +105,28 @@ export class FishbonePlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("天气地区")
+      .setDesc("选择地区后会自动填入天气地点和经纬度。")
+      .addDropdown((dropdown) => {
+        for (const preset of WEATHER_REGION_PRESETS) {
+          dropdown.addOption(preset.id, preset.name);
+        }
+        dropdown
+          .setValue(this.plugin.settings.weatherRegionPreset || "beijing")
+          .onChange(async (value) => {
+            this.plugin.settings.weatherRegionPreset = value;
+            const preset = WEATHER_REGION_PRESETS.find((item) => item.id === value);
+            if (preset && preset.id !== "custom") {
+              this.plugin.settings.weatherLocationName = preset.name;
+              this.plugin.settings.weatherLatitude = preset.latitude;
+              this.plugin.settings.weatherLongitude = preset.longitude;
+            }
+            await this.plugin.saveSettings();
+            this.display();
+          });
+      });
+
+    new Setting(containerEl)
       .setName("天气地点名称")
       .setDesc("仅用于显示，例如 北京、上海。")
       .addText((text) =>
@@ -97,6 +134,7 @@ export class FishbonePlannerSettingTab extends PluginSettingTab {
           .setPlaceholder("北京")
           .setValue(this.plugin.settings.weatherLocationName)
           .onChange(async (value) => {
+            this.plugin.settings.weatherRegionPreset = "custom";
             this.plugin.settings.weatherLocationName = value.trim();
             await this.plugin.saveSettings();
           })
@@ -109,6 +147,7 @@ export class FishbonePlannerSettingTab extends PluginSettingTab {
           .setPlaceholder("39.9042")
           .setValue(this.plugin.settings.weatherLatitude)
           .onChange(async (value) => {
+            this.plugin.settings.weatherRegionPreset = "custom";
             this.plugin.settings.weatherLatitude = value.trim();
             await this.plugin.saveSettings();
           })
@@ -121,6 +160,7 @@ export class FishbonePlannerSettingTab extends PluginSettingTab {
           .setPlaceholder("116.4074")
           .setValue(this.plugin.settings.weatherLongitude)
           .onChange(async (value) => {
+            this.plugin.settings.weatherRegionPreset = "custom";
             this.plugin.settings.weatherLongitude = value.trim();
             await this.plugin.saveSettings();
           })

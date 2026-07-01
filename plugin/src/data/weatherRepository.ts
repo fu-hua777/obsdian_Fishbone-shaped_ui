@@ -10,6 +10,7 @@ export interface WeatherRequestOptions {
 
 interface OpenMeteoCurrentResponse {
   current?: {
+    time?: string;
     temperature_2m?: number;
     weather_code?: number;
     wind_speed_10m?: number;
@@ -41,12 +42,12 @@ export class WeatherRepository {
       "https://api.open-meteo.com/v1/forecast",
       `?latitude=${encodeURIComponent(String(options.latitude))}`,
       `&longitude=${encodeURIComponent(String(options.longitude))}`,
-      "&current=temperature_2m,weather_code,wind_speed_10m",
+      "&current=time,temperature_2m,weather_code,wind_speed_10m",
       `&temperature_unit=${temperatureUnit}`,
       "&wind_speed_unit=kmh",
       "&timezone=auto"
     ].join("");
-    const response = await requestUrl({ url, method: "GET" });
+    const response = await requestUrlWithTimeout(url, 10000);
     const json = response.json as OpenMeteoCurrentResponse;
     const current = json.current;
     if (!current || typeof current.temperature_2m !== "number" || typeof current.weather_code !== "number") {
@@ -58,6 +59,7 @@ export class WeatherRepository {
       unit: options.unit,
       weatherCode: current.weather_code,
       windSpeed: typeof current.wind_speed_10m === "number" ? current.wind_speed_10m : null,
+      networkTime: typeof current.time === "string" ? current.time : null,
       fetchedAt: formatLocalDateTime(new Date())
     };
     await this.writeCachedWeather(date, data);
@@ -72,6 +74,21 @@ export class WeatherRepository {
 
   private getCachePath(date: string): string {
     return normalizePath(`${this.planningSystemPath}/WeatherCache/${date}_weather.json`);
+  }
+}
+
+async function requestUrlWithTimeout(url: string, timeoutMs: number): Promise<Awaited<ReturnType<typeof requestUrl>>> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`联网同步超时（${Math.round(timeoutMs / 1000)}秒）`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([
+      requestUrl({ url, method: "GET" }),
+      timeout
+    ]);
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
   }
 }
 

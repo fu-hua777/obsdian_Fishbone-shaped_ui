@@ -29,8 +29,10 @@ function main() {
 
   requireText("plugin/src/dashboard/timeWeather.ts", [
     "WeatherDisplayData",
+    "networkTime",
     "formatCurrentTime",
     "formatCurrentDate",
+    "parseNetworkWeatherTime",
     "formatWeatherSummary",
     "weatherCodeLabel"
   ]);
@@ -38,14 +40,18 @@ function main() {
   requireText("plugin/src/data/weatherRepository.ts", [
     "WeatherRepository",
     "requestUrl",
+    "requestUrlWithTimeout",
+    "联网同步超时",
     "api.open-meteo.com/v1/forecast",
-    "current=temperature_2m,weather_code,wind_speed_10m",
+    "current=time,temperature_2m,weather_code,wind_speed_10m",
     "WeatherCache",
     "readCachedWeather",
     "fetchAndCacheCurrentWeather"
   ]);
 
   requireText("plugin/src/settings.ts", [
+    "WEATHER_REGION_PRESETS",
+    "weatherRegionPreset",
     "weatherLocationName",
     "weatherLatitude",
     "weatherLongitude",
@@ -63,10 +69,13 @@ function main() {
     "renderTimeWeatherModule",
     "updateTimeWeatherClock",
     "timeWeatherTimer",
+    "timeWeatherSyncedOffsetMs",
+    "updateTimeWeatherDisplay",
     "readCachedWeather",
     "fetchAndCacheCurrentWeather",
-    "刷新天气",
-    "读取天气缓存中"
+    "同步",
+    "正在联网同步",
+    "sync.disabled = false"
   ]);
 
   requireText("plugin/styles.css", [
@@ -80,7 +89,7 @@ function main() {
   assert(!settings.includes("enableWeather"), "Weather should no longer require a settings enable switch.");
   assert(!view.includes("settings.enableWeather"), "Time/weather module should always render weather state without an enable gate.");
   assert(view.includes("window.setInterval") && view.includes("window.clearInterval"), "Time module should update without full canvas render and clear timer on close.");
-  assert(view.indexOf("fetchAndCacheCurrentWeather") > view.indexOf("refresh.addEventListener"), "Weather fetch should be user-triggered by the refresh button.");
+  assert(view.indexOf("fetchAndCacheCurrentWeather") > view.indexOf("sync.addEventListener"), "Weather fetch should be user-triggered by the sync button.");
 
   console.log("M6.8 time/weather validation passed.");
 }

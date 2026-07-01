@@ -2,7 +2,7 @@ import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "
 import FishbonePlannerPlugin from "../main";
 import { buildDailySummaryMarkdown } from "../dashboard/dailySummary";
 import { DASHBOARD_MODULE_IDS, DEFAULT_DASHBOARD_MODULE_HEIGHTS, DashboardModuleId, getDashboardModuleTitle } from "../dashboard/dashboardModules";
-import { formatCurrentDate, formatCurrentTime, formatWeatherSummary } from "../dashboard/timeWeather";
+import { formatCurrentDate, formatCurrentTime, formatWeatherSummary, parseNetworkWeatherTime } from "../dashboard/timeWeather";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { CreatePlanningTaskInput, TaskFieldPatch } from "../data/taskRepository";
 import { Mainline, PlanningTask, TaskPriority, TaskStatus } from "../data/taskTypes";
@@ -168,6 +168,7 @@ export class FishboneTimelineView extends ItemView {
     elementStartTop: number;
   } | null = null;
   private timeWeatherTimer: number | null = null;
+  private timeWeatherSyncedOffsetMs: number | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FishbonePlannerPlugin) {
     super(leaf);
@@ -685,8 +686,8 @@ export class FishboneTimelineView extends ItemView {
     this.renderDashboardModuleHeader(section, moduleId, "时间 / 天气", "常显");
     const body = section.createDiv({ cls: "fishbone-time-weather-module" });
     const now = new Date();
-    body.createDiv({ cls: "fishbone-time-weather-clock", text: formatCurrentTime(now) });
-    body.createDiv({ cls: "fishbone-time-weather-date", text: formatCurrentDate(now) });
+    const clock = body.createDiv({ cls: "fishbone-time-weather-clock", text: formatCurrentTime(now) });
+    const date = body.createDiv({ cls: "fishbone-time-weather-date", text: formatCurrentDate(now) });
     const weather = body.createDiv({ cls: "fishbone-time-weather-summary", text: "读取天气缓存中..." });
     const actions = body.createDiv({ cls: "fishbone-time-weather-actions" });
     const latitude = Number(this.plugin.settings.weatherLatitude);
@@ -698,14 +699,21 @@ export class FishboneTimelineView extends ItemView {
     }
     weather.setText("读取天气缓存中...");
     void this.plugin.weatherRepository.readCachedWeather(summary.today).then((cached) => {
-      weather.setText(cached ? `${formatWeatherSummary(cached)} · ${cached.fetchedAt}` : "今日暂无天气缓存");
+      if (cached) {
+        const synced = updateTimeWeatherDisplay(clock, date, cached.networkTime);
+        this.timeWeatherSyncedOffsetMs = synced ? synced.getTime() - Date.now() : this.timeWeatherSyncedOffsetMs;
+        weather.setText(`${formatWeatherSummary(cached)} · ${cached.fetchedAt}`);
+      } else {
+        weather.setText("今日暂无天气缓存");
+      }
     });
-    const refresh = actions.createEl("button", { text: "刷新天气" });
-    refresh.addEventListener("click", async (event) => {
+    const sync = actions.createEl("button", { text: "同步" });
+    sync.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
-      refresh.disabled = true;
-      weather.setText("正在刷新天气...");
+      sync.disabled = true;
+      sync.setText("同步中");
+      weather.setText("正在联网同步...");
       try {
         const data = await this.plugin.weatherRepository.fetchAndCacheCurrentWeather(summary.today, {
           locationName,
@@ -713,19 +721,22 @@ export class FishboneTimelineView extends ItemView {
           longitude,
           unit: this.plugin.settings.weatherUnit
         });
+        const synced = updateTimeWeatherDisplay(clock, date, data.networkTime);
+        this.timeWeatherSyncedOffsetMs = synced ? synced.getTime() - Date.now() : this.timeWeatherSyncedOffsetMs;
         weather.setText(`${formatWeatherSummary(data)} · ${data.fetchedAt}`);
-        new Notice("天气已刷新并写入本地缓存");
+        new Notice("时间和天气已同步");
       } catch (error) {
-        weather.setText(`天气刷新失败：${formatError(error)}`);
-        new Notice("天气刷新失败，已保留本地缓存");
+        weather.setText(`同步失败：${formatError(error)}`);
+        new Notice("联网同步失败，已保留本地缓存");
       } finally {
-        refresh.disabled = false;
+        sync.disabled = false;
+        sync.setText("同步");
       }
     });
   }
 
   private updateTimeWeatherClock(): void {
-    const now = new Date();
+    const now = new Date(Date.now() + (this.timeWeatherSyncedOffsetMs ?? 0));
     this.containerEl.querySelectorAll<HTMLElement>(".fishbone-time-weather-clock").forEach((clock) => {
       clock.setText(formatCurrentTime(now));
     });
@@ -3457,6 +3468,14 @@ function formatError(error: unknown): string {
 function formatLocalDateTimeForSummary(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function updateTimeWeatherDisplay(clock: HTMLElement, date: HTMLElement, networkTime: string | null): Date | null {
+  const synced = parseNetworkWeatherTime(networkTime);
+  const displayDate = synced ?? new Date();
+  clock.setText(formatCurrentTime(displayDate));
+  date.setText(formatCurrentDate(displayDate));
+  return synced;
 }
 
 function clampIsoDate(date: string, startDate: string, endDate: string): string {

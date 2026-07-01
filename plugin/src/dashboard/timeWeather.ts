@@ -4,6 +4,7 @@ export interface WeatherDisplayData {
   unit: "celsius" | "fahrenheit";
   weatherCode: number;
   windSpeed: number | null;
+  networkTime: string | null;
   fetchedAt: string;
 }
 
@@ -16,6 +17,13 @@ export function formatCurrentDate(date: Date): string {
   const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
   const pad = (value: number) => value.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${weekdays[date.getDay()]}`;
+}
+
+export function parseNetworkWeatherTime(value: string | null): Date | null {
+  if (!value) return null;
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export function formatWeatherSummary(data: WeatherDisplayData): string {
