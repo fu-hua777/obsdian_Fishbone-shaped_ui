@@ -78,7 +78,7 @@ function main() {
     ".fishbone-dashboard-reason",
     ".fishbone-dashboard-module-resize-handle",
     ".fishbone-dashboard-section.is-dashboard-module-resizing",
-    ".is-dashboard-module-drop-target",
+    ".is-dashboard-module-drop-before",
     ".fishbone-dashboard-mainline-rings"
   ]);
   const viewAfterModules = read("plugin/src/views/FishboneTimelineView.ts");

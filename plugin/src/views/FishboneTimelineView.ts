@@ -113,8 +113,26 @@ export class FishboneTimelineView extends ItemView {
     startHeight: number;
     section: HTMLElement;
   } | null = null;
-  private draggedDashboardModuleId: DashboardModuleId | null = null;
-  private draggedWorkbenchColumnId: WorkbenchColumnId | null = null;
+  private dashboardModuleSortDrag: {
+    moduleId: DashboardModuleId;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    active: boolean;
+    source: HTMLElement;
+    targetId: DashboardModuleId | null;
+    insertAfter: boolean;
+  } | null = null;
+  private workbenchColumnSortDrag: {
+    columnId: WorkbenchColumnId;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    active: boolean;
+    source: HTMLElement;
+    targetId: WorkbenchColumnId | null;
+    insertAfter: boolean;
+  } | null = null;
   private draggedWorkbenchTaskId: string | null = null;
   private panDrag: { pointerId: number; x: number; y: number } | null = null;
   private suppressNextMainlineClick = false;
@@ -411,12 +429,6 @@ export class FishboneTimelineView extends ItemView {
     this.bindDashboardResize(resizer, panel);
 
     const modules = panel.createDiv({ cls: "fishbone-dashboard-modules" });
-    modules.addEventListener("dragover", (event) => {
-      if (this.getDraggedDashboardModuleId(event)) {
-        event.preventDefault();
-        if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-      }
-    });
     for (const moduleId of this.dashboardModuleOrder) {
       this.renderDashboardModule(modules, moduleId, summary);
     }
@@ -459,7 +471,6 @@ export class FishboneTimelineView extends ItemView {
 
   private renderDashboardModuleHeader(section: HTMLElement, moduleId: DashboardModuleId, title: string, countText: string): HTMLElement {
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
-    header.draggable = true;
     header.setAttr("title", "拖动模块标题可调整模块位置");
     header.createSpan({ cls: "fishbone-dashboard-drag-handle", text: "⋮⋮" });
     header.createSpan({ text: title });
@@ -568,52 +579,87 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private bindDashboardModuleDrag(section: HTMLElement, handle: HTMLElement, moduleId: DashboardModuleId): void {
-    handle.addEventListener("dragstart", (event) => {
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || (event.target as HTMLElement).closest("button, select, input")) return;
+      event.preventDefault();
       event.stopPropagation();
-      this.draggedDashboardModuleId = moduleId;
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer?.setData("text/fishbone-dashboard-module-id", moduleId);
-      event.dataTransfer?.setData("text/plain", moduleId);
-      event.dataTransfer?.setDragImage(section, 12, 12);
-      section.addClass("is-dashboard-module-dragging");
+      handle.setPointerCapture(event.pointerId);
+      this.dashboardModuleSortDrag = {
+        moduleId,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        active: false,
+        source: section,
+        targetId: null,
+        insertAfter: false
+      };
     });
-    handle.addEventListener("dragend", () => {
-      this.draggedDashboardModuleId = null;
-      section.removeClass("is-dashboard-module-dragging");
-      this.containerEl.querySelectorAll<HTMLElement>(".is-dashboard-module-drop-target").forEach((target) => {
-        target.removeClass("is-dashboard-module-drop-target");
-      });
-    });
-    section.addEventListener("dragover", (event) => {
-      const draggedId = this.getDraggedDashboardModuleId(event);
-      if (!draggedId || draggedId === moduleId) return;
+
+    handle.addEventListener("pointermove", (event) => {
+      const drag = this.dashboardModuleSortDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+      if (!drag.active && distance < 4) return;
       event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-      section.addClass("is-dashboard-module-drop-target");
+      event.stopPropagation();
+      drag.active = true;
+      drag.source.addClass("is-dashboard-module-dragging");
+      this.updateDashboardModuleSortTarget(event.clientY);
     });
-    section.addEventListener("dragleave", () => {
-      section.removeClass("is-dashboard-module-drop-target");
+
+    const finish = async (event: PointerEvent) => {
+      const drag = this.dashboardModuleSortDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      this.clearDashboardModuleSortFeedback();
+      this.dashboardModuleSortDrag = null;
+      if (drag.active && drag.targetId && drag.targetId !== drag.moduleId) {
+        await this.moveDashboardModule(drag.moduleId, drag.targetId, drag.insertAfter);
+      }
+    };
+    handle.addEventListener("pointerup", (event) => {
+      void finish(event);
     });
-    section.addEventListener("drop", (event) => {
-      const draggedId = this.getDraggedDashboardModuleId(event);
-      if (!draggedId || draggedId === moduleId) return;
-      event.preventDefault();
-      section.removeClass("is-dashboard-module-drop-target");
-      void this.moveDashboardModule(draggedId, moduleId, event);
+    handle.addEventListener("pointercancel", (event) => {
+      void finish(event);
     });
   }
 
-  private getDraggedDashboardModuleId(event: DragEvent): DashboardModuleId | null {
-    const value = event.dataTransfer?.getData("text/fishbone-dashboard-module-id") ?? "";
-    return isDashboardModuleId(value) ? value : this.draggedDashboardModuleId;
+  private updateDashboardModuleSortTarget(clientY: number): void {
+    const drag = this.dashboardModuleSortDrag;
+    if (!drag) return;
+    let nextTargetId: DashboardModuleId | null = null;
+    let nextInsertAfter = false;
+    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-dashboard-section[data-dashboard-module-id]").forEach((section) => {
+      const id = section.getAttr("data-dashboard-module-id") ?? "";
+      if (!isDashboardModuleId(id) || id === drag.moduleId) return;
+      const rect = section.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        nextTargetId = id;
+        nextInsertAfter = clientY > rect.top + rect.height / 2;
+      }
+    });
+    drag.targetId = nextTargetId;
+    drag.insertAfter = nextInsertAfter;
+    this.clearDashboardModuleSortFeedback();
+    drag.source.addClass("is-dashboard-module-dragging");
+    if (!nextTargetId) return;
+    const target = this.containerEl.querySelector<HTMLElement>(`.fishbone-dashboard-section[data-dashboard-module-id="${nextTargetId}"]`);
+    target?.addClass(nextInsertAfter ? "is-dashboard-module-drop-after" : "is-dashboard-module-drop-before");
   }
 
-  private async moveDashboardModule(sourceId: DashboardModuleId, targetId: DashboardModuleId, event: DragEvent): Promise<void> {
+  private clearDashboardModuleSortFeedback(): void {
+    this.containerEl.querySelectorAll<HTMLElement>(".is-dashboard-module-dragging, .is-dashboard-module-drop-before, .is-dashboard-module-drop-after").forEach((target) => {
+      target.removeClass("is-dashboard-module-dragging");
+      target.removeClass("is-dashboard-module-drop-before");
+      target.removeClass("is-dashboard-module-drop-after");
+    });
+  }
+
+  private async moveDashboardModule(sourceId: DashboardModuleId, targetId: DashboardModuleId, insertAfter: boolean): Promise<void> {
     const order = this.dashboardModuleOrder.filter((id) => id !== sourceId);
     const targetIndex = order.indexOf(targetId);
     if (targetIndex < 0) return;
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const insertAfter = event.clientY > rect.top + rect.height / 2;
     order.splice(targetIndex + (insertAfter ? 1 : 0), 0, sourceId);
     this.dashboardModuleOrder = normalizeDashboardModuleOrder(order);
     await this.persistDashboardState();
@@ -749,7 +795,7 @@ export class FishboneTimelineView extends ItemView {
 
     const columns = panel.createDiv({ cls: "fishbone-workbench-columns" });
     columns.addEventListener("dragover", (event) => {
-      if (this.getDraggedWorkbenchColumnId(event) || this.getDraggedWorkbenchTaskId(event)) {
+      if (this.getDraggedWorkbenchTaskId(event)) {
         event.preventDefault();
         if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
       }
@@ -815,7 +861,6 @@ export class FishboneTimelineView extends ItemView {
     const column = parent.createDiv({ cls: `fishbone-workbench-column fishbone-workbench-column-${columnId}` });
     column.setAttr("data-workbench-column-id", columnId);
     const header = column.createDiv({ cls: "fishbone-workbench-column-header" });
-    header.draggable = true;
     header.setAttr("title", "拖动列标题可调整下方工作台顺序");
     header.createSpan({ cls: "fishbone-workbench-drag-handle", text: "⋮⋮" });
     header.createSpan({ text: meta.title });
@@ -880,24 +925,50 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private bindWorkbenchColumnDrag(column: HTMLElement, header: HTMLElement, columnId: WorkbenchColumnId): void {
-    header.addEventListener("dragstart", (event) => {
+    header.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || (event.target as HTMLElement).closest("button, select, input")) return;
+      event.preventDefault();
       event.stopPropagation();
-      this.draggedWorkbenchColumnId = columnId;
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer?.setData("text/fishbone-workbench-column-id", columnId);
-      event.dataTransfer?.setData("text/plain", columnId);
-      event.dataTransfer?.setDragImage(column, 18, 18);
-      column.addClass("is-workbench-column-dragging");
+      header.setPointerCapture(event.pointerId);
+      this.workbenchColumnSortDrag = {
+        columnId,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        active: false,
+        source: column,
+        targetId: null,
+        insertAfter: false
+      };
     });
-    header.addEventListener("dragend", () => {
-      this.draggedWorkbenchColumnId = null;
-      column.removeClass("is-workbench-column-dragging");
-      this.containerEl.querySelectorAll<HTMLElement>(".is-workbench-drop-target").forEach((target) => {
-        target.removeClass("is-workbench-drop-target");
-      });
+    header.addEventListener("pointermove", (event) => {
+      const drag = this.workbenchColumnSortDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+      if (!drag.active && distance < 4) return;
+      event.preventDefault();
+      event.stopPropagation();
+      drag.active = true;
+      drag.source.addClass("is-workbench-column-dragging");
+      this.updateWorkbenchColumnSortTarget(event.clientX);
+    });
+    const finishSort = async (event: PointerEvent) => {
+      const drag = this.workbenchColumnSortDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      this.clearWorkbenchColumnSortFeedback();
+      this.workbenchColumnSortDrag = null;
+      if (drag.active && drag.targetId && drag.targetId !== drag.columnId) {
+        await this.moveWorkbenchColumn(drag.columnId, drag.targetId, drag.insertAfter);
+      }
+    };
+    header.addEventListener("pointerup", (event) => {
+      void finishSort(event);
+    });
+    header.addEventListener("pointercancel", (event) => {
+      void finishSort(event);
     });
     column.addEventListener("dragover", (event) => {
-      if (this.getDraggedWorkbenchColumnId(event) || this.getDraggedWorkbenchTaskId(event)) {
+      if (this.getDraggedWorkbenchTaskId(event)) {
         event.preventDefault();
         if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
         column.addClass("is-workbench-drop-target");
@@ -909,11 +980,6 @@ export class FishboneTimelineView extends ItemView {
     column.addEventListener("drop", (event) => {
       event.preventDefault();
       column.removeClass("is-workbench-drop-target");
-      const draggedColumn = this.getDraggedWorkbenchColumnId(event);
-      if (draggedColumn && draggedColumn !== columnId) {
-        void this.moveWorkbenchColumn(draggedColumn, columnId, event);
-        return;
-      }
       const taskId = this.getDraggedWorkbenchTaskId(event);
       if (taskId) {
         void this.moveWorkbenchTaskToColumn(taskId, columnId);
@@ -921,22 +987,46 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
-  private getDraggedWorkbenchColumnId(event: DragEvent): WorkbenchColumnId | null {
-    const value = event.dataTransfer?.getData("text/fishbone-workbench-column-id") ?? "";
-    return isWorkbenchColumnId(value) ? value : this.draggedWorkbenchColumnId;
-  }
-
   private getDraggedWorkbenchTaskId(event: DragEvent): string | null {
     const value = event.dataTransfer?.getData("text/fishbone-workbench-task-id") ?? "";
     return value.length > 0 ? value : this.draggedWorkbenchTaskId;
   }
 
-  private async moveWorkbenchColumn(sourceId: WorkbenchColumnId, targetId: WorkbenchColumnId, event: DragEvent): Promise<void> {
+  private updateWorkbenchColumnSortTarget(clientX: number): void {
+    const drag = this.workbenchColumnSortDrag;
+    if (!drag) return;
+    let nextTargetId: WorkbenchColumnId | null = null;
+    let nextInsertAfter = false;
+    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-workbench-column[data-workbench-column-id]").forEach((column) => {
+      const id = column.getAttr("data-workbench-column-id") ?? "";
+      if (!isWorkbenchColumnId(id) || id === drag.columnId) return;
+      const rect = column.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right) {
+        nextTargetId = id;
+        nextInsertAfter = clientX > rect.left + rect.width / 2;
+      }
+    });
+    drag.targetId = nextTargetId;
+    drag.insertAfter = nextInsertAfter;
+    this.clearWorkbenchColumnSortFeedback();
+    drag.source.addClass("is-workbench-column-dragging");
+    if (!nextTargetId) return;
+    const target = this.containerEl.querySelector<HTMLElement>(`.fishbone-workbench-column[data-workbench-column-id="${nextTargetId}"]`);
+    target?.addClass(nextInsertAfter ? "is-workbench-column-drop-after" : "is-workbench-column-drop-before");
+  }
+
+  private clearWorkbenchColumnSortFeedback(): void {
+    this.containerEl.querySelectorAll<HTMLElement>(".is-workbench-column-dragging, .is-workbench-column-drop-before, .is-workbench-column-drop-after").forEach((target) => {
+      target.removeClass("is-workbench-column-dragging");
+      target.removeClass("is-workbench-column-drop-before");
+      target.removeClass("is-workbench-column-drop-after");
+    });
+  }
+
+  private async moveWorkbenchColumn(sourceId: WorkbenchColumnId, targetId: WorkbenchColumnId, insertAfter: boolean): Promise<void> {
     const order = this.workbenchColumnOrder.filter((id) => id !== sourceId);
     const targetIndex = order.indexOf(targetId);
     if (targetIndex < 0) return;
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const insertAfter = event.clientX > rect.left + rect.width / 2;
     order.splice(targetIndex + (insertAfter ? 1 : 0), 0, sourceId);
     this.workbenchColumnOrder = normalizeWorkbenchColumnOrder(order);
     await this.persistDashboardState();

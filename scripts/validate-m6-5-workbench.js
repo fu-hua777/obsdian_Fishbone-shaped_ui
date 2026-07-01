@@ -12,18 +12,19 @@ function read(relativePath) {
 }
 
 function requireFile(relativePath) {
-  assert(fs.existsSync(path.join(root, relativePath)), `缺少文件: ${relativePath}`);
+  assert(fs.existsSync(path.join(root, relativePath)), `Missing file: ${relativePath}`);
 }
 
 function requireText(relativePath, patterns) {
   const content = read(relativePath);
   for (const pattern of patterns) {
-    assert(content.includes(pattern), `${relativePath} 缺少关键文本: ${pattern}`);
+    assert(content.includes(pattern), `${relativePath} missing required text: ${pattern}`);
   }
 }
 
 function main() {
   requireFile("PLANS/M6.5-l-dock-workbench.md");
+  requireFile("PLANS/M6.5.6-workbench-layout-stabilization.md");
   requireFile("tests/plugin/m6-5-manual-test-checklist.md");
 
   requireText("plugin/src/settings.ts", [
@@ -48,14 +49,16 @@ function main() {
     "setIcon(icon, mainlineVisual?.icon || \"circle\")",
     "moveWorkbenchTaskToColumn",
     "moveWorkbenchColumn",
-    "draggedDashboardModuleId",
-    "draggedWorkbenchColumnId",
+    "dashboardModuleSortDrag",
+    "workbenchColumnSortDrag",
+    "updateDashboardModuleSortTarget",
+    "updateWorkbenchColumnSortTarget",
+    "clearDashboardModuleSortFeedback",
+    "clearWorkbenchColumnSortFeedback",
     "draggedWorkbenchTaskId",
     "bindWorkbenchResize",
     "setTaskStatus(task, status)",
-    "隐藏工作台",
-    "显示工作台",
-    "M6.5 仅提供候选预览"
+    "M6.5"
   ]);
 
   requireText("plugin/styles.css", [
@@ -72,28 +75,34 @@ function main() {
     ".fishbone-dashboard-mainline-rings",
     ".fishbone-dashboard-drag-handle",
     ".fishbone-workbench-drag-handle",
+    ".is-dashboard-module-drop-before",
+    ".is-dashboard-module-drop-after",
+    ".is-workbench-column-drop-before",
+    ".is-workbench-column-drop-after",
     ".fishbone-quick-input",
     ".fishbone-quick-input-preview"
   ]);
 
   const view = read("plugin/src/views/FishboneTimelineView.ts");
-  assert(!view.includes("text: \"辅助面板\""), "右侧不应渲染辅助面板头块");
-  assert(!view.includes("case \"today-progress\"") && !view.includes("case \"week-progress\""), "今日/本周进度应整合为一个模块");
-  assert(view.includes("header.draggable = true") && view.includes("bindDashboardModuleDrag(section, header, moduleId)"), "右侧模块应通过标题手柄拖拽排序");
-  assert(view.includes("event.dataTransfer.effectAllowed = \"move\"") && view.includes("event.dataTransfer.dropEffect = \"move\""), "拖拽排序应明确使用 move 效果");
-  assert(view.includes("status: \"inbox\""), "快速输入候选任务应默认进入 inbox");
-  assert(!view.includes("createQuickInputTask"), "M6.5 不应直接写入快速输入任务");
+  assert(!view.includes("text: \"辅助面板\""), "Right workbench should not render the old auxiliary-panel header.");
+  assert(!view.includes("case \"today-progress\"") && !view.includes("case \"week-progress\""), "Today/week progress should be merged into one progress overview module.");
+  assert(!view.includes("header.draggable = true"), "Module and column ordering should not rely on native HTML5 draggable.");
+  assert(view.includes("bindDashboardModuleDrag(section, header, moduleId)") && view.includes("this.dashboardModuleSortDrag"), "Dashboard module ordering should use pointer drag state.");
+  assert(view.includes("bindWorkbenchColumnDrag(column, header, columnId)") && view.includes("this.workbenchColumnSortDrag"), "Workbench column ordering should use pointer drag state.");
+  assert(view.includes("event.dataTransfer.effectAllowed = \"move\"") && view.includes("event.dataTransfer.dropEffect = \"move\""), "Task cross-column drag should keep explicit move feedback.");
+  assert(view.includes("status: \"inbox\""), "Quick-input candidate should default to inbox.");
+  assert(!view.includes("createQuickInputTask"), "M6.5 should not write quick-input candidates to task md yet.");
 
   const styles = read("plugin/styles.css");
-  assert(!styles.includes(".fishbone-dashboard-header"), "右侧辅助面板头块样式应移除");
-  assert(styles.includes("conic-gradient(var(--mainline-color) var(--progress-deg)"), "主线进度应使用圆形进度环");
-  assert(styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))"), "下方工作台应为三列布局");
-  assert(styles.includes("grid-area: dashboard;"), "右侧辅助面板应占据独立右侧区域");
-  assert(styles.includes("grid-area: workbench;"), "下方工作台应只占据画布下方区域");
-  assert(styles.includes("bottom: 16px;") && styles.includes("transform: translateX(-50%);"), "快速输入应固定在画布底部居中");
-  assert(styles.includes("overflow: hidden auto;"), "工作台列内部应允许独立滚动");
+  assert(!styles.includes(".fishbone-dashboard-header"), "Old dashboard header styles should be removed.");
+  assert(styles.includes("conic-gradient(var(--mainline-color) var(--progress-deg)"), "Mainline progress should use circular rings.");
+  assert(styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))"), "Bottom workbench should stay in three columns.");
+  assert(styles.includes("grid-area: dashboard;"), "Right workbench should occupy the independent dashboard area.");
+  assert(styles.includes("grid-area: workbench;"), "Bottom workbench should occupy only the area below the canvas.");
+  assert(styles.includes("bottom: 16px;") && styles.includes("transform: translateX(-50%);"), "Quick input should stay fixed at the bottom center of the canvas.");
+  assert(styles.includes("overflow: hidden auto;"), "Workbench column contents should scroll internally.");
 
-  console.log("M6.5 L dock workbench validation passed.");
+  console.log("M6.5/M6.5.6 L dock workbench validation passed.");
 }
 
 main();
