@@ -286,6 +286,13 @@ M3 未做：
 - 新增 `TaskRepository.createTask()`，按标准 planning-task frontmatter 写入任务 md，默认来源为 `manual`，并保留 relations、review_status、confidence 等字段。
 - 新建任务弹窗支持填写标题、日期、主线、状态、优先级和描述；日期留空时写入 inbox 目录。
 - 创建后刷新鱼骨视图并打开新任务文件，便于继续编辑正文。
+### M6.8：时间 / 天气模块
+- 新增右侧 `time-weather` 模块，默认显示本地时间和日期，并用轻量 interval 每分钟更新时间文本，不重绘鱼骨画布。
+- 新增天气设置项：启用开关、地点名称、纬度、经度和温度单位。
+- 新增 Open-Meteo 当前天气读取与本地 `PlanningSystem/WeatherCache/YYYY-MM-DD_weather.json` 缓存；天气请求只在用户点击“刷新天气”后触发。
+- 未启用或未配置天气时模块不请求网络、不报错，只保留时间显示。
+- 新增 M6.8 静态校验脚本和手动验收清单。
+
 ### M6.7：每日总结模块
 - 新增 deterministic 每日总结生成逻辑，按 daily-summary skill 的章节结构汇总今日概览、完成、推进中、阻塞、新增、主线进展、relation、明日建议和确认事项。
 - 新增 `DailySummaryRepository`，通过 Obsidian Vault API 写入或覆盖 `PlanningSystem/DailyReports/YYYY-MM-DD_每日总结.md`。

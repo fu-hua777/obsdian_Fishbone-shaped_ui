@@ -670,6 +670,52 @@
   font-size: 12px;
 }
 
+.fishbone-time-weather-module {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "clock actions"
+    "date actions"
+    "weather weather";
+  align-items: center;
+  gap: 5px 8px;
+  min-height: 0;
+}
+
+.fishbone-time-weather-clock {
+  grid-area: clock;
+  font-size: 28px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.fishbone-time-weather-date {
+  grid-area: date;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.fishbone-time-weather-summary {
+  grid-area: weather;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-time-weather-actions {
+  grid-area: actions;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fishbone-time-weather-actions button {
+  min-width: 74px;
+  font-size: 12px;
+}
+
 .fishbone-workbench-panel {
   position: relative;
   grid-area: workbench;

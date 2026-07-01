@@ -1,6 +1,7 @@
 import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
 import { buildDailySummaryMarkdown, buildDailySummaryStats } from "../dashboard/dailySummary";
+import { formatCurrentDate, formatCurrentTime, formatWeatherSummary } from "../dashboard/timeWeather";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { CreatePlanningTaskInput, TaskFieldPatch } from "../data/taskRepository";
 import { Mainline, PlanningTask, TaskPriority, TaskStatus } from "../data/taskTypes";
@@ -55,16 +56,17 @@ interface DashboardTaskRenderOptions {
   summary?: DashboardSummary;
 }
 
-type DashboardModuleId = "progress-overview" | "today-focus" | "week-focus" | "mainline-progress" | "daily-summary";
+type DashboardModuleId = "progress-overview" | "today-focus" | "week-focus" | "mainline-progress" | "daily-summary" | "time-weather";
 type WorkbenchColumnId = "todo" | "doing" | "done";
 
-const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["progress-overview", "today-focus", "week-focus", "mainline-progress", "daily-summary"];
+const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["progress-overview", "today-focus", "week-focus", "mainline-progress", "daily-summary", "time-weather"];
 const DEFAULT_DASHBOARD_MODULE_HEIGHTS: Record<DashboardModuleId, number> = {
   "progress-overview": 128,
   "today-focus": 188,
   "week-focus": 188,
   "mainline-progress": 190,
-  "daily-summary": 156
+  "daily-summary": 156,
+  "time-weather": 132
 };
 const WORKBENCH_COLUMN_IDS: WorkbenchColumnId[] = ["todo", "doing", "done"];
 const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; targetStatus: TaskStatus; emptyText: string }> = {
@@ -173,6 +175,7 @@ export class FishboneTimelineView extends ItemView {
     startBranchOffset: number;
     elementStartTop: number;
   } | null = null;
+  private timeWeatherTimer: number | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FishbonePlannerPlugin) {
     super(leaf);
@@ -199,7 +202,17 @@ export class FishboneTimelineView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    if (this.timeWeatherTimer === null) {
+      this.timeWeatherTimer = window.setInterval(() => this.updateTimeWeatherClock(), 60000);
+    }
     await this.render();
+  }
+
+  async onClose(): Promise<void> {
+    if (this.timeWeatherTimer !== null) {
+      window.clearInterval(this.timeWeatherTimer);
+      this.timeWeatherTimer = null;
+    }
   }
 
   async render(): Promise<void> {
@@ -484,6 +497,9 @@ export class FishboneTimelineView extends ItemView {
       case "daily-summary":
         this.renderDailySummaryModule(section, moduleId, summary, tasks, mainlines);
         break;
+      case "time-weather":
+        this.renderTimeWeatherModule(section, moduleId, summary);
+        break;
     }
     this.renderDashboardModuleResizeHandle(section, moduleId);
   }
@@ -627,6 +643,63 @@ export class FishboneTimelineView extends ItemView {
       event.stopPropagation();
       const opened = await this.plugin.dailySummaryRepository.openSummary(summary.today);
       if (!opened) new Notice("今日总结尚未生成");
+    });
+  }
+
+  private renderTimeWeatherModule(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
+    this.renderDashboardModuleHeader(section, moduleId, "时间 / 天气", this.plugin.settings.enableWeather ? "天气开" : "仅时间");
+    const body = section.createDiv({ cls: "fishbone-time-weather-module" });
+    const now = new Date();
+    body.createDiv({ cls: "fishbone-time-weather-clock", text: formatCurrentTime(now) });
+    body.createDiv({ cls: "fishbone-time-weather-date", text: formatCurrentDate(now) });
+    const weather = body.createDiv({ cls: "fishbone-time-weather-summary", text: "天气未启用" });
+    const actions = body.createDiv({ cls: "fishbone-time-weather-actions" });
+    if (!this.plugin.settings.enableWeather) {
+      weather.setText("设置中启用天气后可手动刷新");
+      return;
+    }
+    const latitude = Number(this.plugin.settings.weatherLatitude);
+    const longitude = Number(this.plugin.settings.weatherLongitude);
+    const locationName = this.plugin.settings.weatherLocationName.trim() || "当前位置";
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      weather.setText("请在设置中填写天气经纬度");
+      return;
+    }
+    weather.setText("读取天气缓存中...");
+    void this.plugin.weatherRepository.readCachedWeather(summary.today).then((cached) => {
+      weather.setText(cached ? `${formatWeatherSummary(cached)} · ${cached.fetchedAt}` : "今日暂无天气缓存");
+    });
+    const refresh = actions.createEl("button", { text: "刷新天气" });
+    refresh.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      refresh.disabled = true;
+      weather.setText("正在刷新天气...");
+      try {
+        const data = await this.plugin.weatherRepository.fetchAndCacheCurrentWeather(summary.today, {
+          locationName,
+          latitude,
+          longitude,
+          unit: this.plugin.settings.weatherUnit
+        });
+        weather.setText(`${formatWeatherSummary(data)} · ${data.fetchedAt}`);
+        new Notice("天气已刷新并写入本地缓存");
+      } catch (error) {
+        weather.setText(`天气刷新失败：${formatError(error)}`);
+        new Notice("天气刷新失败，已保留本地缓存");
+      } finally {
+        refresh.disabled = false;
+      }
+    });
+  }
+
+  private updateTimeWeatherClock(): void {
+    const now = new Date();
+    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-time-weather-clock").forEach((clock) => {
+      clock.setText(formatCurrentTime(now));
+    });
+    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-time-weather-date").forEach((date) => {
+      date.setText(formatCurrentDate(now));
     });
   }
 
