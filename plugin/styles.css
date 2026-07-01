@@ -624,6 +624,52 @@
   font-size: 9px;
 }
 
+.fishbone-daily-summary-module {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fishbone-daily-summary-status {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-daily-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.fishbone-daily-summary-metrics span {
+  min-width: 0;
+  padding: 4px 6px;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-daily-summary-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.fishbone-daily-summary-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12px;
+}
+
 .fishbone-workbench-panel {
   position: relative;
   grid-area: workbench;

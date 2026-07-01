@@ -1,5 +1,6 @@
 import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
+import { buildDailySummaryMarkdown, buildDailySummaryStats } from "../dashboard/dailySummary";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { CreatePlanningTaskInput, TaskFieldPatch } from "../data/taskRepository";
 import { Mainline, PlanningTask, TaskPriority, TaskStatus } from "../data/taskTypes";
@@ -54,15 +55,16 @@ interface DashboardTaskRenderOptions {
   summary?: DashboardSummary;
 }
 
-type DashboardModuleId = "progress-overview" | "today-focus" | "week-focus" | "mainline-progress";
+type DashboardModuleId = "progress-overview" | "today-focus" | "week-focus" | "mainline-progress" | "daily-summary";
 type WorkbenchColumnId = "todo" | "doing" | "done";
 
-const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["progress-overview", "today-focus", "week-focus", "mainline-progress"];
+const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["progress-overview", "today-focus", "week-focus", "mainline-progress", "daily-summary"];
 const DEFAULT_DASHBOARD_MODULE_HEIGHTS: Record<DashboardModuleId, number> = {
   "progress-overview": 128,
   "today-focus": 188,
   "week-focus": 188,
-  "mainline-progress": 190
+  "mainline-progress": 190,
+  "daily-summary": 156
 };
 const WORKBENCH_COLUMN_IDS: WorkbenchColumnId[] = ["todo", "doing", "done"];
 const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; targetStatus: TaskStatus; emptyText: string }> = {
@@ -258,7 +260,7 @@ export class FishboneTimelineView extends ItemView {
       this.renderCanvas(canvasShell, layout, mainlines, tasks);
       if (this.showDashboard) {
         this.renderQuickInput(canvasShell, dashboardSummary, mainlines);
-        this.renderDashboardPanel(workspace, dashboardSummary);
+        this.renderDashboardPanel(workspace, dashboardSummary, tasks, mainlines);
         this.renderWorkbenchPanel(workspace, dashboardSummary, mainlines);
       }
     } catch (error) {
@@ -436,7 +438,7 @@ export class FishboneTimelineView extends ItemView {
     panel.createSpan({ text: `Fishbone Planner 错误：${formatError(error)}` });
   }
 
-  private renderDashboardPanel(parent: HTMLElement, summary: DashboardSummary): void {
+  private renderDashboardPanel(parent: HTMLElement, summary: DashboardSummary, tasks: PlanningTask[], mainlines: Mainline[]): void {
     const panel = parent.createDiv({ cls: "fishbone-dashboard-panel" });
     panel.style.width = `${this.dashboardWidth}px`;
     const resizer = panel.createDiv({ cls: "fishbone-dashboard-resizer" });
@@ -444,11 +446,11 @@ export class FishboneTimelineView extends ItemView {
 
     const modules = panel.createDiv({ cls: "fishbone-dashboard-modules" });
     for (const moduleId of this.dashboardModuleOrder) {
-      this.renderDashboardModule(modules, moduleId, summary);
+      this.renderDashboardModule(modules, moduleId, summary, tasks, mainlines);
     }
   }
 
-  private renderDashboardModule(parent: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
+  private renderDashboardModule(parent: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary, tasks: PlanningTask[], mainlines: Mainline[]): void {
     const section = parent.createDiv({
       cls: [
         "fishbone-dashboard-section",
@@ -478,6 +480,9 @@ export class FishboneTimelineView extends ItemView {
         break;
       case "mainline-progress":
         this.renderDashboardMainlineProgress(section, moduleId, summary);
+        break;
+      case "daily-summary":
+        this.renderDailySummaryModule(section, moduleId, summary, tasks, mainlines);
         break;
     }
     this.renderDashboardModuleResizeHandle(section, moduleId);
@@ -577,6 +582,52 @@ export class FishboneTimelineView extends ItemView {
       ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-name", text: item.name });
       ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-meta", text: `总 ${item.total} · 进 ${item.doing} · 阻 ${item.blocked}` });
     }
+  }
+
+  private renderDailySummaryModule(
+    section: HTMLElement,
+    moduleId: DashboardModuleId,
+    summary: DashboardSummary,
+    tasks: PlanningTask[],
+    mainlines: Mainline[]
+  ): void {
+    const file = this.plugin.dailySummaryRepository.getSummaryFile(summary.today);
+    this.renderDashboardModuleHeader(section, moduleId, "每日总结", file ? "已生成" : "未生成");
+    const stats = buildDailySummaryStats(tasks, summary.today);
+    const body = section.createDiv({ cls: "fishbone-daily-summary-module" });
+    body.createDiv({
+      cls: "fishbone-daily-summary-status",
+      text: file ? `已生成 ${formatLocalDateTimeForSummary(new Date(file.stat.mtime))}` : "今日总结尚未生成"
+    });
+    const metrics = body.createDiv({ cls: "fishbone-daily-summary-metrics" });
+    metrics.createSpan({ text: `任务 ${stats.taskCount}` });
+    metrics.createSpan({ text: `完成 ${stats.doneCount}` });
+    metrics.createSpan({ text: `阻塞 ${stats.blockedCount}` });
+    metrics.createSpan({ text: `快输 ${stats.quickInputCount}` });
+    const actions = body.createDiv({ cls: "fishbone-daily-summary-actions" });
+    const generateButton = actions.createEl("button", { text: file ? "重新生成" : "生成总结" });
+    generateButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const content = buildDailySummaryMarkdown({
+        date: summary.today,
+        summary,
+        tasks,
+        mainlines,
+        generatedAt: formatLocalDateTimeForSummary(new Date())
+      });
+      await this.plugin.dailySummaryRepository.writeSummary(summary.today, content);
+      new Notice(file ? "已重新生成今日总结" : "已生成今日总结");
+      await this.render();
+    });
+    const openButton = actions.createEl("button", { text: "查看总结" });
+    if (!file) openButton.disabled = true;
+    openButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const opened = await this.plugin.dailySummaryRepository.openSummary(summary.today);
+      if (!opened) new Notice("今日总结尚未生成");
+    });
   }
 
   private renderDashboardStatusSelect(parent: HTMLElement, task: PlanningTask): void {
@@ -3202,6 +3253,11 @@ function formatError(error: unknown): string {
     return error.message;
   }
   return String(error);
+}
+
+function formatLocalDateTimeForSummary(date: Date): string {
+  const pad = (value: number) => value.toString().padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function clampIsoDate(date: string, startDate: string, endDate: string): string {

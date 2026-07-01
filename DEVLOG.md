@@ -286,6 +286,13 @@ M3 未做：
 - 新增 `TaskRepository.createTask()`，按标准 planning-task frontmatter 写入任务 md，默认来源为 `manual`，并保留 relations、review_status、confidence 等字段。
 - 新建任务弹窗支持填写标题、日期、主线、状态、优先级和描述；日期留空时写入 inbox 目录。
 - 创建后刷新鱼骨视图并打开新任务文件，便于继续编辑正文。
+### M6.7：每日总结模块
+- 新增 deterministic 每日总结生成逻辑，按 daily-summary skill 的章节结构汇总今日概览、完成、推进中、阻塞、新增、主线进展、relation、明日建议和确认事项。
+- 新增 `DailySummaryRepository`，通过 Obsidian Vault API 写入或覆盖 `PlanningSystem/DailyReports/YYYY-MM-DD_每日总结.md`。
+- 右侧工作台新增 `daily-summary` 模块，显示是否已生成、任务统计和“生成总结 / 重新生成 / 查看总结”入口。
+- 总结写入只由用户点击触发，普通渲染不会自动修改真实 Vault。
+- 新增 M6.7 静态校验脚本和手动验收清单。
+
 ### M6.6：快速输入写入闭环
 - 快速输入从“候选预览”推进为用户确认后的标准任务 md 写入，复用 `TaskRepository.createTask()`。
 - 新增轻量解析：支持今天/明天/后天、`YYYY-MM-DD`、已有主线匹配、优先级、状态和多条输入提示。

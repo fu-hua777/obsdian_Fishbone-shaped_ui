@@ -2,6 +2,7 @@ import { Notice, Plugin, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_SETTINGS, FishbonePlannerSettingTab, FishbonePlannerSettings, normalizePlanningPath } from "./settings";
 import { MainlineRepository } from "./data/mainlineRepository";
 import { TaskRepository } from "./data/taskRepository";
+import { DailySummaryRepository } from "./data/dailySummaryRepository";
 import { TASK_LIST_VIEW_TYPE, TaskListView } from "./views/TaskListView";
 import { FISHBONE_TIMELINE_VIEW_TYPE, FishboneTimelineView } from "./views/FishboneTimelineView";
 
@@ -9,6 +10,7 @@ export default class FishbonePlannerPlugin extends Plugin {
   settings: FishbonePlannerSettings;
   taskRepository: TaskRepository;
   mainlineRepository: MainlineRepository;
+  dailySummaryRepository: DailySummaryRepository;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -120,6 +122,7 @@ export default class FishbonePlannerPlugin extends Plugin {
   rebuildRepositories(): void {
     this.taskRepository = new TaskRepository(this.app, this.settings.planningSystemPath);
     this.mainlineRepository = new MainlineRepository(this.app, this.settings.planningSystemPath);
+    this.dailySummaryRepository = new DailySummaryRepository(this.app, this.settings.planningSystemPath);
   }
 
   async activateTaskListView(): Promise<void> {
