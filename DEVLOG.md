@@ -286,6 +286,13 @@ M3 未做：
 - 新增 `TaskRepository.createTask()`，按标准 planning-task frontmatter 写入任务 md，默认来源为 `manual`，并保留 relations、review_status、confidence 等字段。
 - 新建任务弹窗支持填写标题、日期、主线、状态、优先级和描述；日期留空时写入 inbox 目录。
 - 创建后刷新鱼骨视图并打开新任务文件，便于继续编辑正文。
+### M6.9：工作台模块管理
+- 新增 `dashboardModules.ts` 模块注册表，统一维护右侧模块 ID、标题、默认高度、最小高度和默认可见性。
+- 扩展 `dashboardState`，新增 `moduleVisibility` 和 `moduleCollapsed`，与模块顺序、高度一起持久化。
+- 右上角新增“模块管理”弹窗，支持显示/隐藏模块、折叠/展开模块和恢复默认布局。
+- 每个右侧模块标题栏新增“折叠/展开”和“隐藏”快捷按钮；隐藏全部模块时显示恢复提示。
+- 保留已有模块拖动排序、模块高度调整和 L 型工作台布局。
+
 ### M6.8：时间 / 天气模块
 - 新增右侧 `time-weather` 模块，默认显示本地时间和日期，并用轻量 interval 每分钟更新时间文本，不重绘鱼骨画布。
 - 新增天气设置项：启用开关、地点名称、纬度、经度和温度单位。

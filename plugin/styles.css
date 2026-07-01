@@ -262,6 +262,12 @@
   user-select: none;
 }
 
+.fishbone-dashboard-section.is-dashboard-module-collapsed {
+  height: auto !important;
+  min-height: 42px;
+  padding-bottom: 8px;
+}
+
 .fishbone-dashboard-progress-module,
 .fishbone-dashboard-status-module {
   justify-content: center;
@@ -311,6 +317,18 @@
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
+}
+
+.fishbone-dashboard-module-button {
+  min-height: 20px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+.fishbone-module-manager-desc {
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .fishbone-dashboard-module-resize-handle {

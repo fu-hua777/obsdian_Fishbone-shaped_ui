@@ -31,6 +31,8 @@ export interface FishboneDashboardState {
   dashboardWidth?: number;
   moduleOrder?: string[];
   moduleHeights?: Record<string, number>;
+  moduleVisibility?: Record<string, boolean>;
+  moduleCollapsed?: Record<string, boolean>;
   workbenchHeight?: number;
   workbenchColumnOrder?: string[];
 }
@@ -50,6 +52,8 @@ export const DEFAULT_SETTINGS: FishbonePlannerSettings = {
       "daily-summary": 156,
       "time-weather": 132
     },
+    moduleVisibility: {},
+    moduleCollapsed: {},
     workbenchHeight: 260,
     workbenchColumnOrder: ["todo", "doing", "done"]
   },

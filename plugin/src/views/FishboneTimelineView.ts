@@ -1,6 +1,7 @@
 import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
 import { buildDailySummaryMarkdown, buildDailySummaryStats } from "../dashboard/dailySummary";
+import { DASHBOARD_MODULE_IDS, DEFAULT_DASHBOARD_MODULE_HEIGHTS, DashboardModuleId, getDashboardModuleTitle } from "../dashboard/dashboardModules";
 import { formatCurrentDate, formatCurrentTime, formatWeatherSummary } from "../dashboard/timeWeather";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { CreatePlanningTaskInput, TaskFieldPatch } from "../data/taskRepository";
@@ -56,18 +57,7 @@ interface DashboardTaskRenderOptions {
   summary?: DashboardSummary;
 }
 
-type DashboardModuleId = "progress-overview" | "today-focus" | "week-focus" | "mainline-progress" | "daily-summary" | "time-weather";
 type WorkbenchColumnId = "todo" | "doing" | "done";
-
-const DASHBOARD_MODULE_IDS: DashboardModuleId[] = ["progress-overview", "today-focus", "week-focus", "mainline-progress", "daily-summary", "time-weather"];
-const DEFAULT_DASHBOARD_MODULE_HEIGHTS: Record<DashboardModuleId, number> = {
-  "progress-overview": 128,
-  "today-focus": 188,
-  "week-focus": 188,
-  "mainline-progress": 190,
-  "daily-summary": 156,
-  "time-weather": 132
-};
 const WORKBENCH_COLUMN_IDS: WorkbenchColumnId[] = ["todo", "doing", "done"];
 const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; targetStatus: TaskStatus; emptyText: string }> = {
   todo: { title: "待办", targetStatus: "todo", emptyText: "暂无待办任务" },
@@ -95,6 +85,8 @@ export class FishboneTimelineView extends ItemView {
   private dashboardWidth = 340;
   private dashboardModuleOrder: DashboardModuleId[] = [...DASHBOARD_MODULE_IDS];
   private dashboardModuleHeights: Record<DashboardModuleId, number> = { ...DEFAULT_DASHBOARD_MODULE_HEIGHTS };
+  private dashboardModuleVisibility: Record<DashboardModuleId, boolean> = createDefaultDashboardModuleVisibility();
+  private dashboardModuleCollapsed: Record<DashboardModuleId, boolean> = createDefaultDashboardModuleCollapsed();
   private workbenchHeight = 260;
   private workbenchColumnOrder: WorkbenchColumnId[] = [...WORKBENCH_COLUMN_IDS];
   private quickInputCandidate: QuickInputCandidate | null = null;
@@ -188,6 +180,8 @@ export class FishboneTimelineView extends ItemView {
     this.dashboardWidth = normalizeDashboardWidth(plugin.settings.dashboardState?.dashboardWidth);
     this.dashboardModuleOrder = normalizeDashboardModuleOrder(plugin.settings.dashboardState?.moduleOrder);
     this.dashboardModuleHeights = normalizeDashboardModuleHeights(plugin.settings.dashboardState?.moduleHeights);
+    this.dashboardModuleVisibility = normalizeDashboardModuleVisibility(plugin.settings.dashboardState?.moduleVisibility);
+    this.dashboardModuleCollapsed = normalizeDashboardModuleCollapsed(plugin.settings.dashboardState?.moduleCollapsed);
     this.workbenchHeight = normalizeWorkbenchHeight(plugin.settings.dashboardState?.workbenchHeight);
     this.workbenchColumnOrder = normalizeWorkbenchColumnOrder(plugin.settings.dashboardState?.workbenchColumnOrder);
     this.expandedClusters = new Set(saved.expandedClusters ?? []);
@@ -354,6 +348,26 @@ export class FishboneTimelineView extends ItemView {
   private renderMainlineControls(toolbar: HTMLElement, mainlines: Mainline[]): void {
     const actionGroup = toolbar.createDiv({ cls: "fishbone-toolbar-actions" });
     const hasHiddenMainlines = mainlines.some((mainline) => mainline.visible === false);
+    this.createToolbarButton(actionGroup, "模块管理", async () => {
+      new DashboardModuleManagerModal(this.plugin, {
+        visibility: this.dashboardModuleVisibility,
+        collapsed: this.dashboardModuleCollapsed,
+        onSubmit: async (visibility, collapsed) => {
+          this.dashboardModuleVisibility = normalizeDashboardModuleVisibility(visibility);
+          this.dashboardModuleCollapsed = normalizeDashboardModuleCollapsed(collapsed);
+          await this.persistDashboardState();
+          await this.render();
+        },
+        onReset: async () => {
+          this.dashboardModuleOrder = [...DASHBOARD_MODULE_IDS];
+          this.dashboardModuleHeights = { ...DEFAULT_DASHBOARD_MODULE_HEIGHTS };
+          this.dashboardModuleVisibility = createDefaultDashboardModuleVisibility();
+          this.dashboardModuleCollapsed = createDefaultDashboardModuleCollapsed();
+          await this.persistDashboardState();
+          await this.render();
+        }
+      }).open();
+    });
     if (hasHiddenMainlines || this.showHiddenMainlines) {
       this.createToolbarButton(actionGroup, this.showHiddenMainlines ? "隐藏已隐藏" : "管理隐藏", async () => {
         this.showHiddenMainlines = !this.showHiddenMainlines;
@@ -459,7 +473,11 @@ export class FishboneTimelineView extends ItemView {
 
     const modules = panel.createDiv({ cls: "fishbone-dashboard-modules" });
     for (const moduleId of this.dashboardModuleOrder) {
+      if (this.dashboardModuleVisibility[moduleId] === false) continue;
       this.renderDashboardModule(modules, moduleId, summary, tasks, mainlines);
+    }
+    if (this.dashboardModuleOrder.every((moduleId) => this.dashboardModuleVisibility[moduleId] === false)) {
+      modules.createDiv({ cls: "fishbone-dashboard-empty", text: "所有模块已隐藏，可通过模块管理恢复。" });
     }
   }
 
@@ -473,6 +491,11 @@ export class FishboneTimelineView extends ItemView {
     });
     section.style.height = `${this.dashboardModuleHeights[moduleId]}px`;
     section.setAttr("data-dashboard-module-id", moduleId);
+    if (this.dashboardModuleCollapsed[moduleId]) {
+      section.addClass("is-dashboard-module-collapsed");
+      this.renderDashboardModuleHeader(section, moduleId, getDashboardModuleTitle(moduleId), "折叠");
+      return;
+    }
 
     switch (moduleId) {
       case "progress-overview":
@@ -511,6 +534,24 @@ export class FishboneTimelineView extends ItemView {
     header.createSpan({ text: title });
     const controls = header.createDiv({ cls: "fishbone-dashboard-module-controls" });
     controls.createSpan({ cls: "fishbone-dashboard-module-count", text: countText });
+    const collapseButton = controls.createEl("button", { text: this.dashboardModuleCollapsed[moduleId] ? "展开" : "折叠" });
+    collapseButton.addClass("fishbone-dashboard-module-button");
+    collapseButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.dashboardModuleCollapsed[moduleId] = !this.dashboardModuleCollapsed[moduleId];
+      await this.persistDashboardState();
+      await this.render();
+    });
+    const hideButton = controls.createEl("button", { text: "隐藏" });
+    hideButton.addClass("fishbone-dashboard-module-button");
+    hideButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.dashboardModuleVisibility[moduleId] = false;
+      await this.persistDashboardState();
+      await this.render();
+    });
     this.bindDashboardModuleDrag(section, header, moduleId);
     return header;
   }
@@ -2607,6 +2648,8 @@ export class FishboneTimelineView extends ItemView {
       dashboardWidth: normalizeDashboardWidth(this.dashboardWidth),
       moduleOrder: [...this.dashboardModuleOrder],
       moduleHeights: { ...this.dashboardModuleHeights },
+      moduleVisibility: { ...this.dashboardModuleVisibility },
+      moduleCollapsed: { ...this.dashboardModuleCollapsed },
       workbenchHeight: normalizeWorkbenchHeight(this.workbenchHeight),
       workbenchColumnOrder: [...this.workbenchColumnOrder]
     };
@@ -2624,6 +2667,72 @@ interface MainlineEditorOptions {
   name: string;
   color: string;
   onSubmit: (name: string, color: string) => Promise<void>;
+}
+
+interface DashboardModuleManagerOptions {
+  visibility: Record<DashboardModuleId, boolean>;
+  collapsed: Record<DashboardModuleId, boolean>;
+  onSubmit: (visibility: Record<DashboardModuleId, boolean>, collapsed: Record<DashboardModuleId, boolean>) => Promise<void>;
+  onReset: () => Promise<void>;
+}
+
+class DashboardModuleManagerModal extends Modal {
+  private options: DashboardModuleManagerOptions;
+  private visibility: Record<DashboardModuleId, boolean>;
+  private collapsed: Record<DashboardModuleId, boolean>;
+
+  constructor(plugin: FishbonePlannerPlugin, options: DashboardModuleManagerOptions) {
+    super(plugin.app);
+    this.options = options;
+    this.visibility = normalizeDashboardModuleVisibility(options.visibility);
+    this.collapsed = normalizeDashboardModuleCollapsed(options.collapsed);
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "模块管理" });
+    contentEl.createDiv({ cls: "fishbone-module-manager-desc", text: "可调整右侧模块的显示和折叠状态；拖动排序和高度调整仍在工作台内完成。" });
+
+    for (const moduleId of DASHBOARD_MODULE_IDS) {
+      new Setting(contentEl)
+        .setName(getDashboardModuleTitle(moduleId))
+        .addToggle((toggle) => {
+          toggle.setTooltip("显示模块").setValue(this.visibility[moduleId]).onChange((value) => {
+            this.visibility[moduleId] = value;
+          });
+        })
+        .addToggle((toggle) => {
+          toggle.setTooltip("折叠模块").setValue(this.collapsed[moduleId]).onChange((value) => {
+            this.collapsed[moduleId] = value;
+          });
+        });
+    }
+
+    new Setting(contentEl)
+      .addButton((button) => {
+        button.setButtonText("恢复默认布局").onClick(async () => {
+          await this.options.onReset();
+          this.close();
+        });
+      })
+      .addButton((button) => {
+        button.setButtonText("取消").onClick(() => this.close());
+      })
+      .addButton((button) => {
+        button
+          .setButtonText("保存")
+          .setCta()
+          .onClick(async () => {
+            await this.options.onSubmit(this.visibility, this.collapsed);
+            this.close();
+          });
+      });
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
 }
 
 class MainlineEditorModal extends Modal {
@@ -3111,6 +3220,38 @@ function normalizeDashboardModuleHeights(value: unknown): Record<DashboardModule
     heights[moduleId] = normalizeDashboardModuleHeight(source[moduleId], DEFAULT_DASHBOARD_MODULE_HEIGHTS[moduleId]);
   }
   return heights;
+}
+
+function createDefaultDashboardModuleVisibility(): Record<DashboardModuleId, boolean> {
+  return DASHBOARD_MODULE_IDS.reduce((state, moduleId) => {
+    state[moduleId] = true;
+    return state;
+  }, {} as Record<DashboardModuleId, boolean>);
+}
+
+function createDefaultDashboardModuleCollapsed(): Record<DashboardModuleId, boolean> {
+  return DASHBOARD_MODULE_IDS.reduce((state, moduleId) => {
+    state[moduleId] = false;
+    return state;
+  }, {} as Record<DashboardModuleId, boolean>);
+}
+
+function normalizeDashboardModuleVisibility(value: unknown): Record<DashboardModuleId, boolean> {
+  const source = typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
+  const visibility = createDefaultDashboardModuleVisibility();
+  for (const moduleId of DASHBOARD_MODULE_IDS) {
+    visibility[moduleId] = source[moduleId] !== false;
+  }
+  return visibility;
+}
+
+function normalizeDashboardModuleCollapsed(value: unknown): Record<DashboardModuleId, boolean> {
+  const source = typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
+  const collapsed = createDefaultDashboardModuleCollapsed();
+  for (const moduleId of DASHBOARD_MODULE_IDS) {
+    collapsed[moduleId] = source[moduleId] === true;
+  }
+  return collapsed;
 }
 
 function normalizeDashboardModuleHeight(value: unknown, fallback = 156): number {
