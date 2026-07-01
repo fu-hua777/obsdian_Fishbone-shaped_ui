@@ -12,6 +12,17 @@ export interface TaskFieldPatch {
   priority?: TaskPriority;
 }
 
+export interface CreatePlanningTaskInput {
+  title: string;
+  date: string | null;
+  mainline: string | null;
+  branchMainline?: string | null;
+  branchMainlineId?: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  sourceExcerpt?: string;
+}
+
 export class TaskRepository {
   private app: App;
   private planningSystemPath: string;
@@ -80,6 +91,32 @@ export class TaskRepository {
     await this.updateTaskFields(task, { status });
   }
 
+  async createTask(input: CreatePlanningTaskInput): Promise<TFile> {
+    const title = input.title.trim();
+    if (!title) {
+      throw new Error("任务标题不能为空");
+    }
+
+    const now = new Date();
+    const created = formatLocalDateTime(now);
+    const taskId = createTaskId(now);
+    const folderPath = normalizePath(input.date ? `${this.planningSystemPath}/Tasks/${input.date.slice(0, 4)}/${input.date.slice(5, 7)}` : `${this.planningSystemPath}/Tasks/inbox`);
+    await ensureFolder(this.app, folderPath);
+
+    const fileName = `${input.date ?? "inbox"}_${input.mainline ?? "未分配"}_${title}.md`;
+    const path = await getAvailableTaskPath(this.app, folderPath, fileName);
+    const content = buildTaskMarkdown({
+      ...input,
+      title,
+      taskId,
+      created,
+      updated: created
+    });
+    const file = await this.app.vault.create(path, content);
+    await this.waitForFrontmatter(file, (frontmatter) => frontmatter.task_id === taskId);
+    return file;
+  }
+
   async updateTaskFields(task: PlanningTask, patch: TaskFieldPatch): Promise<void> {
     const file = this.getTaskFile(task.path);
     if (!file) {
@@ -134,6 +171,92 @@ export class TaskRepository {
       await sleep(100);
     }
   }
+}
+
+async function ensureFolder(app: App, folderPath: string): Promise<void> {
+  const parts = normalizePath(folderPath).split("/").filter(Boolean);
+  let current = "";
+  for (const part of parts) {
+    current = current ? `${current}/${part}` : part;
+    if (!(await app.vault.adapter.exists(current))) {
+      await app.vault.createFolder(current);
+    }
+  }
+}
+
+async function getAvailableTaskPath(app: App, folderPath: string, fileName: string): Promise<string> {
+  const safeName = sanitizeFileName(fileName);
+  const extension = ".md";
+  const baseName = safeName.endsWith(extension) ? safeName.slice(0, -extension.length) : safeName;
+  let candidate = normalizePath(`${folderPath}/${baseName}${extension}`);
+  let index = 2;
+  while (await app.vault.adapter.exists(candidate)) {
+    candidate = normalizePath(`${folderPath}/${baseName}-${index}${extension}`);
+    index += 1;
+  }
+  return candidate;
+}
+
+function buildTaskMarkdown(input: CreatePlanningTaskInput & { taskId: string; created: string; updated: string }): string {
+  const mainline = input.mainline ? yamlString(input.mainline) : "null";
+  const branchMainline = input.branchMainline ? yamlString(input.branchMainline) : "null";
+  const branchMainlineId = input.branchMainlineId ? yamlString(input.branchMainlineId) : "null";
+  const sourceExcerpt = input.sourceExcerpt?.trim() || "手动新建任务";
+  return [
+    "---",
+    "type: planning-task",
+    `task_id: ${input.taskId}`,
+    `title: ${yamlString(input.title)}`,
+    `date: ${input.date ?? "null"}`,
+    `mainline: ${mainline}`,
+    `branch_mainline: ${branchMainline}`,
+    `branch_mainline_id: ${branchMainlineId}`,
+    `status: ${input.status}`,
+    `priority: ${input.priority}`,
+    "source_type: manual",
+    'source_file: ""',
+    `source_excerpt: ${yamlString(sourceExcerpt)}`,
+    "relations: []",
+    `created: ${input.created}`,
+    `updated: ${input.updated}`,
+    "review_status: confirmed",
+    "confidence: 1",
+    "---",
+    "",
+    `# ${input.title}`,
+    "",
+    "## 任务描述",
+    "",
+    sourceExcerpt,
+    "",
+    "## 完成标准",
+    "",
+    "- [ ] ",
+    "",
+    "## 执行记录",
+    "",
+    "-",
+    "",
+    "## 复盘",
+    "",
+    "- 问题原因：",
+    "- 解决方式：",
+    "- 下次注意：",
+    ""
+  ].join("\n");
+}
+
+function createTaskId(date: Date): string {
+  const pad = (value: number, size = 2) => value.toString().padStart(size, "0");
+  return `task_${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function sanitizeFileName(value: string): string {
+  return value.replace(/[\\/:*?"<>|#^[\]]/g, "_").replace(/\s+/g, " ").trim().slice(0, 120) || "新建任务.md";
+}
+
+function yamlString(value: string): string {
+  return JSON.stringify(value);
 }
 
 function frontmatterKeyForPatch(key: string): string {

@@ -1,7 +1,7 @@
 import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
-import { TaskFieldPatch } from "../data/taskRepository";
+import { CreatePlanningTaskInput, TaskFieldPatch } from "../data/taskRepository";
 import { Mainline, PlanningTask, TaskPriority, TaskStatus } from "../data/taskTypes";
 import {
   buildFishboneCanvasLayout,
@@ -351,6 +351,18 @@ export class FishboneTimelineView extends ItemView {
         await this.persistViewState();
         await this.render();
       });
+    }
+    this.createToolbarButton(actionGroup, "新建主线", async () => {
+      new NewTaskModal(this.plugin, mainlines, async (input) => {
+        const file = await this.plugin.taskRepository.createTask(input);
+        new Notice(`已创建任务：${input.title}`);
+        await this.render();
+        await this.app.workspace.getLeaf(false).openFile(file);
+      }).open();
+    }, true);
+    const newTaskButton = actionGroup.lastElementChild;
+    if (newTaskButton instanceof HTMLButtonElement) {
+      newTaskButton.textContent = "新建任务";
     }
     this.createToolbarButton(actionGroup, "新建主线", async () => {
       new MainlineEditorModal(this.plugin, {
@@ -2625,6 +2637,132 @@ class BranchMainlineEditorModal extends Modal {
               this.close();
             } catch (error) {
               new Notice(error instanceof Error ? error.message : "保存分支主线失败");
+            }
+          });
+      });
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+}
+
+class NewTaskModal extends Modal {
+  private mainlines: Mainline[];
+  private onSubmit: (input: CreatePlanningTaskInput) => Promise<void>;
+  private title = "";
+  private date = getLocalDateString(new Date());
+  private mainline = "";
+  private status: TaskStatus = "todo";
+  private priority: TaskPriority = "medium";
+  private sourceExcerpt = "";
+
+  constructor(
+    plugin: FishbonePlannerPlugin,
+    mainlines: Mainline[],
+    onSubmit: (input: CreatePlanningTaskInput) => Promise<void>
+  ) {
+    super(plugin.app);
+    this.mainlines = mainlines;
+    this.onSubmit = onSubmit;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "新建任务" });
+
+    new Setting(contentEl)
+      .setName("标题")
+      .addText((text) => {
+        text.setPlaceholder("输入任务标题").setValue(this.title).onChange((value) => {
+          this.title = value;
+        });
+        window.setTimeout(() => text.inputEl.focus(), 0);
+      });
+
+    new Setting(contentEl)
+      .setName("日期")
+      .setDesc("留空时进入 inbox，不挂到具体日期。")
+      .addText((text) => {
+        text.setPlaceholder("YYYY-MM-DD").setValue(this.date).onChange((value) => {
+          this.date = value.trim();
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("主线")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("", "未分配");
+        for (const mainline of this.mainlines.filter((item) => item.type !== "branch")) {
+          dropdown.addOption(mainline.name, mainline.name);
+        }
+        dropdown.setValue(this.mainline).onChange((value) => {
+          this.mainline = value;
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("状态")
+      .addDropdown((dropdown) => {
+        for (const status of TASK_STATUSES) {
+          dropdown.addOption(status, status);
+        }
+        dropdown.setValue(this.status).onChange((value) => {
+          this.status = value as TaskStatus;
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("优先级")
+      .addDropdown((dropdown) => {
+        for (const priority of TASK_PRIORITIES) {
+          dropdown.addOption(priority, priority);
+        }
+        dropdown.setValue(this.priority).onChange((value) => {
+          this.priority = value as TaskPriority;
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("描述")
+      .addTextArea((text) => {
+        text.setPlaceholder("可选，写入任务描述").setValue(this.sourceExcerpt).onChange((value) => {
+          this.sourceExcerpt = value;
+        });
+      });
+
+    new Setting(contentEl)
+      .addButton((button) => {
+        button.setButtonText("取消").onClick(() => this.close());
+      })
+      .addButton((button) => {
+        button
+          .setButtonText("创建")
+          .setCta()
+          .onClick(async () => {
+            const title = this.title.trim();
+            const date = this.date.trim();
+            if (!title) {
+              new Notice("任务标题不能为空");
+              return;
+            }
+            if (date && !parseDateString(date)) {
+              new Notice("日期格式应为 YYYY-MM-DD");
+              return;
+            }
+            try {
+              await this.onSubmit({
+                title,
+                date: date.length > 0 ? date : null,
+                mainline: this.mainline.length > 0 ? this.mainline : null,
+                status: this.status,
+                priority: this.priority,
+                sourceExcerpt: this.sourceExcerpt.trim() || "手动新建任务"
+              });
+              this.close();
+            } catch (error) {
+              new Notice(error instanceof Error ? error.message : "创建任务失败");
             }
           });
       });

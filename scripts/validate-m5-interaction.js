@@ -47,9 +47,13 @@ function main() {
   ]);
 
   requireText("plugin/src/data/taskRepository.ts", [
+    "CreatePlanningTaskInput",
+    "createTask",
     "setTaskMainline",
     "setTaskDone",
     "updateTaskFields",
+    "type: planning-task",
+    "source_type: manual",
     "frontmatter.mainline",
     "frontmatter.status",
     "frontmatter.updated"
@@ -57,6 +61,8 @@ function main() {
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
     "renderMainlineControls",
+    "NewTaskModal",
+    "新建任务",
     "MainlineEditorModal",
     "主线名称",
     "新建主线",
