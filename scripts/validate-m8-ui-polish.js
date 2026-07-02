@@ -38,6 +38,7 @@ function main() {
     "M8.13 canvas lane/date polish",
     "M8.14 canvas task focus polish",
     "M8.15 top chrome flow guard",
+    "M8.16 right progress modules polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-top-meta-row",
@@ -68,6 +69,10 @@ function main() {
     ".fishbone-dashboard-task-color-dot",
     ".fishbone-dashboard-task-priority",
     ".fishbone-dashboard-status-select.fishbone-status-done",
+    ".fishbone-dashboard-progress-mini-ring",
+    ".fishbone-dashboard-progress-count",
+    ".fishbone-dashboard-mainline-ring-dot",
+    ".fishbone-dashboard-mainline-ring-chip",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-column-icon",
     ".fishbone-workbench-column-title",
@@ -145,6 +150,10 @@ function main() {
   assert(!dashboardTaskSection.includes("meta.createSpan({ cls: `fishbone-dashboard-priority"), "Dashboard priority should not remain in the right-side module meta row.");
   assert(styles.includes(".fishbone-workbench-task {") && styles.includes("min-height: 34px"), "Workbench task rows should be compact enough for the bottom workbench.");
   assert(styles.includes(".fishbone-dashboard-status-select {") && styles.includes("width: 52px"), "Dashboard status selects should be compact pill controls.");
+  assert(view.includes("this.renderDashboardProgressBar(rows, \"今日\", summary.todayProgress, \"today\")") && view.includes("fishbone-dashboard-progress-mini-ring"), "Progress overview should render compact circular progress markers for today/week.");
+  assert(view.includes("fishbone-dashboard-mainline-ring-name-row") && view.includes("fishbone-dashboard-mainline-ring-chip"), "Mainline progress should render compact ring cards with color dots and metric chips.");
+  assert(styles.includes(".fishbone-dashboard-progress-row.is-week") && styles.includes("conic-gradient(var(--progress-color) var(--progress-deg)"), "Progress overview rings should use colored conic progress.");
+  assert(styles.includes(".fishbone-dashboard-mainline-rings") && styles.includes("repeat(auto-fit, minmax(78px, 1fr))"), "Mainline progress rings should auto-fit the right panel width.");
 
   console.log("M8 UI polish validation passed.");
 }

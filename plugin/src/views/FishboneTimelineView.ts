@@ -648,21 +648,25 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderDashboardProgressOverview(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
-    this.renderDashboardModuleHeader(section, moduleId, "进度概览", `${summary.todayProgress.done}/${summary.todayProgress.total}`);
+    this.renderDashboardModuleHeader(section, moduleId, "进度概览", `${Math.round(summary.weekProgress.rate * 100)}%`);
     const rows = section.createDiv({ cls: "fishbone-dashboard-progress-overview" });
-    this.renderDashboardProgressBar(rows, "今日", summary.todayProgress);
-    this.renderDashboardProgressBar(rows, "本周", summary.weekProgress);
+    this.renderDashboardProgressBar(rows, "今日", summary.todayProgress, "today");
+    this.renderDashboardProgressBar(rows, "本周", summary.weekProgress, "week");
   }
 
-  private renderDashboardProgressBar(parent: HTMLElement, label: string, progress: DashboardProgress): void {
-    const row = parent.createDiv({ cls: "fishbone-dashboard-progress-row" });
-    const top = row.createDiv({ cls: "fishbone-dashboard-progress-row-top" });
+  private renderDashboardProgressBar(parent: HTMLElement, label: string, progress: DashboardProgress, variant: "today" | "week"): void {
+    const row = parent.createDiv({ cls: `fishbone-dashboard-progress-row is-${variant}` });
+    row.style.setProperty("--progress-deg", `${Math.round(progress.rate * 360)}deg`);
+    const ring = row.createDiv({ cls: "fishbone-dashboard-progress-mini-ring" });
+    ring.createSpan({ text: `${Math.round(progress.rate * 100)}%` });
+    const content = row.createDiv({ cls: "fishbone-dashboard-progress-content" });
+    const top = content.createDiv({ cls: "fishbone-dashboard-progress-row-top" });
     top.createSpan({ text: label });
-    top.createSpan({ text: `${Math.round(progress.rate * 100)}%` });
-    const bar = row.createDiv({ cls: "fishbone-dashboard-progress-bar" });
+    top.createSpan({ cls: "fishbone-dashboard-progress-count", text: `${progress.done}/${progress.total}` });
+    const bar = content.createDiv({ cls: "fishbone-dashboard-progress-bar" });
     const fill = bar.createDiv({ cls: "fishbone-dashboard-progress-fill" });
     fill.style.width = `${Math.round(progress.rate * 100)}%`;
-    const meta = row.createDiv({ cls: "fishbone-dashboard-meta-row" });
+    const meta = content.createDiv({ cls: "fishbone-dashboard-meta-row fishbone-dashboard-progress-meta" });
     meta.createSpan({ text: `完成 ${progress.done}/${progress.total}` });
     meta.createSpan({ text: `进 ${progress.doing}` });
     meta.createSpan({ text: `阻 ${progress.blocked}` });
@@ -726,12 +730,20 @@ export class FishboneTimelineView extends ItemView {
     const grid = section.createDiv({ cls: "fishbone-dashboard-mainline-rings" });
     for (const item of summary.mainlineProgress.slice(0, 8)) {
       const ringItem = grid.createDiv({ cls: "fishbone-dashboard-mainline-ring-item" });
+      ringItem.setAttr("title", `${item.name}\n完成 ${item.done}/${item.total} · 进行 ${item.doing} · 阻塞 ${item.blocked}`);
       ringItem.style.setProperty("--mainline-color", item.color);
       ringItem.style.setProperty("--progress-deg", `${Math.round(item.rate * 360)}deg`);
       const ring = ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring" });
       ring.createSpan({ text: `${Math.round(item.rate * 100)}%` });
-      ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-name", text: item.name });
-      ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-meta", text: `总 ${item.total} · 进 ${item.doing} · 阻 ${item.blocked}` });
+      const nameRow = ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-name-row" });
+      nameRow.createSpan({ cls: "fishbone-dashboard-mainline-ring-dot" });
+      nameRow.createSpan({ cls: "fishbone-dashboard-mainline-ring-name", text: item.name });
+      const chips = ringItem.createDiv({ cls: "fishbone-dashboard-mainline-ring-chips" });
+      chips.createSpan({ cls: "fishbone-dashboard-mainline-ring-chip", text: `${item.done}/${item.total}` });
+      chips.createSpan({ cls: "fishbone-dashboard-mainline-ring-chip", text: `进 ${item.doing}` });
+      if (item.blocked > 0) {
+        chips.createSpan({ cls: "fishbone-dashboard-mainline-ring-chip is-blocked", text: `阻 ${item.blocked}` });
+      }
     }
   }
 

@@ -3502,6 +3502,146 @@
   }
 }
 
+/* M8.16 right progress modules polish */
+.fishbone-dashboard-progress-overview {
+  gap: 8px;
+}
+
+.fishbone-dashboard-progress-row {
+  --progress-color: var(--interactive-accent);
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 56px;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 38%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--background-primary) 38%, transparent);
+}
+
+.fishbone-dashboard-progress-row.is-today {
+  --progress-color: var(--interactive-accent);
+}
+
+.fishbone-dashboard-progress-row.is-week {
+  --progress-color: var(--color-green, #4ade80);
+}
+
+.fishbone-dashboard-progress-mini-ring {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--background-primary) 88%, #000) 56%, transparent 58%),
+    conic-gradient(var(--progress-color) var(--progress-deg), color-mix(in srgb, var(--background-modifier-border) 58%, transparent) 0);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--progress-color) 18%, transparent);
+}
+
+.fishbone-dashboard-progress-mini-ring span {
+  color: var(--text-normal);
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: 0;
+}
+
+.fishbone-dashboard-progress-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fishbone-dashboard-progress-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--progress-color) 16%, transparent);
+  color: color-mix(in srgb, var(--progress-color) 72%, var(--text-normal));
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.fishbone-dashboard-progress-row .fishbone-dashboard-progress-fill {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--progress-color) 70%, #fff), var(--progress-color));
+}
+
+.fishbone-dashboard-progress-meta {
+  display: flex;
+  gap: 5px;
+  margin-top: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.fishbone-dashboard-progress-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fishbone-dashboard-mainline-rings {
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: 7px;
+}
+
+.fishbone-dashboard-mainline-ring-item {
+  min-height: 92px;
+  padding: 7px 6px;
+  border: 1px solid color-mix(in srgb, var(--mainline-color) 28%, var(--background-modifier-border));
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--mainline-color) 12%, transparent), transparent 48%),
+    color-mix(in srgb, var(--background-primary) 42%, transparent);
+}
+
+.fishbone-dashboard-mainline-ring {
+  width: 42px;
+  height: 42px;
+}
+
+.fishbone-dashboard-mainline-ring-name-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.fishbone-dashboard-mainline-ring-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--mainline-color);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mainline-color) 52%, transparent);
+}
+
+.fishbone-dashboard-mainline-ring-chips {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fishbone-dashboard-mainline-ring-chip {
+  min-width: 0;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mainline-color) 13%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 86%, var(--text-normal));
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.fishbone-dashboard-mainline-ring-chip.is-blocked {
+  color: var(--text-error);
+  background: color-mix(in srgb, var(--text-error) 13%, transparent);
+}
+
 .fishbone-dashboard-task-meta {
   gap: 5px;
   min-width: 0;
