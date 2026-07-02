@@ -3642,6 +3642,105 @@
   background: color-mix(in srgb, var(--text-error) 13%, transparent);
 }
 
+/* M8.17 week focus ranked list polish */
+.fishbone-dashboard-week-focus-list {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden auto;
+  padding-right: 2px;
+}
+
+.fishbone-dashboard-week-focus-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-primary) 34%, transparent);
+  cursor: pointer;
+}
+
+.fishbone-dashboard-week-focus-item:hover {
+  background: color-mix(in srgb, var(--mainline-color) 12%, var(--background-primary));
+}
+
+.fishbone-dashboard-week-focus-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--background-modifier-border) 56%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 86%, var(--text-normal));
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.fishbone-dashboard-week-focus-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fishbone-dashboard-week-focus-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.fishbone-dashboard-week-focus-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--mainline-color);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mainline-color) 45%, transparent);
+}
+
+.fishbone-dashboard-week-focus-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-normal);
+  font-size: 12px;
+  font-weight: 730;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-dashboard-week-focus-meta,
+.fishbone-dashboard-week-focus-reasons {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.fishbone-dashboard-week-focus-meta span {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-dashboard-week-focus-reasons .fishbone-dashboard-reason {
+  padding: 1px 5px;
+  font-size: 9px;
+}
+
 .fishbone-dashboard-task-meta {
   gap: 5px;
   min-width: 0;

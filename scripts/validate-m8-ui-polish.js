@@ -39,6 +39,7 @@ function main() {
     "M8.14 canvas task focus polish",
     "M8.15 top chrome flow guard",
     "M8.16 right progress modules polish",
+    "M8.17 week focus ranked list polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-top-meta-row",
@@ -73,6 +74,9 @@ function main() {
     ".fishbone-dashboard-progress-count",
     ".fishbone-dashboard-mainline-ring-dot",
     ".fishbone-dashboard-mainline-ring-chip",
+    ".fishbone-dashboard-week-focus-list",
+    ".fishbone-dashboard-week-focus-index",
+    ".fishbone-dashboard-week-focus-dot",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-column-icon",
     ".fishbone-workbench-column-title",
@@ -154,6 +158,10 @@ function main() {
   assert(view.includes("fishbone-dashboard-mainline-ring-name-row") && view.includes("fishbone-dashboard-mainline-ring-chip"), "Mainline progress should render compact ring cards with color dots and metric chips.");
   assert(styles.includes(".fishbone-dashboard-progress-row.is-week") && styles.includes("conic-gradient(var(--progress-color) var(--progress-deg)"), "Progress overview rings should use colored conic progress.");
   assert(styles.includes(".fishbone-dashboard-mainline-rings") && styles.includes("repeat(auto-fit, minmax(78px, 1fr))"), "Mainline progress rings should auto-fit the right panel width.");
+  assert(view.includes("case \"week-focus\":") && view.includes("this.renderDashboardWeekFocus(section, moduleId, summary);"), "Week focus should use its own ranked-list renderer.");
+  assert(view.includes("private renderDashboardWeekFocus") && view.includes("fishbone-dashboard-week-focus-index") && view.includes("String(index + 1)"), "Week focus should render numbered priority rows.");
+  assert(view.includes("fishbone-dashboard-week-focus-dot") && view.includes("fishbone-dashboard-week-focus-reasons"), "Week focus should keep mainline color and reason chips without using task form controls.");
+  assert(styles.includes(".fishbone-dashboard-week-focus-list") && styles.includes("flex: 1 1 auto") && styles.includes("grid-template-columns: 22px minmax(0, 1fr)"), "Week focus rows should be compact numbered list items with internal scrolling.");
 
   console.log("M8 UI polish validation passed.");
 }

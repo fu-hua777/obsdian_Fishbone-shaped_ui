@@ -586,11 +586,7 @@ export class FishboneTimelineView extends ItemView {
         });
         break;
       case "week-focus":
-        this.renderDashboardTaskSection(section, moduleId, "本周重点", summary.weekFocusTasks.slice(0, 8), "本周暂无重点任务", {
-          showStatusSelect: true,
-          showReasonChips: true,
-          summary
-        });
+        this.renderDashboardWeekFocus(section, moduleId, summary);
         break;
       case "mainline-progress":
         this.renderDashboardMainlineProgress(section, moduleId, summary);
@@ -723,6 +719,43 @@ export class FishboneTimelineView extends ItemView {
         }
       }
     }
+  }
+
+  private renderDashboardWeekFocus(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
+    const tasks = summary.weekFocusTasks.slice(0, 8);
+    this.renderDashboardModuleHeader(section, moduleId, "本周重点", String(tasks.length));
+    if (tasks.length === 0) {
+      section.createDiv({ cls: "fishbone-dashboard-empty", text: "本周暂无重点任务" });
+      return;
+    }
+
+    const list = section.createDiv({ cls: "fishbone-dashboard-week-focus-list" });
+    tasks.forEach((task, index) => {
+      const row = list.createDiv({ cls: `fishbone-dashboard-week-focus-item fishbone-task-${task.status}` });
+      row.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"} · ${formatStatus(task.status)} · ${formatPriority(task.priority)}`);
+      const mainlineProgress = summary.mainlineProgress.find((item) => item.name === task.mainline);
+      row.style.setProperty("--mainline-color", mainlineProgress?.color ?? "#94a3b8");
+      row.addEventListener("click", () => {
+        void this.plugin.taskRepository.openTask(task);
+      });
+
+      row.createSpan({ cls: "fishbone-dashboard-week-focus-index", text: String(index + 1) });
+      const content = row.createDiv({ cls: "fishbone-dashboard-week-focus-content" });
+      const top = content.createDiv({ cls: "fishbone-dashboard-week-focus-top" });
+      top.createSpan({ cls: "fishbone-dashboard-week-focus-dot" });
+      top.createDiv({ cls: "fishbone-dashboard-week-focus-title", text: task.title });
+      const meta = content.createDiv({ cls: "fishbone-dashboard-week-focus-meta" });
+      meta.createSpan({ text: task.mainline ?? "未分配" });
+      meta.createSpan({ text: task.date ?? "无日期" });
+      meta.createSpan({ text: formatStatus(task.status) });
+      const reasons = getDashboardTaskReasons(task, summary);
+      if (reasons.length > 0) {
+        const chips = content.createDiv({ cls: "fishbone-dashboard-week-focus-reasons" });
+        for (const reason of reasons) {
+          chips.createSpan({ cls: `fishbone-dashboard-reason is-${reason}`, text: formatDashboardReason(reason) });
+        }
+      }
+    });
   }
 
   private renderDashboardMainlineProgress(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
