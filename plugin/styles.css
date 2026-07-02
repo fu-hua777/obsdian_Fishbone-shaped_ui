@@ -354,6 +354,27 @@
   font-size: 11px;
 }
 
+.fishbone-dashboard-module-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 7px;
+}
+
+.fishbone-dashboard-module-button-icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.fishbone-dashboard-module-button-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
 .fishbone-module-manager-desc {
   margin-bottom: 10px;
   color: var(--text-muted);
@@ -2772,6 +2793,34 @@
   padding: 1px 6px;
   border-radius: 6px;
   font-size: 10px;
+}
+
+.fishbone-dashboard-module-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-modifier-border) 58%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 86%, var(--text-normal));
+  text-align: center;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.fishbone-dashboard-module-icon-button {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--background-modifier-border) 46%, transparent);
+  background: color-mix(in srgb, var(--background-primary) 38%, transparent);
+  color: var(--text-muted);
+}
+
+.fishbone-dashboard-module-icon-button:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 48%, transparent);
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 }
 
 .fishbone-dashboard-task {

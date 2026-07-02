@@ -56,6 +56,8 @@ function main() {
     ".fishbone-branch-mainline-label",
     ".fishbone-dashboard-section",
     ".fishbone-dashboard-module-icon",
+    ".fishbone-dashboard-module-icon-button",
+    ".fishbone-dashboard-module-button-icon",
     ".fishbone-dashboard-task-color-dot",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-column-icon",
@@ -99,6 +101,9 @@ function main() {
   assert(view.includes("fishbone-quick-input-submit") && view.includes("send-horizontal"), "Quick input submit action should use an icon button.");
   assert(!view.includes("form.createEl(\"button\", { text: \"预览\" })"), "Quick input should not render the old plain text preview button.");
   assert(styles.includes("width: 34px") && styles.includes("height: 34px"), "Quick input send button should keep a stable square size.");
+  assert(view.includes("fishbone-dashboard-module-icon-button") && view.includes("chevron-up") && view.includes("chevron-down") && view.includes("eye-off"), "Dashboard module header actions should be icon buttons.");
+  assert(!view.includes("createEl(\"button\", { text: this.dashboardModuleCollapsed") && !view.includes("createEl(\"button\", { text: \"隐藏\" })"), "Dashboard module header should not use old text action buttons.");
+  assert(styles.includes(".fishbone-dashboard-module-count") && styles.includes("border-radius: 999px"), "Dashboard module counts should render as compact pills.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
 

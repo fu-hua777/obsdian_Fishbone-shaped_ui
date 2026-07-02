@@ -615,8 +615,15 @@ export class FishboneTimelineView extends ItemView {
     header.createSpan({ cls: "fishbone-dashboard-module-title", text: title });
     const controls = header.createDiv({ cls: "fishbone-dashboard-module-controls" });
     controls.createSpan({ cls: "fishbone-dashboard-module-count", text: countText });
-    const collapseButton = controls.createEl("button", { text: this.dashboardModuleCollapsed[moduleId] ? "展开" : "折叠" });
-    collapseButton.addClass("fishbone-dashboard-module-button");
+    const collapseButton = controls.createEl("button", {
+      cls: "fishbone-dashboard-module-button fishbone-dashboard-module-icon-button",
+      attr: {
+        type: "button",
+        "aria-label": this.dashboardModuleCollapsed[moduleId] ? "展开此模块" : "收起此模块",
+        title: this.dashboardModuleCollapsed[moduleId] ? "展开此模块" : "收起此模块"
+      }
+    });
+    setIcon(collapseButton.createSpan({ cls: "fishbone-dashboard-module-button-icon" }), this.dashboardModuleCollapsed[moduleId] ? "chevron-down" : "chevron-up");
     collapseButton.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -624,8 +631,15 @@ export class FishboneTimelineView extends ItemView {
       await this.persistDashboardState();
       await this.render();
     });
-    const hideButton = controls.createEl("button", { text: "隐藏" });
-    hideButton.addClass("fishbone-dashboard-module-button");
+    const hideButton = controls.createEl("button", {
+      cls: "fishbone-dashboard-module-button fishbone-dashboard-module-icon-button",
+      attr: {
+        type: "button",
+        "aria-label": "隐藏此模块",
+        title: "隐藏此模块"
+      }
+    });
+    setIcon(hideButton.createSpan({ cls: "fishbone-dashboard-module-button-icon" }), "eye-off");
     hideButton.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
