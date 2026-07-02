@@ -134,15 +134,16 @@
   margin-left: auto;
 }
 
-.fishbone-toolbar-actions button.fishbone-toolbar-task-time-button {
+.fishbone-toolbar-task-time-group {
   display: flex;
-  min-width: 96px;
-  min-height: 50px;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  line-height: 1.15;
+  gap: 3px;
+  min-width: 88px;
+}
+
+.fishbone-toolbar-task-time-group button {
+  width: 100%;
 }
 
 .fishbone-toolbar-local-time {
@@ -151,6 +152,10 @@
   align-items: center;
   gap: 1px;
   pointer-events: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.15;
 }
 
 .fishbone-toolbar-local-time-clock {

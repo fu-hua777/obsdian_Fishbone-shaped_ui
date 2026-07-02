@@ -383,7 +383,8 @@ export class FishboneTimelineView extends ItemView {
         await this.render();
       });
     }
-    this.createToolbarButton(actionGroup, "新建主线", async () => {
+    const newTaskGroup = actionGroup.createDiv({ cls: "fishbone-toolbar-task-time-group" });
+    this.createToolbarButton(newTaskGroup, "新建任务", async () => {
       new NewTaskModal(this.plugin, mainlines, async (input) => {
         const file = await this.plugin.taskRepository.createTask(input);
         new Notice(`已创建任务：${input.title}`);
@@ -391,12 +392,7 @@ export class FishboneTimelineView extends ItemView {
         await this.app.workspace.getLeaf(false).openFile(file);
       }).open();
     }, true);
-    const newTaskButton = actionGroup.lastElementChild;
-    if (newTaskButton instanceof HTMLButtonElement) {
-      newTaskButton.textContent = "新建任务";
-      newTaskButton.addClass("fishbone-toolbar-task-time-button");
-      this.renderToolbarLocalTime(newTaskButton);
-    }
+    this.renderToolbarLocalTime(newTaskGroup);
     this.createToolbarButton(actionGroup, "新建主线", async () => {
       new MainlineEditorModal(this.plugin, {
         title: "新建主线",

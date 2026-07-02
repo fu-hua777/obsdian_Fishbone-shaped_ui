@@ -34,7 +34,7 @@ function main() {
 
   requireText("plugin/src/views/FishboneTimelineView.ts", [
     "renderToolbarLocalTime",
-    "fishbone-toolbar-task-time-button",
+    "fishbone-toolbar-task-time-group",
     "fishbone-toolbar-local-time-clock",
     "fishbone-toolbar-local-time-date",
     "updateToolbarLocalTime",
@@ -43,6 +43,7 @@ function main() {
   ]);
 
   requireText("plugin/styles.css", [
+    ".fishbone-toolbar-task-time-group",
     ".fishbone-toolbar-local-time",
     ".fishbone-toolbar-local-time-clock",
     ".fishbone-toolbar-local-time-date"
@@ -58,6 +59,7 @@ function main() {
   assert(!styles.includes("fishbone-time-weather"), "Old right-side time/weather module styles should be removed.");
   assert(!fs.existsSync(path.join(root, "plugin/src/data/weatherRepository.ts")), "Weather repository should be removed while weather is closed.");
   assert(!view.includes("timeWeatherTimer"), "Toolbar clock timer should no longer use time/weather naming.");
+  assert(!view.includes("fishbone-toolbar-task-time-button"), "Local time should not be rendered inside the task button.");
 
   console.log("M6.8 toolbar local time validation passed.");
 }
