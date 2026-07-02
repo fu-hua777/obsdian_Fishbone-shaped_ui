@@ -34,6 +34,7 @@ function main() {
     "M8.2 interaction detail polish",
     "M8.6 top chrome overlap guard",
     "M8.11 top chrome separation",
+    "M8.12 dashboard/workbench scan polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-timeline-summary span",
@@ -60,6 +61,8 @@ function main() {
     ".fishbone-dashboard-module-icon-button",
     ".fishbone-dashboard-module-button-icon",
     ".fishbone-dashboard-task-color-dot",
+    ".fishbone-dashboard-task-priority",
+    ".fishbone-dashboard-status-select.fishbone-status-done",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-column-icon",
     ".fishbone-workbench-column-title",
@@ -117,6 +120,15 @@ function main() {
   assert(view.includes("select.createEl(\"option\", { text: formatStatus(status), value: status })"), "Dashboard status select should localize labels without changing values.");
   assert(view.includes("formatStatus(candidate.status)") && view.includes("formatStatus(task.status)"), "Quick input and task views should not expose raw status labels.");
   assert(view.includes("状态：${formatStatus(status)}") && view.includes("任务状态已更新为 ${formatStatus(status)}"), "Context menus and notifications should localize status labels.");
+  assert(view.includes("fishbone-dashboard-task-priority"), "Dashboard task priority should render in the top row for scanability.");
+  assert(view.includes("fishbone-dashboard-status-select fishbone-status-${task.status}"), "Dashboard status selects should expose status-specific classes for compact status pills.");
+  const dashboardTaskSectionStart = view.indexOf("private renderDashboardTaskSection");
+  const dashboardTaskSectionEnd = view.indexOf("private renderDashboardMainlineProgress");
+  const dashboardTaskSection = view.slice(dashboardTaskSectionStart, dashboardTaskSectionEnd);
+  assert(dashboardTaskSection.includes("fishbone-dashboard-task-priority"), "Dashboard task priority should be rendered by the dashboard task section.");
+  assert(!dashboardTaskSection.includes("meta.createSpan({ cls: `fishbone-dashboard-priority"), "Dashboard priority should not remain in the right-side module meta row.");
+  assert(styles.includes(".fishbone-workbench-task {") && styles.includes("min-height: 34px"), "Workbench task rows should be compact enough for the bottom workbench.");
+  assert(styles.includes(".fishbone-dashboard-status-select {") && styles.includes("width: 52px"), "Dashboard status selects should be compact pill controls.");
 
   console.log("M8 UI polish validation passed.");
 }

@@ -701,13 +701,13 @@ export class FishboneTimelineView extends ItemView {
       }
       top.createSpan({ cls: "fishbone-dashboard-task-color-dot" });
       top.createDiv({ cls: "fishbone-dashboard-task-title", text: task.title });
+      top.createSpan({ cls: `fishbone-dashboard-priority fishbone-dashboard-task-priority is-${task.priority}`, text: formatPriority(task.priority) });
       if (options.showStatusSelect) {
         this.renderDashboardStatusSelect(top, task);
       }
       const meta = row.createDiv({ cls: "fishbone-dashboard-task-meta" });
       meta.createSpan({ text: task.mainline ?? "未分配" });
       meta.createSpan({ text: task.date ?? "无日期" });
-      meta.createSpan({ cls: `fishbone-dashboard-priority is-${task.priority}`, text: formatPriority(task.priority) });
       if (options.showReasonChips && options.summary) {
         const reasons = getDashboardTaskReasons(task, options.summary);
         if (reasons.length > 0) {
@@ -785,7 +785,7 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderDashboardStatusSelect(parent: HTMLElement, task: PlanningTask): void {
-    const select = parent.createEl("select", { cls: "fishbone-dashboard-status-select" });
+    const select = parent.createEl("select", { cls: `fishbone-dashboard-status-select fishbone-status-${task.status}` });
     for (const status of TASK_STATUSES) {
       select.createEl("option", { text: formatStatus(status), value: status });
     }
