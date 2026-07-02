@@ -3538,3 +3538,54 @@
 .fishbone-date-tick.is-axis-label-hidden::before {
   display: none;
 }
+
+/* M8.14 canvas task focus polish */
+.fishbone-task-node.is-center-task {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--interactive-accent) 54%, transparent),
+    0 0 20px color-mix(in srgb, var(--interactive-accent) 18%, transparent),
+    0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.fishbone-task-node.is-today-task {
+  border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--lane-color));
+}
+
+.fishbone-task-node.is-today-task::after {
+  border-color: color-mix(in srgb, var(--interactive-accent) 46%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--interactive-accent) 26%, transparent);
+}
+
+.fishbone-task-node.is-overdue-task {
+  border-color: color-mix(in srgb, var(--text-error) 72%, var(--lane-color));
+}
+
+.fishbone-task-node.is-overdue-task .fishbone-task-title {
+  color: color-mix(in srgb, var(--text-normal) 78%, var(--text-error));
+}
+
+.fishbone-task-node.is-overdue-task::before {
+  background: var(--text-error);
+  opacity: 0.9;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--text-error) 38%, transparent);
+}
+
+.fishbone-priority-high .fishbone-task-priority {
+  color: var(--text-on-accent);
+  background: color-mix(in srgb, var(--text-error) 86%, var(--background-modifier-border));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--text-error) 28%, transparent);
+}
+
+.fishbone-priority-medium .fishbone-task-priority {
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--color-yellow, #fbbf24) 48%, var(--background-modifier-border));
+}
+
+.fishbone-priority-low .fishbone-task-priority {
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text-normal));
+  background: color-mix(in srgb, var(--background-modifier-border) 58%, transparent);
+}
+
+.fishbone-task-done.is-overdue-task {
+  border-color: color-mix(in srgb, var(--color-green) 72%, var(--lane-color));
+}

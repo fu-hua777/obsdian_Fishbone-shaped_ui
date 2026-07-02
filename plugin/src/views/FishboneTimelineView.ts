@@ -1977,6 +1977,9 @@ export class FishboneTimelineView extends ItemView {
 
   private renderCanvasTaskNode(parent: HTMLElement, taskNode: FishboneCanvasTaskNode, mainlines: Mainline[], layout: FishboneCanvasLayout): void {
     const task = taskNode.task;
+    const displayDate = taskNode.effectiveDate ?? task.date;
+    const today = getLocalDateString(new Date());
+    const isOpenTask = task.status !== "done" && task.status !== "canceled";
     const node = parent.createDiv({
       cls: [
         "fishbone-task-node",
@@ -1984,6 +1987,9 @@ export class FishboneTimelineView extends ItemView {
         `fishbone-priority-${task.priority}`,
         `fishbone-branch-${taskNode.branchSide}`,
         taskNode.branchMainlineId ? "is-branch-task" : "",
+        displayDate === today ? "is-today-task" : "",
+        displayDate === this.viewport.centerDate ? "is-center-task" : "",
+        displayDate && displayDate < today && isOpenTask ? "is-overdue-task" : "",
         taskNode.isCompacted ? "is-compacted" : ""
       ].filter(Boolean).join(" ")
     });
@@ -1992,6 +1998,7 @@ export class FishboneTimelineView extends ItemView {
     node.setAttr("data-task-id", task.taskId);
     node.setAttr("data-task-status", task.status);
     node.setAttr("data-task-priority", task.priority);
+    if (displayDate) node.setAttr("data-task-date", displayDate);
     node.setAttr("data-cluster-id", taskNode.bucketId);
     node.style.left = `${taskNode.x}px`;
     node.style.top = `${taskNode.y}px`;

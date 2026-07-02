@@ -36,6 +36,7 @@ function main() {
     "M8.11 top chrome separation",
     "M8.12 dashboard/workbench scan polish",
     "M8.13 canvas lane/date polish",
+    "M8.14 canvas task focus polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-timeline-summary span",
@@ -105,9 +106,14 @@ function main() {
   assert(styles.includes("position: static") && styles.includes("align-items: flex-end"), "Local time readout should be static and right aligned.");
   assert(styles.includes("border: 0 !important") && styles.includes("background: transparent !important"), "Top title/control containers should be borderless enough to avoid title overlap.");
   assert(view.includes("data-task-status") && view.includes("data-task-priority"), "Task nodes should expose stable status/priority attributes for visual polish.");
+  assert(view.includes("data-task-date"), "Task nodes should expose display date for visual focus states.");
   assert(view.includes("fishbone-task-checkbox"), "Task checkbox should have a stable class for status styling.");
   assert(styles.includes(".fishbone-task-done::before") && styles.includes(".fishbone-task-blocked::before"), "Task status styling should distinguish done and blocked tasks.");
   assert(styles.includes(".fishbone-task-doing::after"), "Doing task nodes should have a subtle active state.");
+  assert(view.includes("is-today-task") && view.includes("is-center-task") && view.includes("is-overdue-task"), "Canvas task nodes should expose today/center/overdue visual states.");
+  assert(view.includes("task.status !== \"done\" && task.status !== \"canceled\""), "Done/canceled tasks should not be classified as overdue.");
+  assert(styles.includes(".fishbone-task-node.is-today-task") && styles.includes(".fishbone-task-node.is-overdue-task"), "Task focus states should be styled.");
+  assert(styles.includes(".fishbone-priority-high .fishbone-task-priority") && styles.includes(".fishbone-priority-medium .fishbone-task-priority"), "Task priority pills should have visible severity styling.");
   assert(view.includes("fishbone-quick-input-submit") && view.includes("send-horizontal"), "Quick input submit action should use an icon button.");
   assert(!view.includes("form.createEl(\"button\", { text: \"预览\" })"), "Quick input should not render the old plain text preview button.");
   assert(styles.includes("width: 34px") && styles.includes("height: 34px"), "Quick input send button should keep a stable square size.");
