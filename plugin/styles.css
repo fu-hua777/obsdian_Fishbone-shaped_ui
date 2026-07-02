@@ -2721,6 +2721,97 @@
   font-size: 11px;
 }
 
+/* M8.2 interaction detail polish */
+.fishbone-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.fishbone-toolbar-button-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  color: currentColor;
+}
+
+.fishbone-toolbar-button-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+}
+
+.fishbone-toolbar-button-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fishbone-viewport-controls .fishbone-toolbar-button:hover,
+.fishbone-toolbar-actions .fishbone-toolbar-button:hover,
+.fishbone-segmented-control button:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--interactive-accent) 48%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-secondary) 82%, var(--interactive-accent));
+}
+
+.fishbone-viewport-controls .fishbone-toolbar-button:active,
+.fishbone-toolbar-actions .fishbone-toolbar-button:active,
+.fishbone-segmented-control button:active {
+  transform: translateY(0);
+}
+
+.fishbone-toolbar-actions button.mod-cta .fishbone-toolbar-button-icon {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--text-on-accent) 45%, transparent));
+}
+
+.fishbone-dashboard-section.is-dashboard-module-dragging,
+.fishbone-workbench-column.is-workbench-column-dragging,
+.fishbone-workbench-task.is-workbench-task-dragging {
+  transform: scale(0.99);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--interactive-accent) 60%, transparent),
+    0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.fishbone-dashboard-section.is-dashboard-module-drop-before::before,
+.fishbone-dashboard-section.is-dashboard-module-drop-after::after,
+.fishbone-workbench-column.is-workbench-column-drop-before::before,
+.fishbone-workbench-column.is-workbench-column-drop-after::after {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--interactive-accent) 40%, transparent),
+    0 0 14px color-mix(in srgb, var(--interactive-accent) 48%, transparent);
+}
+
+.fishbone-dashboard-module-resize-handle:hover,
+.fishbone-workbench-resizer:hover {
+  background: color-mix(in srgb, var(--interactive-accent) 7%, transparent);
+}
+
+.fishbone-workbench-column.is-workbench-drop-target {
+  border-color: color-mix(in srgb, var(--interactive-accent) 68%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-secondary) 78%, var(--interactive-accent));
+}
+
+.fishbone-quick-input-form:focus-within {
+  border-color: color-mix(in srgb, var(--interactive-accent) 62%, var(--background-modifier-border));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text-faint) 10%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--interactive-accent) 12%, transparent),
+    0 18px 40px rgba(0, 0, 0, 0.3);
+}
+
+.fishbone-quick-input-field::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 72%, transparent);
+}
+
+.fishbone-task-node.fishbone-task-dragging {
+  transform: translate(-50%, -50%) scale(1.02);
+}
+
 @media (max-width: 900px) {
   .fishbone-timeline-toolbar {
     align-items: stretch;

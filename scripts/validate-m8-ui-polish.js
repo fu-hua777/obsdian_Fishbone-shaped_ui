@@ -31,10 +31,14 @@ function main() {
 
   requireText("plugin/styles.css", [
     "M8 UI visual polish",
+    "M8.2 interaction detail polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-timeline-summary span",
     ".fishbone-toolbar-actions",
+    ".fishbone-toolbar-button",
+    ".fishbone-toolbar-button-icon",
+    ".fishbone-toolbar-button-label",
     ".fishbone-toolbar-local-time",
     ".fishbone-canvas-viewport",
     ".fishbone-fixed-date-axis-layer::before",
@@ -46,6 +50,7 @@ function main() {
     ".fishbone-dashboard-section",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-task",
+    ".fishbone-workbench-column.is-workbench-drop-target",
     ".fishbone-quick-input-form"
   ]);
 
@@ -55,6 +60,12 @@ function main() {
   assert(styles.includes("grid-template-columns: minmax(0, 1fr) auto"), "Quick input should remain a compact input plus action button.");
   assert(styles.includes("overflow: hidden auto"), "Dashboard/workbench lists should keep internal scrolling.");
   assert(styles.includes("white-space: nowrap"), "Compact labels should protect one-line task rows.");
+  assert(styles.includes(".fishbone-quick-input-form:focus-within"), "Quick input should have a visible focus state.");
+  assert(styles.includes(".fishbone-dashboard-section.is-dashboard-module-dragging"), "Dashboard module drag state should stay visually distinct.");
+  assert(view.includes("icon?: string"), "Toolbar helper should support icon labels.");
+  assert(view.includes("updateToolbarButton"), "Toolbar labels/icons should be centrally rendered.");
+  assert(view.includes("setIcon(iconEl, icon)"), "Toolbar icons should use Obsidian/lucide icons.");
+  assert(view.includes("\"plus-circle\"") && view.includes("\"refresh-cw\"") && view.includes("\"calendar-days\""), "Primary toolbar actions should be iconized.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
 

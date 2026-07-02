@@ -336,7 +336,7 @@ export class FishboneTimelineView extends ItemView {
       this.viewport = setViewportCenterDate(this.viewport, getLocalDateString(new Date()));
       await this.persistViewState();
       await this.render();
-    });
+    }, false, "calendar-days");
     this.createToolbarButton(controls, "跳转", async () => {
       const value = window.prompt("跳转到日期（YYYY-MM-DD）", this.viewport.centerDate);
       if (!value) return;
@@ -347,38 +347,35 @@ export class FishboneTimelineView extends ItemView {
       this.viewport = setViewportCenterDate(this.viewport, value.trim());
       await this.persistViewState();
       await this.render();
-    });
+    }, false, "search");
     this.createToolbarButton(controls, "适应窗口", async () => {
       this.viewport = fitCanvasViewportToDateRange(this.viewport, dateRange, this.containerEl.clientWidth);
       await this.persistViewState();
       await this.render();
-    });
+    }, false, "maximize-2");
     this.createToolbarButton(controls, "显示全部", async () => {
       this.viewport = setTimeAxisMode(this.viewport, "overview");
       this.viewport = fitCanvasViewportToDateRange(this.viewport, dateRange, this.containerEl.clientWidth);
       await this.persistViewState();
       await this.render();
-    });
+    }, false, "list");
     this.createToolbarButton(controls, "重置", async () => {
       this.viewport = resetCanvasViewport(this.viewport);
       await this.persistViewState();
       await this.render();
-    });
-    const relationButton = controls.createEl("button", { text: this.showRelations ? "隐藏关系" : "显示关系" });
-    relationButton.addEventListener("click", async (event) => {
-      event.preventDefault();
+    }, false, "rotate-ccw");
+    let relationButton: HTMLButtonElement;
+    relationButton = this.createToolbarButton(controls, this.showRelations ? "隐藏关系" : "显示关系", async () => {
       this.showRelations = !this.showRelations;
       await this.persistViewState();
-      relationButton.textContent = this.showRelations ? "隐藏关系" : "显示关系";
+      this.updateToolbarButton(relationButton, this.showRelations ? "隐藏关系" : "显示关系", this.showRelations ? "eye-off" : "eye");
       this.updateRelationLayerVisibility();
-    });
-    const dashboardButton = controls.createEl("button", { text: this.showDashboard ? "隐藏工作台" : "显示工作台" });
-    dashboardButton.addEventListener("click", async (event) => {
-      event.preventDefault();
+    }, false, this.showRelations ? "eye-off" : "eye");
+    this.createToolbarButton(controls, this.showDashboard ? "隐藏工作台" : "显示工作台", async () => {
       this.showDashboard = !this.showDashboard;
       await this.persistDashboardState();
       await this.render();
-    });
+    }, false, this.showDashboard ? "panel-right-close" : "panel-right-open");
 
     const zoomGroup = controls.createDiv({ cls: "fishbone-zoom-readout" });
     zoomGroup.createSpan({ text: formatPercent(this.viewport.canvasZoom) });
@@ -407,13 +404,13 @@ export class FishboneTimelineView extends ItemView {
           await this.render();
         }
       }).open();
-    });
+    }, false, "layout-dashboard");
     if (hasHiddenMainlines || this.showHiddenMainlines) {
       this.createToolbarButton(actionGroup, this.showHiddenMainlines ? "隐藏已隐藏" : "管理隐藏", async () => {
         this.showHiddenMainlines = !this.showHiddenMainlines;
         await this.persistViewState();
         await this.render();
-      });
+      }, false, this.showHiddenMainlines ? "eye-off" : "eye");
     }
     if (hasHiddenMainlines) {
       this.createToolbarButton(actionGroup, "显示全部主线", async () => {
@@ -421,7 +418,7 @@ export class FishboneTimelineView extends ItemView {
         this.showHiddenMainlines = false;
         await this.persistViewState();
         await this.render();
-      });
+      }, false, "list-checks");
     }
     const newTaskButton = this.createToolbarButton(actionGroup, "新建任务", async () => {
       new NewTaskModal(this.plugin, mainlines, async (input) => {
@@ -430,7 +427,7 @@ export class FishboneTimelineView extends ItemView {
         await this.render();
         await this.app.workspace.getLeaf(false).openFile(file);
       }).open();
-    }, true);
+    }, true, "plus-circle");
     this.createToolbarButton(actionGroup, "新建主线", async () => {
       new MainlineEditorModal(this.plugin, {
         title: "新建主线",
@@ -448,21 +445,33 @@ export class FishboneTimelineView extends ItemView {
           await this.render();
         }
       }).open();
-    }, true);
+    }, true, "git-branch");
     this.createToolbarButton(actionGroup, "刷新", async () => {
       await this.render();
-    });
+    }, false, "refresh-cw");
     this.renderToolbarLocalTime(toolbar, newTaskButton);
   }
 
-  private createToolbarButton(parent: HTMLElement, text: string, onClick: () => Promise<void>, cta = false): HTMLButtonElement {
-    const button = parent.createEl("button", { text });
+  private createToolbarButton(parent: HTMLElement, text: string, onClick: () => Promise<void>, cta = false, icon?: string): HTMLButtonElement {
+    const button = parent.createEl("button", { cls: "fishbone-toolbar-button" });
+    this.updateToolbarButton(button, text, icon);
     if (cta) button.addClass("mod-cta");
     button.addEventListener("click", (event) => {
       event.preventDefault();
       void onClick();
     });
     return button;
+  }
+
+  private updateToolbarButton(button: HTMLButtonElement, text: string, icon?: string): void {
+    button.empty();
+    button.setAttr("aria-label", text);
+    button.setAttr("title", text);
+    if (icon) {
+      const iconEl = button.createSpan({ cls: "fishbone-toolbar-button-icon" });
+      setIcon(iconEl, icon);
+    }
+    button.createSpan({ cls: "fishbone-toolbar-button-label", text });
   }
 
   private renderToolbarLocalTime(parent: HTMLElement, anchorButton?: HTMLElement): void {
