@@ -21,6 +21,9 @@ function main() {
 
   const view = read("plugin/src/views/FishboneTimelineView.ts");
   const styles = read("plugin/styles.css");
+  assert(view.includes("const lineEndX = branch.xEnd - left"), "SVG branch path must draw the horizontal branch line");
+  assert(view.includes("L ${lineEndX} ${endY}"), "SVG branch path must keep connector and branch line continuous");
+  assert(styles.includes(".fishbone-branch-mainline::before") && styles.includes("display: none;"), "DOM branch hit area must not render a duplicate visible line");
 
   assert(view.includes("connector.setAttribute(\"data-branch-mainline-id\", branch.id)"), "SVG 分支线必须带 branch id");
   assert(view.includes("spine.setAttr(\"data-branch-mainline-id\", branch.id)"), "分支命中区必须带 branch id");

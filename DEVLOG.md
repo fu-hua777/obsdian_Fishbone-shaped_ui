@@ -1,5 +1,9 @@
 # DEVLOG
 
+### M8.24: branch connector continuity fix
+- Restored short-term branch rendering to one SVG path: the curve and horizontal branch segment now share the same coordinates, while the DOM branch element remains only as the hit area.
+- Hid the DOM branch pseudo-line to prevent the previous duplicate parallel branch line from returning.
+
 ### M8.23：分支线重复与小屏适配修复
 - 修复分支短期主线出现两条平行线的问题：连接线只画父主线到分支起点，不再沿分支水平延伸。
 - 右侧模块列表恢复外层滚动，屏幕高度不足时可滚轮查看下方模块。

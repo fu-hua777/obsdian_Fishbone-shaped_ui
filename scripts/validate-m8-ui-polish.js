@@ -150,7 +150,7 @@ function main() {
   assert(view.includes("fishbone-quick-input-action is-primary") && view.includes("fishbone-quick-input-action-icon") && view.includes("\"check\"") && view.includes("\"pencil\""), "Quick input candidate actions should be iconized write/edit buttons.");
   assert(!view.includes("createEl(\"button\", { text: \"确认写入\" })") && !view.includes("createEl(\"button\", { text: \"编辑后创建\" })"), "Quick input preview should not use old plain text action buttons.");
   assert(styles.includes("M8.22 quick input candidate preview polish") && styles.includes(".fishbone-quick-input-action.is-primary"), "M8.22 should style compact quick input candidate actions.");
-  assert(view.includes("const right = branch.xStart + 16") && !view.includes("const tailX = branch.xEnd - left"), "M8.23 should prevent branch connectors from drawing a duplicate horizontal branch line.");
+  assert(view.includes("const right = branch.xEnd + 16") && view.includes("const lineEndX = branch.xEnd - left") && styles.includes("display: none;"), "M8.23 should draw branch connectors and branch lines in one SVG path without a duplicate DOM line.");
   assert(styles.includes(".fishbone-dashboard-modules") && styles.includes("overscroll-behavior: contain"), "M8.23 should let the right dashboard module list scroll as a whole.");
   assert(styles.includes("@media (max-width: 1700px), (max-height: 960px)") && styles.includes("width: min(300px, 28vw) !important"), "M8.23 should include compact viewport density rules for smaller screens.");
   assert(view.includes("fishbone-dashboard-module-icon-button") && view.includes("chevron-up") && view.includes("chevron-down") && view.includes("eye-off"), "Dashboard module header actions should be icon buttons.");

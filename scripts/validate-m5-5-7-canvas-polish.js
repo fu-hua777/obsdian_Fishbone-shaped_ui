@@ -27,6 +27,9 @@ function requireBranchConnectorContinuity() {
   const methodMatch = content.match(/private getBranchConnectorPath[\s\S]*?\n  \}/);
   assert(methodMatch, "缺少 getBranchConnectorPath 方法");
   const method = methodMatch[0];
+  assert(method.includes("const lineEndX = branch.xEnd - left"), "branch connector must draw the visible branch line in the same SVG coordinate system");
+  assert(method.includes("L ${lineEndX} ${endY}"), "branch connector path must include the horizontal branch segment");
+  assert(read("plugin/styles.css").includes("display: none;"), "DOM branch hit area must not render a second visible branch line");
   assert(method.includes("const startX = branch.xStart - left"), "分支连接线起点必须使用分支起点 x");
   assert(method.includes("const startY = branch.parentY - top"), "分支连接线起点必须落在父主线 y");
   assert(method.includes("const endX = branch.xStart - left"), "分支连接线终点必须落在分支线起点 x，避免断开");
