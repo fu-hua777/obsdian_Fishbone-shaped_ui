@@ -40,6 +40,7 @@ function main() {
     "M8.15 top chrome flow guard",
     "M8.16 right progress modules polish",
     "M8.17 week focus ranked list polish",
+    "M8.18 today focus compact list polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-top-meta-row",
@@ -77,6 +78,9 @@ function main() {
     ".fishbone-dashboard-week-focus-list",
     ".fishbone-dashboard-week-focus-index",
     ".fishbone-dashboard-week-focus-dot",
+    ".fishbone-dashboard-today-focus-list",
+    ".fishbone-dashboard-today-focus-checkbox",
+    ".fishbone-dashboard-today-focus-dot",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-column-icon",
     ".fishbone-workbench-column-title",
@@ -162,6 +166,10 @@ function main() {
   assert(view.includes("private renderDashboardWeekFocus") && view.includes("fishbone-dashboard-week-focus-index") && view.includes("String(index + 1)"), "Week focus should render numbered priority rows.");
   assert(view.includes("fishbone-dashboard-week-focus-dot") && view.includes("fishbone-dashboard-week-focus-reasons"), "Week focus should keep mainline color and reason chips without using task form controls.");
   assert(styles.includes(".fishbone-dashboard-week-focus-list") && styles.includes("flex: 1 1 auto") && styles.includes("grid-template-columns: 22px minmax(0, 1fr)"), "Week focus rows should be compact numbered list items with internal scrolling.");
+  assert(view.includes("case \"today-focus\":") && view.includes("this.renderDashboardTodayFocus(section, moduleId, summary);"), "Today focus should use its own compact-list renderer.");
+  assert(view.includes("private renderDashboardTodayFocus") && view.includes("fishbone-dashboard-today-focus-checkbox") && view.includes("this.updateDashboardTaskDone(task, checkbox.checked)"), "Today focus should keep a compact completion checkbox.");
+  assert(view.includes("fishbone-dashboard-today-focus-dot") && view.includes("fishbone-dashboard-today-focus-title") && view.includes("fishbone-dashboard-task-priority"), "Today focus should render mainline color, title, and priority without a status form row.");
+  assert(styles.includes(".fishbone-dashboard-today-focus-list") && styles.includes("grid-template-columns: 34px minmax(0, 1fr)"), "Today focus rows should be compact focus-list items.");
 
   console.log("M8 UI polish validation passed.");
 }

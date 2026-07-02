@@ -579,11 +579,7 @@ export class FishboneTimelineView extends ItemView {
         this.renderDashboardProgressOverview(section, moduleId, summary);
         break;
       case "today-focus":
-        this.renderDashboardTaskSection(section, moduleId, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务", {
-          showCheckbox: true,
-          showStatusSelect: true,
-          summary
-        });
+        this.renderDashboardTodayFocus(section, moduleId, summary);
         break;
       case "week-focus":
         this.renderDashboardWeekFocus(section, moduleId, summary);
@@ -718,6 +714,44 @@ export class FishboneTimelineView extends ItemView {
           }
         }
       }
+    }
+  }
+
+  private renderDashboardTodayFocus(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
+    const tasks = summary.todayTasks.slice(0, 8);
+    this.renderDashboardModuleHeader(section, moduleId, "今日聚焦", String(tasks.length));
+    if (tasks.length === 0) {
+      section.createDiv({ cls: "fishbone-dashboard-empty", text: "今日暂无任务" });
+      return;
+    }
+
+    const list = section.createDiv({ cls: "fishbone-dashboard-today-focus-list" });
+    for (const task of tasks) {
+      const row = list.createDiv({ cls: `fishbone-dashboard-today-focus-item fishbone-task-${task.status}` });
+      row.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"} · ${formatStatus(task.status)} · ${formatPriority(task.priority)}`);
+      const mainlineProgress = summary.mainlineProgress.find((item) => item.name === task.mainline);
+      row.style.setProperty("--mainline-color", mainlineProgress?.color ?? "#94a3b8");
+      row.addEventListener("click", () => {
+        void this.plugin.taskRepository.openTask(task);
+      });
+
+      const left = row.createDiv({ cls: "fishbone-dashboard-today-focus-left" });
+      const checkbox = left.createEl("input", { type: "checkbox", cls: "fishbone-dashboard-task-checkbox fishbone-dashboard-today-focus-checkbox" });
+      checkbox.checked = task.status === "done";
+      checkbox.addEventListener("click", (event) => event.stopPropagation());
+      checkbox.addEventListener("change", (event) => {
+        event.stopPropagation();
+        void this.updateDashboardTaskDone(task, checkbox.checked);
+      });
+      left.createSpan({ cls: "fishbone-dashboard-today-focus-dot" });
+
+      const content = row.createDiv({ cls: "fishbone-dashboard-today-focus-content" });
+      const top = content.createDiv({ cls: "fishbone-dashboard-today-focus-top" });
+      top.createDiv({ cls: "fishbone-dashboard-today-focus-title", text: task.title });
+      top.createSpan({ cls: `fishbone-dashboard-priority fishbone-dashboard-task-priority is-${task.priority}`, text: formatPriority(task.priority) });
+      const meta = content.createDiv({ cls: "fishbone-dashboard-today-focus-meta" });
+      meta.createSpan({ text: task.mainline ?? "未分配" });
+      meta.createSpan({ text: formatStatus(task.status) });
     }
   }
 
