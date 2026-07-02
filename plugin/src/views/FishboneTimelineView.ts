@@ -268,8 +268,8 @@ export class FishboneTimelineView extends ItemView {
       });
       const canvasShell = workspace.createDiv({ cls: "fishbone-canvas-shell" });
       this.renderCanvas(canvasShell, layout, mainlines, tasks);
+      this.renderQuickInput(canvasShell, dashboardSummary, mainlines);
       if (this.showDashboard) {
-        this.renderQuickInput(canvasShell, dashboardSummary, mainlines);
         this.renderDashboardPanel(workspace, dashboardSummary, tasks, mainlines);
         this.renderWorkbenchPanel(workspace, dashboardSummary, mainlines);
       }
@@ -377,9 +377,15 @@ export class FishboneTimelineView extends ItemView {
       await this.render();
     }, false, this.showDashboard ? "panel-right-close" : "panel-right-open");
 
-    const zoomGroup = controls.createDiv({ cls: "fishbone-zoom-readout" });
-    zoomGroup.createSpan({ text: formatPercent(this.viewport.canvasZoom) });
-    zoomGroup.createSpan({ text: `${Math.round(this.viewport.timeScale)}px/天` });
+    const zoomGroup = controls.createDiv({ cls: "fishbone-zoom-readout fishbone-zoom-control" });
+    this.createToolbarButton(zoomGroup, "缩小", async () => {
+      await this.zoomCanvasFromToolbar(120);
+    }, false, "minus");
+    zoomGroup.createSpan({ cls: "fishbone-zoom-percent", text: formatPercent(this.viewport.canvasZoom) });
+    this.createToolbarButton(zoomGroup, "放大", async () => {
+      await this.zoomCanvasFromToolbar(-120);
+    }, false, "plus");
+    zoomGroup.createSpan({ cls: "fishbone-time-scale-readout", text: `${Math.round(this.viewport.timeScale)}px/天` });
   }
 
   private renderMainlineControls(toolbar: HTMLElement, mainlines: Mainline[]): void {
@@ -485,6 +491,22 @@ export class FishboneTimelineView extends ItemView {
     }
     time.createSpan({ cls: "fishbone-toolbar-local-time-clock", text: formatCurrentTime(now) });
     time.createSpan({ cls: "fishbone-toolbar-local-time-date", text: formatCurrentDate(now) });
+  }
+
+  private async zoomCanvasFromToolbar(wheelDelta: number): Promise<void> {
+    const canvas = this.containerEl.querySelector<HTMLElement>(".fishbone-canvas-viewport");
+    const anchor = canvas
+      ? { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 }
+      : { x: this.containerEl.clientWidth / 2, y: Math.max(240, this.containerEl.clientHeight / 2) };
+    this.viewport = zoomCanvasViewport(this.viewport, wheelDelta, anchor);
+    if (canvas) {
+      this.applyCanvasTransform(canvas);
+      this.updateViewportReadouts();
+      await this.persistViewState();
+      return;
+    }
+    await this.persistViewState();
+    await this.render();
   }
 
   private async renderDiagnostics(container: Element, error: unknown): Promise<void> {
@@ -1849,9 +1871,8 @@ export class FishboneTimelineView extends ItemView {
 
   private updateViewportReadouts(): void {
     const readout = this.containerEl.querySelector(".fishbone-zoom-readout");
-    const spans = readout?.querySelectorAll("span");
-    if (spans?.[0]) spans[0].setText(formatPercent(this.viewport.canvasZoom));
-    if (spans?.[1]) spans[1].setText(`${Math.round(this.viewport.timeScale)}px/天`);
+    readout?.querySelector<HTMLElement>(".fishbone-zoom-percent")?.setText(formatPercent(this.viewport.canvasZoom));
+    readout?.querySelector<HTMLElement>(".fishbone-time-scale-readout")?.setText(`${Math.round(this.viewport.timeScale)}px/天`);
   }
 
   private queuePersistViewState(): void {

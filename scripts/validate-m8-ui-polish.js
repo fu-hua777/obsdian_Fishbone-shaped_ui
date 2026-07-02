@@ -39,6 +39,9 @@ function main() {
     ".fishbone-toolbar-button",
     ".fishbone-toolbar-button-icon",
     ".fishbone-toolbar-button-label",
+    ".fishbone-zoom-control",
+    ".fishbone-zoom-percent",
+    ".fishbone-time-scale-readout",
     ".fishbone-toolbar-local-time",
     ".fishbone-canvas-viewport",
     ".fishbone-fixed-date-axis-layer::before",
@@ -71,6 +74,8 @@ function main() {
   assert(view.includes("updateToolbarButton"), "Toolbar labels/icons should be centrally rendered.");
   assert(view.includes("setIcon(iconEl, icon)"), "Toolbar icons should use Obsidian/lucide icons.");
   assert(view.includes("\"plus-circle\"") && view.includes("\"refresh-cw\"") && view.includes("\"calendar-days\""), "Primary toolbar actions should be iconized.");
+  assert(view.includes("zoomCanvasFromToolbar") && view.includes("\"缩小\"") && view.includes("\"放大\""), "Toolbar should expose explicit canvas zoom controls.");
+  assert(view.includes("fishbone-zoom-percent") && view.includes("fishbone-time-scale-readout"), "Zoom readouts should use stable classes instead of span order.");
   assert(view.includes("getDashboardModuleIcon"), "Dashboard modules should render stable module icons.");
   assert(view.includes("fishbone-dashboard-task-color-dot"), "Dashboard task rows should expose mainline color dots.");
   assert(view.includes("fishbone-workbench-column-icon"), "Workbench columns should render status icons.");
@@ -79,6 +84,7 @@ function main() {
   assert(view.includes("createMainline(name, color, icon)") && view.includes("updateMainline(mainline.id, name, color, icon)"), "Mainline icon edits should be persisted.");
   assert(styles.includes(".fishbone-lane-icon svg"), "Canvas mainline icon badge should style SVG icons.");
   assert(styles.includes(".fishbone-dashboard-task {") && styles.includes("border-left: 2px solid"), "Dashboard task rows should have a mainline color stripe.");
+  assert(styles.includes(".fishbone-zoom-control .fishbone-toolbar-button-label") && styles.includes("display: none"), "Zoom stepper buttons should stay compact.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
 

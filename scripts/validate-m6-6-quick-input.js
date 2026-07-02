@@ -65,6 +65,10 @@ function main() {
   assert(view.includes("未匹配到现有主线"), "Quick input should warn instead of auto-creating unknown mainlines.");
   assert(view.includes("YYYY-MM-DD") || view.includes("\\d{4}-\\d{2}-\\d{2}"), "Quick input should recognize ISO dates.");
   assert(view.includes("明天") && view.includes("后天"), "Quick input should recognize relative Chinese dates.");
+  assert(
+    view.includes("this.renderQuickInput(canvasShell, dashboardSummary, mainlines);\n      if (this.showDashboard)"),
+    "Quick input should stay on the canvas even when the workbench/dashboard is hidden."
+  );
 
   console.log("M6.6 quick input validation passed.");
 }
