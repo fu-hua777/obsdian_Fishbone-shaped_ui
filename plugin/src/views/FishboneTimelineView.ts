@@ -1,7 +1,7 @@
 import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "obsidian";
 import FishbonePlannerPlugin from "../main";
 import { buildDailySummaryMarkdown } from "../dashboard/dailySummary";
-import { DASHBOARD_MODULE_IDS, DEFAULT_DASHBOARD_MODULE_HEIGHTS, DashboardModuleId, getDashboardModuleTitle } from "../dashboard/dashboardModules";
+import { DASHBOARD_MODULE_IDS, DEFAULT_DASHBOARD_MODULE_HEIGHTS, DashboardModuleId, getDashboardModuleIcon, getDashboardModuleTitle } from "../dashboard/dashboardModules";
 import { formatCurrentDate, formatCurrentTime } from "../dashboard/toolbarTime";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { CreatePlanningTaskInput, TaskFieldPatch } from "../data/taskRepository";
@@ -60,10 +60,10 @@ interface DashboardTaskRenderOptions {
 
 type WorkbenchColumnId = "todo" | "doing" | "done";
 const WORKBENCH_COLUMN_IDS: WorkbenchColumnId[] = ["todo", "doing", "done"];
-const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; targetStatus: TaskStatus; emptyText: string }> = {
-  todo: { title: "待办", targetStatus: "todo", emptyText: "暂无待办任务" },
-  doing: { title: "进行中", targetStatus: "doing", emptyText: "暂无进行中任务" },
-  done: { title: "已完成", targetStatus: "done", emptyText: "暂无已完成任务" }
+const WORKBENCH_COLUMN_META: Record<WorkbenchColumnId, { title: string; icon: string; targetStatus: TaskStatus; emptyText: string }> = {
+  todo: { title: "待办", icon: "list-todo", targetStatus: "todo", emptyText: "暂无待办任务" },
+  doing: { title: "进行中", icon: "loader-circle", targetStatus: "doing", emptyText: "暂无进行中任务" },
+  done: { title: "已完成", icon: "circle-check", targetStatus: "done", emptyText: "暂无已完成任务" }
 };
 
 interface QuickInputCandidate {
@@ -562,7 +562,8 @@ export class FishboneTimelineView extends ItemView {
       case "today-focus":
         this.renderDashboardTaskSection(section, moduleId, "今日聚焦", summary.todayTasks.slice(0, 8), "今日暂无任务", {
           showCheckbox: true,
-          showStatusSelect: true
+          showStatusSelect: true,
+          summary
         });
         break;
       case "week-focus":
@@ -586,7 +587,9 @@ export class FishboneTimelineView extends ItemView {
     const header = section.createDiv({ cls: "fishbone-dashboard-section-header" });
     header.setAttr("title", "拖动模块标题可调整模块位置");
     header.createSpan({ cls: "fishbone-dashboard-drag-handle", text: "⋮⋮" });
-    header.createSpan({ text: title });
+    const icon = header.createSpan({ cls: "fishbone-dashboard-module-icon" });
+    setIcon(icon, getDashboardModuleIcon(moduleId));
+    header.createSpan({ cls: "fishbone-dashboard-module-title", text: title });
     const controls = header.createDiv({ cls: "fishbone-dashboard-module-controls" });
     controls.createSpan({ cls: "fishbone-dashboard-module-count", text: countText });
     const collapseButton = controls.createEl("button", { text: this.dashboardModuleCollapsed[moduleId] ? "展开" : "折叠" });
@@ -649,6 +652,8 @@ export class FishboneTimelineView extends ItemView {
     for (const task of tasks) {
       const row = list.createDiv({ cls: `fishbone-dashboard-task fishbone-task-${task.status}` });
       row.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"}`);
+      const mainlineProgress = options.summary?.mainlineProgress.find((item) => item.name === task.mainline);
+      row.style.setProperty("--mainline-color", mainlineProgress?.color ?? "#94a3b8");
       row.addEventListener("click", () => {
         void this.plugin.taskRepository.openTask(task);
       });
@@ -662,6 +667,7 @@ export class FishboneTimelineView extends ItemView {
           void this.updateDashboardTaskDone(task, checkbox.checked);
         });
       }
+      top.createSpan({ cls: "fishbone-dashboard-task-color-dot" });
       top.createDiv({ cls: "fishbone-dashboard-task-title", text: task.title });
       if (options.showStatusSelect) {
         this.renderDashboardStatusSelect(top, task);
@@ -1090,7 +1096,9 @@ export class FishboneTimelineView extends ItemView {
     const header = column.createDiv({ cls: "fishbone-workbench-column-header" });
     header.setAttr("title", "拖动列标题可调整下方工作台顺序");
     header.createSpan({ cls: "fishbone-workbench-drag-handle", text: "⋮⋮" });
-    header.createSpan({ text: meta.title });
+    const icon = header.createSpan({ cls: "fishbone-workbench-column-icon" });
+    setIcon(icon, meta.icon);
+    header.createSpan({ cls: "fishbone-workbench-column-title", text: meta.title });
     header.createSpan({ cls: "fishbone-workbench-count", text: String(tasks.length) });
     this.bindWorkbenchColumnDrag(column, header, columnId);
 

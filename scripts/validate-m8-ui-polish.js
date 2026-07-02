@@ -48,7 +48,11 @@ function main() {
     ".fishbone-relation-label",
     ".fishbone-branch-mainline-label",
     ".fishbone-dashboard-section",
+    ".fishbone-dashboard-module-icon",
+    ".fishbone-dashboard-task-color-dot",
     ".fishbone-workbench-panel",
+    ".fishbone-workbench-column-icon",
+    ".fishbone-workbench-column-title",
     ".fishbone-workbench-task",
     ".fishbone-workbench-column.is-workbench-drop-target",
     ".fishbone-quick-input-form"
@@ -66,6 +70,10 @@ function main() {
   assert(view.includes("updateToolbarButton"), "Toolbar labels/icons should be centrally rendered.");
   assert(view.includes("setIcon(iconEl, icon)"), "Toolbar icons should use Obsidian/lucide icons.");
   assert(view.includes("\"plus-circle\"") && view.includes("\"refresh-cw\"") && view.includes("\"calendar-days\""), "Primary toolbar actions should be iconized.");
+  assert(view.includes("getDashboardModuleIcon"), "Dashboard modules should render stable module icons.");
+  assert(view.includes("fishbone-dashboard-task-color-dot"), "Dashboard task rows should expose mainline color dots.");
+  assert(view.includes("fishbone-workbench-column-icon"), "Workbench columns should render status icons.");
+  assert(styles.includes(".fishbone-dashboard-task {") && styles.includes("border-left: 2px solid"), "Dashboard task rows should have a mainline color stripe.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
 

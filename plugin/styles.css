@@ -2812,6 +2812,98 @@
   transform: translate(-50%, -50%) scale(1.02);
 }
 
+/* M8.3 module hierarchy polish */
+.fishbone-dashboard-module-icon,
+.fishbone-workbench-column-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: var(--text-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+}
+
+.fishbone-dashboard-module-icon svg,
+.fishbone-workbench-column-icon svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.25;
+}
+
+.fishbone-dashboard-module-title,
+.fishbone-workbench-column-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-dashboard-task-color-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--mainline-color);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--mainline-color) 14%, transparent),
+    0 0 8px color-mix(in srgb, var(--mainline-color) 42%, transparent);
+}
+
+.fishbone-dashboard-task {
+  border-left: 2px solid color-mix(in srgb, var(--mainline-color) 58%, transparent);
+}
+
+.fishbone-dashboard-task-meta span:first-child {
+  max-width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--mainline-color) 76%, var(--text-muted));
+}
+
+.fishbone-workbench-column-todo .fishbone-workbench-column-icon {
+  color: var(--color-blue, #60a5fa);
+  background: color-mix(in srgb, var(--color-blue, #60a5fa) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-blue, #60a5fa) 24%, transparent);
+}
+
+.fishbone-workbench-column-doing .fishbone-workbench-column-icon {
+  color: var(--color-yellow, #fbbf24);
+  background: color-mix(in srgb, var(--color-yellow, #fbbf24) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-yellow, #fbbf24) 24%, transparent);
+}
+
+.fishbone-workbench-column-done .fishbone-workbench-column-icon {
+  color: var(--color-green, #4ade80);
+  background: color-mix(in srgb, var(--color-green, #4ade80) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-green, #4ade80) 24%, transparent);
+}
+
+.fishbone-workbench-column-header {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.fishbone-workbench-task {
+  position: relative;
+}
+
+.fishbone-workbench-task::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mainline-color) 72%, transparent);
+}
+
 @media (max-width: 900px) {
   .fishbone-timeline-toolbar {
     align-items: stretch;
