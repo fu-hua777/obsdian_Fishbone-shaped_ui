@@ -1974,6 +1974,8 @@ export class FishboneTimelineView extends ItemView {
     node.style.setProperty("--lane-color", taskNode.color);
     node.setAttr("data-lane-id", taskNode.laneId);
     node.setAttr("data-task-id", task.taskId);
+    node.setAttr("data-task-status", task.status);
+    node.setAttr("data-task-priority", task.priority);
     node.setAttr("data-cluster-id", taskNode.bucketId);
     node.style.left = `${taskNode.x}px`;
     node.style.top = `${taskNode.y}px`;
@@ -1983,9 +1985,11 @@ export class FishboneTimelineView extends ItemView {
     node.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"} · ${task.status} · ${task.priority}`);
     const header = node.createDiv({ cls: "fishbone-task-header" });
     const checkbox = header.createEl("input", {
+      cls: "fishbone-task-checkbox",
       attr: {
         type: "checkbox",
-        "aria-label": "切换任务完成状态"
+        "aria-label": task.status === "done" ? "取消完成任务" : "标记任务完成",
+        title: task.status === "done" ? "取消完成" : "标记完成"
       }
     });
     checkbox.checked = task.status === "done";

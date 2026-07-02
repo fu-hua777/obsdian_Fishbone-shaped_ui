@@ -1,5 +1,11 @@
 # DEVLOG
 
+### M8.6：顶部避让与任务状态语义
+- 顶部 toolbar 增加本机时间避让空间，修复时间文本与下方统计 chip 重叠的问题。
+- 顶部标题区、视图控制区和右侧操作区改为轻量无边框容器，避免大块边框背景与“鱼骨画布视图”标题区域视觉重叠。
+- 鱼骨任务节点增加稳定的 `data-task-status` / `data-task-priority` 属性和 `fishbone-task-checkbox` class，便于状态视觉精修。
+- 完成、进行中、阻塞、收件箱和取消任务增加轻量状态轨与不同状态反馈，更接近概念图中的任务胶囊语义。
+
 ### M8.5：顶部缩放控件
 - 顶部视口控制区新增 `缩小 / 百分比 / 放大` 控件，按钮使用现有 `zoomCanvasViewport()` 算法并以画布可视中心为缩放锚点。
 - 缩放读数改用 `fishbone-zoom-percent` 和 `fishbone-time-scale-readout` 稳定 class 更新，不再依赖 span 顺序。

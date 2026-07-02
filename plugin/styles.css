@@ -2289,9 +2289,39 @@
   line-height: 1.25;
 }
 
+/* M8.6 top chrome overlap guard */
+.fishbone-timeline-toolbar {
+  row-gap: 8px;
+  padding-bottom: 36px;
+}
+
+.fishbone-title-group {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.fishbone-viewport-controls,
+.fishbone-toolbar-actions {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.fishbone-toolbar-local-time {
+  z-index: 1;
+}
+
+.fishbone-timeline-summary {
+  position: relative;
+  z-index: 2;
+  margin-top: 0;
+}
+
 .fishbone-workspace {
   gap: 10px;
-  height: calc(100vh - 166px);
+  height: calc(100vh - 202px);
   min-height: 640px;
 }
 
@@ -2527,8 +2557,78 @@
   border-color: color-mix(in srgb, var(--interactive-accent) 68%, var(--lane-color));
 }
 
+.fishbone-task-node::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lane-color) 74%, transparent);
+  opacity: 0.64;
+  pointer-events: none;
+}
+
+.fishbone-task-node::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  pointer-events: none;
+}
+
+.fishbone-task-checkbox {
+  accent-color: color-mix(in srgb, var(--lane-color) 76%, var(--interactive-accent));
+}
+
 .fishbone-task-done {
-  opacity: 0.68;
+  opacity: 0.86;
+  border-color: color-mix(in srgb, var(--color-green) 72%, var(--lane-color));
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--background-secondary) 82%, var(--color-green)),
+      color-mix(in srgb, var(--background-primary) 90%, var(--lane-color)));
+}
+
+.fishbone-task-done::before {
+  background: var(--color-green);
+  opacity: 0.95;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-green) 46%, transparent);
+}
+
+.fishbone-task-done .fishbone-task-checkbox {
+  accent-color: var(--color-green);
+}
+
+.fishbone-task-done .fishbone-task-title {
+  color: color-mix(in srgb, var(--text-normal) 70%, var(--color-green));
+}
+
+.fishbone-task-doing::after {
+  border-color: color-mix(in srgb, var(--interactive-accent) 38%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+}
+
+.fishbone-task-blocked {
+  border-color: color-mix(in srgb, var(--text-error) 70%, var(--lane-color));
+}
+
+.fishbone-task-blocked::before {
+  background: var(--text-error);
+  opacity: 0.96;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--text-error) 42%, transparent);
+}
+
+.fishbone-task-inbox {
+  border-style: dashed;
+  opacity: 0.9;
+}
+
+.fishbone-task-canceled::before {
+  background: var(--text-faint);
+  opacity: 0.62;
 }
 
 .fishbone-task-tooltip {

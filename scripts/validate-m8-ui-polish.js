@@ -32,6 +32,7 @@ function main() {
   requireText("plugin/styles.css", [
     "M8 UI visual polish",
     "M8.2 interaction detail polish",
+    "M8.6 top chrome overlap guard",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-timeline-summary span",
@@ -49,6 +50,8 @@ function main() {
     ".fishbone-canvas-label-layer .fishbone-canvas-lane-label",
     ".fishbone-lane-icon",
     ".fishbone-task-node",
+    ".fishbone-task-node::before",
+    ".fishbone-task-checkbox",
     ".fishbone-relation-label",
     ".fishbone-branch-mainline-label",
     ".fishbone-dashboard-section",
@@ -85,6 +88,12 @@ function main() {
   assert(styles.includes(".fishbone-lane-icon svg"), "Canvas mainline icon badge should style SVG icons.");
   assert(styles.includes(".fishbone-dashboard-task {") && styles.includes("border-left: 2px solid"), "Dashboard task rows should have a mainline color stripe.");
   assert(styles.includes(".fishbone-zoom-control .fishbone-toolbar-button-label") && styles.includes("display: none"), "Zoom stepper buttons should stay compact.");
+  assert(styles.includes("padding-bottom: 36px"), "Toolbar should reserve vertical space for the local time readout.");
+  assert(styles.includes("backdrop-filter: none"), "Top toolbar containers should be borderless/light enough to avoid title overlap.");
+  assert(view.includes("data-task-status") && view.includes("data-task-priority"), "Task nodes should expose stable status/priority attributes for visual polish.");
+  assert(view.includes("fishbone-task-checkbox"), "Task checkbox should have a stable class for status styling.");
+  assert(styles.includes(".fishbone-task-done::before") && styles.includes(".fishbone-task-blocked::before"), "Task status styling should distinguish done and blocked tasks.");
+  assert(styles.includes(".fishbone-task-doing::after"), "Doing task nodes should have a subtle active state.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
 
