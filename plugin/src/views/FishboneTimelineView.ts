@@ -1952,10 +1952,11 @@ export class FishboneTimelineView extends ItemView {
     const text = label.createDiv({ cls: "fishbone-lane-text" });
     const top = text.createDiv({ cls: "fishbone-lane-topline" });
     const name = top.createDiv({ cls: "fishbone-lane-name", text: lane.name });
+    top.createSpan({ cls: "fishbone-lane-count", text: String(lane.taskCount) });
     if (lane.isPinned) top.createSpan({ cls: "fishbone-lane-chip", text: "固定" });
     if (lane.isCollapsed) top.createSpan({ cls: "fishbone-lane-chip", text: "折叠" });
     if (lane.isHidden) top.createSpan({ cls: "fishbone-lane-chip", text: "隐藏" });
-    text.createDiv({ cls: "fishbone-lane-kind", text: lane.isUnassigned ? `未分配 · ${lane.taskCount}` : `用户主线 · ${lane.taskCount}` });
+    text.createDiv({ cls: "fishbone-lane-kind", text: lane.isUnassigned ? "临时泳道" : "用户主线" });
 
     if (mainline) {
       label.addClass("fishbone-lane-label-interactive");

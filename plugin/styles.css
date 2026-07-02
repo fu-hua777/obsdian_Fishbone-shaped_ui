@@ -3463,3 +3463,78 @@
   font-size: 10px;
   line-height: 1.25;
 }
+
+/* M8.13 canvas lane/date polish */
+.fishbone-canvas-label-layer .fishbone-canvas-lane-label {
+  overflow: hidden;
+  min-width: 176px;
+  max-width: 236px;
+  padding: 8px 10px 8px 12px;
+}
+
+.fishbone-canvas-label-layer .fishbone-canvas-lane-label::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--lane-color);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--lane-color) 45%, transparent);
+}
+
+.fishbone-lane-text {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.fishbone-lane-topline {
+  gap: 6px;
+}
+
+.fishbone-lane-name {
+  flex: 1 1 auto;
+}
+
+.fishbone-lane-count {
+  flex: 0 0 auto;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lane-color) 22%, transparent);
+  color: color-mix(in srgb, var(--lane-color) 76%, var(--text-normal));
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.fishbone-lane-kind {
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-date-tick.is-center-date::before,
+.fishbone-date-tick.is-today::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 3px);
+  width: 8px;
+  height: 8px;
+  border: 2px solid color-mix(in srgb, var(--background-primary) 86%, transparent);
+  border-radius: 999px;
+  background: var(--interactive-accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--interactive-accent) 54%, transparent);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.fishbone-date-tick.is-axis-label-hidden::before {
+  display: none;
+}

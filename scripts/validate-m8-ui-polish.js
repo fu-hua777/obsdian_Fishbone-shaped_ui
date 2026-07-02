@@ -35,6 +35,7 @@ function main() {
     "M8.6 top chrome overlap guard",
     "M8.11 top chrome separation",
     "M8.12 dashboard/workbench scan polish",
+    "M8.13 canvas lane/date polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-timeline-summary span",
@@ -51,6 +52,7 @@ function main() {
     ".fishbone-date-tick.is-today",
     ".fishbone-canvas-label-layer .fishbone-canvas-lane-label",
     ".fishbone-lane-icon",
+    ".fishbone-lane-count",
     ".fishbone-task-node",
     ".fishbone-task-node::before",
     ".fishbone-task-checkbox",
@@ -94,6 +96,8 @@ function main() {
   assert(view.includes(".setName(\"图标\")"), "Mainline editor should expose icon input.");
   assert(view.includes("createMainline(name, color, icon)") && view.includes("updateMainline(mainline.id, name, color, icon)"), "Mainline icon edits should be persisted.");
   assert(styles.includes(".fishbone-lane-icon svg"), "Canvas mainline icon badge should style SVG icons.");
+  assert(styles.includes(".fishbone-canvas-label-layer .fishbone-canvas-lane-label::before"), "Canvas mainline labels should have a subtle colored rail.");
+  assert(styles.includes(".fishbone-date-tick.is-center-date::before") && styles.includes(".fishbone-date-tick.is-today::before"), "Center/today date ticks should have anchor dots.");
   assert(styles.includes(".fishbone-dashboard-task {") && styles.includes("border-left: 2px solid"), "Dashboard task rows should have a mainline color stripe.");
   assert(styles.includes(".fishbone-zoom-control .fishbone-toolbar-button-label") && styles.includes("display: none"), "Zoom stepper buttons should stay compact.");
   assert(view.includes("this.renderToolbarLocalTime(container)") && !view.includes("renderToolbarLocalTime(toolbar"), "Local time should render as an independent static view element, not an absolutely positioned toolbar child.");
@@ -122,6 +126,8 @@ function main() {
   assert(view.includes("状态：${formatStatus(status)}") && view.includes("任务状态已更新为 ${formatStatus(status)}"), "Context menus and notifications should localize status labels.");
   assert(view.includes("fishbone-dashboard-task-priority"), "Dashboard task priority should render in the top row for scanability.");
   assert(view.includes("fishbone-dashboard-status-select fishbone-status-${task.status}"), "Dashboard status selects should expose status-specific classes for compact status pills.");
+  assert(view.includes("fishbone-lane-count") && view.includes("String(lane.taskCount)"), "Canvas lane labels should expose task count as a separate badge.");
+  assert(view.includes("lane.isUnassigned ? \"临时泳道\" : \"用户主线\""), "Canvas lane subtitles should remain type descriptions after task count moves to a badge.");
   const dashboardTaskSectionStart = view.indexOf("private renderDashboardTaskSection");
   const dashboardTaskSectionEnd = view.indexOf("private renderDashboardMainlineProgress");
   const dashboardTaskSection = view.slice(dashboardTaskSectionStart, dashboardTaskSectionEnd);
