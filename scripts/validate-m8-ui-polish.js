@@ -43,6 +43,7 @@ function main() {
     "M8.18 today focus compact list polish",
     "M8.19 daily summary status card polish",
     "M8.20 top chrome borderless separation",
+    "M8.21 bottom workbench board polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-top-meta-row",
@@ -164,6 +165,10 @@ function main() {
   assert(dashboardTaskSection.includes("fishbone-dashboard-task-priority"), "Dashboard task priority should be rendered by the dashboard task section.");
   assert(!dashboardTaskSection.includes("meta.createSpan({ cls: `fishbone-dashboard-priority"), "Dashboard priority should not remain in the right-side module meta row.");
   assert(styles.includes(".fishbone-workbench-task {") && styles.includes("min-height: 34px"), "Workbench task rows should be compact enough for the bottom workbench.");
+  assert(styles.includes("--workbench-column-color") && styles.includes(".fishbone-workbench-column::before"), "M8.21 should give bottom workbench columns lightweight status color rails.");
+  assert(styles.includes("grid-template-columns: 14px 18px minmax(0, 1fr) auto"), "M8.21 should keep bottom workbench tasks as one-line board rows.");
+  assert(styles.includes(".fishbone-workbench-task-meta") && styles.includes("display: none"), "M8.21 should remove secondary meta lines from bottom workbench task rows.");
+  assert(styles.includes(".fishbone-workbench-task::before") && styles.includes("background: var(--mainline-color)"), "M8.21 should keep mainline color identification on each bottom task row.");
   assert(styles.includes(".fishbone-dashboard-status-select {") && styles.includes("width: 52px"), "Dashboard status selects should be compact pill controls.");
   assert(view.includes("this.renderDashboardProgressBar(rows, \"今日\", summary.todayProgress, \"today\")") && view.includes("fishbone-dashboard-progress-mini-ring"), "Progress overview should render compact circular progress markers for today/week.");
   assert(view.includes("fishbone-dashboard-mainline-ring-name-row") && view.includes("fishbone-dashboard-mainline-ring-chip"), "Mainline progress should render compact ring cards with color dots and metric chips.");

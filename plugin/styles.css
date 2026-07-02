@@ -4262,6 +4262,142 @@
   }
 }
 
+/* M8.21 bottom workbench board polish */
+.fishbone-workbench-panel {
+  border-color: color-mix(in srgb, var(--background-modifier-border) 62%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 50%, transparent), transparent 42%),
+    color-mix(in srgb, var(--background-primary) 86%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-faint) 8%, transparent);
+}
+
+.fishbone-workbench-column {
+  --workbench-column-color: var(--interactive-accent);
+  position: relative;
+  padding: 8px;
+  border-color: color-mix(in srgb, var(--background-modifier-border) 46%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--workbench-column-color) 7%, transparent), transparent 42%),
+    color-mix(in srgb, var(--background-secondary) 46%, transparent);
+}
+
+.fishbone-workbench-column::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--workbench-column-color) 74%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--workbench-column-color) 30%, transparent);
+}
+
+.fishbone-workbench-column-todo {
+  --workbench-column-color: var(--color-blue, #60a5fa);
+}
+
+.fishbone-workbench-column-doing {
+  --workbench-column-color: var(--color-yellow, #fbbf24);
+}
+
+.fishbone-workbench-column-done {
+  --workbench-column-color: var(--color-green, #4ade80);
+}
+
+.fishbone-workbench-column-header {
+  min-height: 28px;
+  margin-bottom: 6px;
+  padding: 0 1px 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 38%, transparent);
+}
+
+.fishbone-workbench-drag-handle {
+  color: color-mix(in srgb, var(--workbench-column-color) 76%, var(--text-muted));
+}
+
+.fishbone-workbench-count {
+  color: color-mix(in srgb, var(--workbench-column-color) 72%, var(--text-normal));
+  background: color-mix(in srgb, var(--workbench-column-color) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--workbench-column-color) 20%, transparent);
+}
+
+.fishbone-workbench-task-list {
+  gap: 5px;
+}
+
+.fishbone-workbench-task {
+  position: relative;
+  grid-template-columns: 14px 18px minmax(0, 1fr) auto;
+  min-height: 30px;
+  padding: 5px 7px 5px 9px;
+  border-color: color-mix(in srgb, var(--mainline-color) 22%, var(--background-modifier-border));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--mainline-color) 9%, transparent), transparent 64%),
+    color-mix(in srgb, var(--background-primary) 70%, transparent);
+}
+
+.fishbone-workbench-task::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--mainline-color);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mainline-color) 34%, transparent);
+}
+
+.fishbone-workbench-task:hover {
+  border-color: color-mix(in srgb, var(--mainline-color) 58%, var(--interactive-accent));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--mainline-color) 13%, transparent), transparent 68%),
+    color-mix(in srgb, var(--background-secondary) 72%, transparent);
+}
+
+.fishbone-workbench-task .fishbone-dashboard-task-checkbox {
+  margin: 0;
+}
+
+.fishbone-workbench-task-body {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.fishbone-workbench-task-title {
+  line-height: 1.2;
+}
+
+.fishbone-workbench-task-meta {
+  display: none;
+}
+
+.fishbone-workbench-task-icon {
+  border-color: color-mix(in srgb, var(--mainline-color) 44%, transparent);
+  background: color-mix(in srgb, var(--mainline-color) 13%, transparent);
+  box-shadow: none;
+}
+
+.fishbone-workbench-mainline-tag {
+  max-width: 86px;
+  color: color-mix(in srgb, var(--mainline-color) 68%, var(--text-normal));
+  background: color-mix(in srgb, var(--mainline-color) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mainline-color) 24%, transparent);
+}
+
+.fishbone-workbench-task-list .fishbone-dashboard-empty {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  border: 1px dashed color-mix(in srgb, var(--workbench-column-color) 22%, var(--background-modifier-border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--workbench-column-color) 5%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+  font-size: 12px;
+}
+
 @media (max-width: 1100px) {
   .fishbone-timeline-toolbar {
     grid-template-columns: minmax(0, 1fr);
