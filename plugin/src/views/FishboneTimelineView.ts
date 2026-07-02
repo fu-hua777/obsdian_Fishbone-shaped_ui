@@ -434,9 +434,10 @@ export class FishboneTimelineView extends ItemView {
         submitText: "创建",
         name: "",
         color: "#4f8cff",
-        onSubmit: async (name, color) => {
+        icon: "circle-dot",
+        onSubmit: async (name, color, icon) => {
           try {
-            await this.plugin.mainlineRepository.createMainline(name, color);
+            await this.plugin.mainlineRepository.createMainline(name, color, icon);
           } catch (error) {
             this.renderInlineError(this.containerEl.children[1], error);
             throw error;
@@ -1896,6 +1897,7 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderCanvasLaneLabel(layer: HTMLElement, lane: FishboneCanvasLane, mainlines: Mainline[], layout: FishboneCanvasLayout): void {
+    const mainline = mainlines.find((item) => item.id === lane.id);
     const label = layer.createDiv({
       cls: [
         "fishbone-canvas-lane-label",
@@ -1908,7 +1910,8 @@ export class FishboneTimelineView extends ItemView {
     label.style.setProperty("--lane-color", lane.color);
     label.setAttr("data-lane-id", lane.id);
     label.setAttr("data-lane-spine-y", String(lane.spineY));
-    label.createDiv({ cls: "fishbone-lane-dot" });
+    const laneIcon = label.createDiv({ cls: "fishbone-lane-dot fishbone-lane-icon" });
+    setIcon(laneIcon, mainline?.icon || (lane.isUnassigned ? "circle" : "circle-dot"));
 
     const text = label.createDiv({ cls: "fishbone-lane-text" });
     const top = text.createDiv({ cls: "fishbone-lane-topline" });
@@ -1918,7 +1921,6 @@ export class FishboneTimelineView extends ItemView {
     if (lane.isHidden) top.createSpan({ cls: "fishbone-lane-chip", text: "隐藏" });
     text.createDiv({ cls: "fishbone-lane-kind", text: lane.isUnassigned ? `未分配 · ${lane.taskCount}` : `用户主线 · ${lane.taskCount}` });
 
-    const mainline = mainlines.find((item) => item.id === lane.id);
     if (mainline) {
       label.addClass("fishbone-lane-label-interactive");
       name.setAttr("title", "点击修改；右键显示更多；长按拖动排序");
@@ -2286,8 +2288,9 @@ export class FishboneTimelineView extends ItemView {
       submitText: "保存",
       name: mainline.name,
       color: mainline.color,
-      onSubmit: async (name, color) => {
-        await this.plugin.mainlineRepository.updateMainline(mainline.id, name, color);
+      icon: mainline.icon,
+      onSubmit: async (name, color, icon) => {
+        await this.plugin.mainlineRepository.updateMainline(mainline.id, name, color, icon);
         new Notice(`已修改主线：${name.trim()}`);
         await this.render();
       }
@@ -2687,7 +2690,8 @@ interface MainlineEditorOptions {
   submitText: string;
   name: string;
   color: string;
-  onSubmit: (name: string, color: string) => Promise<void>;
+  icon: string;
+  onSubmit: (name: string, color: string, icon: string) => Promise<void>;
 }
 
 interface DashboardModuleManagerOptions {
@@ -2755,12 +2759,14 @@ class MainlineEditorModal extends Modal {
   private options: MainlineEditorOptions;
   private name: string;
   private color: string;
+  private icon: string;
 
   constructor(plugin: FishbonePlannerPlugin, options: MainlineEditorOptions) {
     super(plugin.app);
     this.options = options;
     this.name = options.name;
     this.color = options.color;
+    this.icon = options.icon;
   }
 
   onOpen(): void {
@@ -2791,6 +2797,18 @@ class MainlineEditorModal extends Modal {
       });
 
     new Setting(contentEl)
+      .setName("图标")
+      .setDesc("输入 Obsidian/Lucide 图标名，例如 heart、book-open、briefcase、coffee、badge-dollar-sign。")
+      .addText((text) => {
+        text
+          .setPlaceholder("例如：circle-dot")
+          .setValue(this.icon)
+          .onChange((value) => {
+            this.icon = value;
+          });
+      });
+
+    new Setting(contentEl)
       .addButton((button) => {
         button
           .setButtonText("取消")
@@ -2802,7 +2820,7 @@ class MainlineEditorModal extends Modal {
           .setCta()
           .onClick(async () => {
             try {
-              await this.options.onSubmit(this.name, this.color);
+              await this.options.onSubmit(this.name, this.color, this.icon);
               this.close();
             } catch (error) {
               new Notice(error instanceof Error ? error.message : "保存主线失败");

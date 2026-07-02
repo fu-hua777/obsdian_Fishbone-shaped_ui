@@ -34,7 +34,7 @@ export class MainlineRepository {
     return file.mainlines;
   }
 
-  async createMainline(name: string, color: string): Promise<Mainline> {
+  async createMainline(name: string, color: string, icon = ""): Promise<Mainline> {
     const normalizedName = name.trim();
     if (!normalizedName) {
       throw new Error("主线名称不能为空");
@@ -53,7 +53,7 @@ export class MainlineRepository {
       type: "mainline",
       name: normalizedName,
       color: normalizedColor,
-      icon: "",
+      icon: normalizeIcon(icon),
       order: nextOrder,
       visible: true,
       collapsed: false,
@@ -141,7 +141,7 @@ export class MainlineRepository {
     return updated;
   }
 
-  async updateMainline(id: string, name: string, color: string): Promise<Mainline> {
+  async updateMainline(id: string, name: string, color: string, icon?: string): Promise<Mainline> {
     const normalizedName = name.trim();
     if (!normalizedName) {
       throw new Error("主线名称不能为空");
@@ -163,7 +163,8 @@ export class MainlineRepository {
     const updated: Mainline = {
       ...file.mainlines[index],
       name: normalizedName,
-      color: normalizeColor(color)
+      color: normalizeColor(color),
+      icon: icon === undefined ? file.mainlines[index].icon : normalizeIcon(icon)
     };
     file.mainlines[index] = updated;
     await this.writeMainlinesFile(file);
@@ -344,6 +345,10 @@ function isIsoDate(value: string): boolean {
 function normalizeColor(color: string): string {
   const value = color.trim();
   return /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#4f8cff";
+}
+
+function normalizeIcon(icon: string): string {
+  return icon.trim();
 }
 
 function createMainlineId(name: string): string {

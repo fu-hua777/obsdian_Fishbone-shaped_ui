@@ -44,6 +44,7 @@ function main() {
     ".fishbone-fixed-date-axis-layer::before",
     ".fishbone-date-tick.is-today",
     ".fishbone-canvas-label-layer .fishbone-canvas-lane-label",
+    ".fishbone-lane-icon",
     ".fishbone-task-node",
     ".fishbone-relation-label",
     ".fishbone-branch-mainline-label",
@@ -73,6 +74,10 @@ function main() {
   assert(view.includes("getDashboardModuleIcon"), "Dashboard modules should render stable module icons.");
   assert(view.includes("fishbone-dashboard-task-color-dot"), "Dashboard task rows should expose mainline color dots.");
   assert(view.includes("fishbone-workbench-column-icon"), "Workbench columns should render status icons.");
+  assert(view.includes("setIcon(laneIcon") && view.includes("mainline?.icon"), "Canvas mainline labels should render configured mainline icons.");
+  assert(view.includes(".setName(\"图标\")"), "Mainline editor should expose icon input.");
+  assert(view.includes("createMainline(name, color, icon)") && view.includes("updateMainline(mainline.id, name, color, icon)"), "Mainline icon edits should be persisted.");
+  assert(styles.includes(".fishbone-lane-icon svg"), "Canvas mainline icon badge should style SVG icons.");
   assert(styles.includes(".fishbone-dashboard-task {") && styles.includes("border-left: 2px solid"), "Dashboard task rows should have a mainline color stripe.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
