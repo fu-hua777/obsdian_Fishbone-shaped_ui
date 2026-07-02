@@ -1807,6 +1807,22 @@
   letter-spacing: 0;
 }
 
+.fishbone-timeline-title-input {
+  width: min(260px, 42vw);
+  min-height: 28px;
+  padding: 1px 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.fishbone-timeline-title-input:hover,
+.fishbone-timeline-title-input:focus {
+  border-color: color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+}
+
 .fishbone-toolbar-subtitle {
   color: var(--text-muted);
   font-size: 11px;

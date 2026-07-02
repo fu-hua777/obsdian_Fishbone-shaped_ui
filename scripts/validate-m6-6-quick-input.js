@@ -40,10 +40,23 @@ function main() {
     "sourceType: \"quick-input\"",
     "sourceExcerpt: candidate.text",
     "confirm.addEventListener(\"click\", async",
+    "confirm.disabled = true",
+    "快速输入写入失败",
+    "input.value = this.quickInputCandidate.text",
     "编辑后创建",
     "initial?: Partial<CreatePlanningTaskInput>",
     "sourceType: this.sourceType",
-    "await this.plugin.taskRepository.createTask"
+    "await this.plugin.taskRepository.createTask",
+    "renderEditableViewTitle",
+    "viewTitle: this.viewTitle"
+  ]);
+
+  requireText("plugin/src/settings.ts", [
+    "viewTitle?: string"
+  ]);
+
+  requireText("plugin/styles.css", [
+    "fishbone-timeline-title-input"
   ]);
 
   const view = read("plugin/src/views/FishboneTimelineView.ts");

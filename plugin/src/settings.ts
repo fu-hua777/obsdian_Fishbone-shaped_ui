@@ -8,6 +8,7 @@ export interface FishbonePlannerSettings {
 }
 
 export interface FishbonePersistedViewState {
+  viewTitle?: string;
   panX?: number;
   panY?: number;
   canvasZoom?: number;

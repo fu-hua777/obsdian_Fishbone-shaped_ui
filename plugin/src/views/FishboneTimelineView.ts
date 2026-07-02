@@ -41,6 +41,7 @@ import {
 } from "./fishboneCanvasViewport";
 
 export const FISHBONE_TIMELINE_VIEW_TYPE = "fishbone-planner-timeline";
+const DEFAULT_FISHBONE_VIEW_TITLE = "鱼骨画布视图";
 const TASK_STATUSES: TaskStatus[] = ["todo", "doing", "done", "blocked", "canceled", "inbox"];
 const TASK_PRIORITIES: TaskPriority[] = ["high", "medium", "low"];
 const TIME_AXIS_MODES: Array<{ id: TimeAxisMode; label: string }> = [
@@ -81,6 +82,7 @@ export class FishboneTimelineView extends ItemView {
   private viewport: FishboneCanvasViewport = createDefaultFishboneCanvasViewport();
   private showRelations = true;
   private showHiddenMainlines = false;
+  private viewTitle = DEFAULT_FISHBONE_VIEW_TITLE;
   private showDashboard = true;
   private dashboardWidth = 340;
   private dashboardModuleOrder: DashboardModuleId[] = [...DASHBOARD_MODULE_IDS];
@@ -176,6 +178,7 @@ export class FishboneTimelineView extends ItemView {
     this.viewport = normalizeFishboneCanvasViewport(saved);
     this.showRelations = saved.showRelations !== false;
     this.showHiddenMainlines = saved.showHiddenMainlines === true;
+    this.viewTitle = normalizeViewTitle(saved.viewTitle);
     this.showDashboard = plugin.settings.dashboardState?.showDashboard !== false;
     this.dashboardWidth = normalizeDashboardWidth(plugin.settings.dashboardState?.dashboardWidth);
     this.dashboardModuleOrder = normalizeDashboardModuleOrder(plugin.settings.dashboardState?.moduleOrder);
@@ -192,7 +195,7 @@ export class FishboneTimelineView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Fishbone Planner 鱼骨画布视图";
+    return `Fishbone Planner ${this.viewTitle}`;
   }
 
   async onOpen(): Promise<void> {
@@ -235,7 +238,7 @@ export class FishboneTimelineView extends ItemView {
 
       const toolbar = container.createDiv({ cls: "fishbone-timeline-toolbar" });
       const titleGroup = toolbar.createDiv({ cls: "fishbone-title-group" });
-      titleGroup.createDiv({ cls: "fishbone-timeline-title", text: "鱼骨画布视图" });
+      this.renderEditableViewTitle(titleGroup);
       titleGroup.createDiv({ cls: "fishbone-toolbar-subtitle", text: `${formatMode(this.viewport.timeAxisMode)} · 中心 ${this.viewport.centerDate}` });
       this.renderViewportControls(toolbar, tasks, dateRange);
       this.renderMainlineControls(toolbar, mainlines);
@@ -277,6 +280,43 @@ export class FishboneTimelineView extends ItemView {
       console.error("Fishbone Planner: timeline render failed", error);
       await this.renderDiagnostics(container, error);
     }
+  }
+
+  private renderEditableViewTitle(parent: HTMLElement): void {
+    const input = parent.createEl("input", {
+      type: "text",
+      cls: "fishbone-timeline-title fishbone-timeline-title-input",
+      attr: {
+        "aria-label": "鱼骨画布标题",
+        title: "点击修改画布标题，按 Enter 保存，按 Esc 取消"
+      }
+    });
+    input.value = this.viewTitle;
+
+    let canceled = false;
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        input.blur();
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        canceled = true;
+        input.value = this.viewTitle;
+        input.blur();
+      }
+    });
+    input.addEventListener("blur", async () => {
+      if (canceled) {
+        canceled = false;
+        return;
+      }
+      const nextTitle = normalizeViewTitle(input.value);
+      input.value = nextTitle;
+      if (nextTitle === this.viewTitle) return;
+      this.viewTitle = nextTitle;
+      await this.persistViewState();
+    });
   }
 
   private renderViewportControls(toolbar: HTMLElement, tasks: PlanningTask[], dateRange: DateRange): void {
@@ -948,6 +988,9 @@ export class FishboneTimelineView extends ItemView {
       cls: "fishbone-quick-input-field",
       placeholder: "格式：日期 主线 优先级 状态 标题，如：明天 项目 高优先级 todo 修复登录问题"
     });
+    if (this.quickInputCandidate) {
+      input.value = this.quickInputCandidate.text;
+    }
     input.setAttr("title", "可识别：今天/明天/后天/YYYY-MM-DD、主线名称、高/中/低优先级、todo/doing/done/blocked/inbox、任务标题");
     form.createEl("button", { text: "预览" });
     form.addEventListener("submit", (event) => {
@@ -986,18 +1029,24 @@ export class FishboneTimelineView extends ItemView {
     const confirm = actions.createEl("button", { text: "确认写入" });
     confirm.addEventListener("click", async (event) => {
       event.preventDefault();
-      await this.plugin.taskRepository.createTask({
-        title: candidate.title,
-        date: candidate.date,
-        mainline: candidate.mainline,
-        status: candidate.status,
-        priority: candidate.priority,
-        sourceType: "quick-input",
-        sourceExcerpt: candidate.text
-      });
-      this.quickInputCandidate = null;
-      new Notice("已通过快速输入创建任务");
-      await this.render();
+      confirm.disabled = true;
+      try {
+        await this.plugin.taskRepository.createTask({
+          title: candidate.title,
+          date: candidate.date,
+          mainline: candidate.mainline,
+          status: candidate.status,
+          priority: candidate.priority,
+          sourceType: "quick-input",
+          sourceExcerpt: candidate.text
+        });
+        this.quickInputCandidate = null;
+        new Notice("已通过快速输入创建任务");
+        await this.render();
+      } catch (error) {
+        confirm.disabled = false;
+        new Notice(error instanceof Error ? error.message : "快速输入写入失败");
+      }
     });
 
     const edit = actions.createEl("button", { text: "编辑后创建" });
@@ -2584,6 +2633,7 @@ export class FishboneTimelineView extends ItemView {
 
   private async persistViewState(): Promise<void> {
     this.plugin.settings.fishboneViewState = {
+      viewTitle: this.viewTitle,
       ...this.viewport,
       showRelations: this.showRelations,
       showHiddenMainlines: this.showHiddenMainlines,
@@ -3344,6 +3394,11 @@ function removeToken(value: string, token: string): string {
 
 function removePattern(value: string, pattern: RegExp): string {
   return value.replace(pattern, " ");
+}
+
+function normalizeViewTitle(value: string | undefined): string {
+  const title = (value ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+  return title.length > 0 ? title : DEFAULT_FISHBONE_VIEW_TITLE;
 }
 
 function buildQuickInputCandidate(text: string, summary: DashboardSummary, mainlines: Mainline[]): QuickInputCandidate {
