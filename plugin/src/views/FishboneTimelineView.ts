@@ -1030,7 +1030,16 @@ export class FishboneTimelineView extends ItemView {
       input.value = this.quickInputCandidate.text;
     }
     input.setAttr("title", "可识别：今天/明天/后天/YYYY-MM-DD、主线名称、高/中/低优先级、todo/doing/done/blocked/inbox、任务标题");
-    form.createEl("button", { text: "预览" });
+    const submit = form.createEl("button", {
+      cls: "fishbone-quick-input-submit",
+      attr: {
+        type: "submit",
+        "aria-label": "预览快速笔记候选任务",
+        title: "预览快速笔记候选任务"
+      }
+    });
+    const submitIcon = submit.createSpan({ cls: "fishbone-quick-input-submit-icon" });
+    setIcon(submitIcon, "send-horizontal");
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const text = input.value.trim();

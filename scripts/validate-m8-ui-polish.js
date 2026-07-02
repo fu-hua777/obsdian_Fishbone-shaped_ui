@@ -62,7 +62,9 @@ function main() {
     ".fishbone-workbench-column-title",
     ".fishbone-workbench-task",
     ".fishbone-workbench-column.is-workbench-drop-target",
-    ".fishbone-quick-input-form"
+    ".fishbone-quick-input-form",
+    ".fishbone-quick-input-submit",
+    ".fishbone-quick-input-submit-icon"
   ]);
 
   assert(styles.includes("backdrop-filter: blur(14px)") || styles.includes("backdrop-filter: blur(12px)"), "M8 toolbar/panel polish should use subtle backdrop blur.");
@@ -94,6 +96,9 @@ function main() {
   assert(view.includes("fishbone-task-checkbox"), "Task checkbox should have a stable class for status styling.");
   assert(styles.includes(".fishbone-task-done::before") && styles.includes(".fishbone-task-blocked::before"), "Task status styling should distinguish done and blocked tasks.");
   assert(styles.includes(".fishbone-task-doing::after"), "Doing task nodes should have a subtle active state.");
+  assert(view.includes("fishbone-quick-input-submit") && view.includes("send-horizontal"), "Quick input submit action should use an icon button.");
+  assert(!view.includes("form.createEl(\"button\", { text: \"预览\" })"), "Quick input should not render the old plain text preview button.");
+  assert(styles.includes("width: 34px") && styles.includes("height: 34px"), "Quick input send button should keep a stable square size.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
 
