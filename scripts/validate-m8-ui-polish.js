@@ -41,6 +41,8 @@ function main() {
     "M8.16 right progress modules polish",
     "M8.17 week focus ranked list polish",
     "M8.18 today focus compact list polish",
+    "M8.19 daily summary status card polish",
+    "M8.20 top chrome borderless separation",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-top-meta-row",
@@ -81,6 +83,8 @@ function main() {
     ".fishbone-dashboard-today-focus-list",
     ".fishbone-dashboard-today-focus-checkbox",
     ".fishbone-dashboard-today-focus-dot",
+    ".fishbone-daily-summary-status-card",
+    ".fishbone-daily-summary-action-icon",
     ".fishbone-workbench-panel",
     ".fishbone-workbench-column-icon",
     ".fishbone-workbench-column-title",
@@ -122,6 +126,9 @@ function main() {
   assert(styles.includes("position: static") && styles.includes("align-items: flex-end"), "Local time readout should be static and right aligned.");
   assert(styles.includes(".fishbone-top-meta-row") && styles.includes("min-height: 32px") && styles.includes("clear: both"), "Top meta row should reserve vertical space before summary chips.");
   assert(styles.includes("border: 0 !important") && styles.includes("background: transparent !important"), "Top title/control containers should be borderless enough to avoid title overlap.");
+  assert(styles.includes("grid-template-columns: minmax(150px, min(320px, 24vw)) minmax(0, 1fr) max-content"), "M8.20 should use a final stable top toolbar grid.");
+  assert(styles.includes("inset: auto !important") && styles.includes("transform: none !important"), "M8.20 should clear old absolute-position time offsets.");
+  assert(styles.includes("min-height: 42px") && styles.includes("margin: 0 8px 2px 0"), "M8.20 should reserve enough time-row space above summary chips.");
   assert(view.includes("data-task-status") && view.includes("data-task-priority"), "Task nodes should expose stable status/priority attributes for visual polish.");
   assert(view.includes("data-task-date"), "Task nodes should expose display date for visual focus states.");
   assert(view.includes("fishbone-task-checkbox"), "Task checkbox should have a stable class for status styling.");
@@ -170,6 +177,10 @@ function main() {
   assert(view.includes("private renderDashboardTodayFocus") && view.includes("fishbone-dashboard-today-focus-checkbox") && view.includes("this.updateDashboardTaskDone(task, checkbox.checked)"), "Today focus should keep a compact completion checkbox.");
   assert(view.includes("fishbone-dashboard-today-focus-dot") && view.includes("fishbone-dashboard-today-focus-title") && view.includes("fishbone-dashboard-task-priority"), "Today focus should render mainline color, title, and priority without a status form row.");
   assert(styles.includes(".fishbone-dashboard-today-focus-list") && styles.includes("grid-template-columns: 34px minmax(0, 1fr)"), "Today focus rows should be compact focus-list items.");
+  assert(view.includes("fishbone-daily-summary-status-card") && view.includes("fishbone-daily-summary-status-icon"), "Daily summary should render a status card with an icon.");
+  assert(view.includes("setIcon(statusIcon, file ? \"circle-check\" : \"file-clock\")"), "Daily summary should distinguish generated/pending state by icon.");
+  assert(view.includes("fishbone-daily-summary-action-icon") && view.includes("\"external-link\"") && view.includes("\"sparkles\""), "Daily summary actions should be icon buttons.");
+  assert(styles.includes(".fishbone-daily-summary-status-card.is-generated") && styles.includes(".fishbone-daily-summary-action {"), "Daily summary generated state and action buttons should be styled.");
 
   console.log("M8 UI polish validation passed.");
 }

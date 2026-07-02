@@ -3738,6 +3738,104 @@
   font-size: 10px;
 }
 
+/* M8.19 daily summary status card polish */
+.fishbone-daily-summary-module {
+  gap: 8px;
+}
+
+.fishbone-daily-summary-status-card {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 38%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--background-primary) 38%, transparent);
+}
+
+.fishbone-daily-summary-status-card.is-generated {
+  border-color: color-mix(in srgb, var(--color-green, #4ade80) 30%, transparent);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--color-green, #4ade80) 18%, transparent), transparent 46%),
+    color-mix(in srgb, var(--background-primary) 38%, transparent);
+}
+
+.fishbone-daily-summary-status-card.is-pending {
+  border-color: color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+}
+
+.fishbone-daily-summary-status-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+}
+
+.fishbone-daily-summary-status-card.is-generated .fishbone-daily-summary-status-icon {
+  color: var(--color-green, #4ade80);
+  background: color-mix(in srgb, var(--color-green, #4ade80) 15%, transparent);
+}
+
+.fishbone-daily-summary-status-icon svg,
+.fishbone-daily-summary-action-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fishbone-daily-summary-status-text {
+  min-width: 0;
+}
+
+.fishbone-daily-summary-status-title {
+  overflow: hidden;
+  color: var(--text-normal);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-daily-summary-status-card.is-generated .fishbone-daily-summary-status-title {
+  color: var(--color-green, #4ade80);
+}
+
+.fishbone-daily-summary-status-meta {
+  overflow: hidden;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--text-muted) 80%, transparent);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-daily-summary-actions {
+  gap: 6px;
+}
+
+.fishbone-daily-summary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 680;
+}
+
+.fishbone-daily-summary-action-icon {
+  display: inline-grid;
+  place-items: center;
+}
+
 /* M8.17 week focus ranked list polish */
 .fishbone-dashboard-week-focus-list {
   display: flex;
@@ -4049,4 +4147,146 @@
 
 .fishbone-task-done.is-overdue-task {
   border-color: color-mix(in srgb, var(--color-green) 72%, var(--lane-color));
+}
+
+/* M8.20 top chrome borderless separation */
+.fishbone-timeline-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(150px, min(320px, 24vw)) minmax(0, 1fr) max-content;
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 8px;
+  padding: 0;
+  overflow: visible;
+}
+
+.fishbone-title-group,
+.fishbone-viewport-controls,
+.fishbone-toolbar-actions {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.fishbone-title-group {
+  grid-column: 1;
+  max-width: min(320px, 24vw);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.fishbone-timeline-title-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none;
+}
+
+.fishbone-timeline-title-input:hover,
+.fishbone-timeline-title-input:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.fishbone-viewport-controls {
+  grid-column: 2;
+  justify-self: end;
+  max-width: 100%;
+  padding: 0;
+  justify-content: flex-end;
+}
+
+.fishbone-toolbar-actions {
+  grid-column: 3;
+  justify-self: end;
+  padding: 0;
+  justify-content: flex-end;
+}
+
+.fishbone-top-meta-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  min-height: 42px;
+  margin: 0 8px 2px 0;
+  clear: both;
+  pointer-events: none;
+}
+
+.fishbone-top-meta-row .fishbone-toolbar-local-time {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  align-items: flex-end;
+  min-width: 118px;
+  min-height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.fishbone-top-meta-row .fishbone-toolbar-local-time-clock {
+  line-height: 1.05;
+}
+
+.fishbone-top-meta-row .fishbone-toolbar-local-time-date {
+  line-height: 1.2;
+}
+
+.fishbone-timeline-summary {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+@media (max-width: 1300px) {
+  .fishbone-timeline-toolbar {
+    grid-template-columns: minmax(150px, 280px) minmax(0, 1fr);
+  }
+
+  .fishbone-title-group {
+    max-width: min(280px, 100%);
+  }
+
+  .fishbone-toolbar-actions {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 1100px) {
+  .fishbone-timeline-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fishbone-title-group,
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    grid-column: 1;
+    justify-self: stretch;
+    max-width: 100%;
+  }
+
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .fishbone-top-meta-row {
+    justify-content: flex-start;
+    min-height: 40px;
+    margin-right: 0;
+  }
+
+  .fishbone-top-meta-row .fishbone-toolbar-local-time {
+    align-items: flex-start;
+  }
 }

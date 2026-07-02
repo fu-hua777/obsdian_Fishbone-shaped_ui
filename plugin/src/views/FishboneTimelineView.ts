@@ -824,12 +824,27 @@ export class FishboneTimelineView extends ItemView {
     const file = this.plugin.dailySummaryRepository.getSummaryFile(summary.today);
     this.renderDashboardModuleHeader(section, moduleId, "每日总结", file ? "已生成" : "未生成");
     const body = section.createDiv({ cls: "fishbone-daily-summary-module" });
-    body.createDiv({
-      cls: "fishbone-daily-summary-status",
-      text: file ? `已生成 ${formatLocalDateTimeForSummary(new Date(file.stat.mtime))}` : "今日总结尚未生成"
+    const statusCard = body.createDiv({
+      cls: [
+        "fishbone-daily-summary-status-card",
+        file ? "is-generated" : "is-pending"
+      ].join(" ")
+    });
+    const statusIcon = statusCard.createSpan({ cls: "fishbone-daily-summary-status-icon" });
+    setIcon(statusIcon, file ? "circle-check" : "file-clock");
+    const statusText = statusCard.createDiv({ cls: "fishbone-daily-summary-status-text" });
+    statusText.createDiv({
+      cls: "fishbone-daily-summary-status-title",
+      text: file ? "今日总结已生成" : "今日总结未生成"
+    });
+    statusText.createDiv({
+      cls: "fishbone-daily-summary-status-meta",
+      text: file ? `${formatLocalDateTimeForSummary(new Date(file.stat.mtime))} 自动生成` : "生成后可在每日总结中查看"
     });
     const actions = body.createDiv({ cls: "fishbone-daily-summary-actions" });
-    const generateButton = actions.createEl("button", { text: file ? "重新生成" : "生成总结" });
+    const generateButton = actions.createEl("button", { cls: "fishbone-daily-summary-action" });
+    setIcon(generateButton.createSpan({ cls: "fishbone-daily-summary-action-icon" }), file ? "refresh-cw" : "sparkles");
+    generateButton.createSpan({ text: file ? "重新生成" : "生成总结" });
     generateButton.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -844,7 +859,9 @@ export class FishboneTimelineView extends ItemView {
       new Notice(file ? "已重新生成今日总结" : "已生成今日总结");
       await this.render();
     });
-    const openButton = actions.createEl("button", { text: "查看总结" });
+    const openButton = actions.createEl("button", { cls: "fishbone-daily-summary-action" });
+    setIcon(openButton.createSpan({ cls: "fishbone-daily-summary-action-icon" }), "external-link");
+    openButton.createSpan({ text: "查看总结" });
     if (!file) openButton.disabled = true;
     openButton.addEventListener("click", async (event) => {
       event.preventDefault();
