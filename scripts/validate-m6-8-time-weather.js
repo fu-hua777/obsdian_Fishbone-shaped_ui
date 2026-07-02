@@ -35,8 +35,7 @@ function main() {
   requireText("plugin/src/views/FishboneTimelineView.ts", [
     "renderToolbarLocalTime",
     "const newTaskButton = this.createToolbarButton(actionGroup, \"新建任务\"",
-    "fishbone-toolbar-action-stack",
-    "actionStack.createDiv({ cls: \"fishbone-toolbar-actions\" })",
+    "toolbar.createDiv({ cls: \"fishbone-toolbar-actions\" })",
     "fishbone-toolbar-local-time-clock",
     "fishbone-toolbar-local-time-date",
     "updateToolbarLocalTime",
@@ -45,7 +44,8 @@ function main() {
   ]);
 
   requireText("plugin/styles.css", [
-    ".fishbone-toolbar-action-stack",
+    "position: relative",
+    "position: absolute",
     ".fishbone-toolbar-local-time",
     ".fishbone-toolbar-local-time-clock",
     ".fishbone-toolbar-local-time-date"
@@ -62,8 +62,9 @@ function main() {
   assert(!fs.existsSync(path.join(root, "plugin/src/data/weatherRepository.ts")), "Weather repository should be removed while weather is closed.");
   assert(!view.includes("timeWeatherTimer"), "Toolbar clock timer should no longer use time/weather naming.");
   assert(!view.includes("fishbone-toolbar-task-time-button"), "Local time should not be rendered inside the task button.");
-  assert(view.indexOf("renderToolbarLocalTime(actionStack, newTaskButton)") > view.indexOf("actionStack.createDiv({ cls: \"fishbone-toolbar-actions\" })"), "Local time should render outside the bordered action button group.");
-  assert(view.includes("anchorButton.offsetLeft") && view.includes("anchorButton.offsetWidth"), "Local time should align below the new task button.");
+  assert(!view.includes("fishbone-toolbar-action-stack"), "Toolbar action stack should not affect the original top toolbar layout.");
+  assert(view.indexOf("renderToolbarLocalTime(toolbar, newTaskButton)") > view.indexOf("toolbar.createDiv({ cls: \"fishbone-toolbar-actions\" })"), "Local time should render outside the bordered action button group.");
+  assert(view.includes("anchorButton.offsetLeft") && view.includes("anchorButton.offsetTop") && view.includes("anchorButton.offsetWidth"), "Local time should align below the new task button without participating in toolbar layout.");
 
   console.log("M6.8 toolbar local time validation passed.");
 }

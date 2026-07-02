@@ -346,8 +346,7 @@ export class FishboneTimelineView extends ItemView {
   }
 
   private renderMainlineControls(toolbar: HTMLElement, mainlines: Mainline[]): void {
-    const actionStack = toolbar.createDiv({ cls: "fishbone-toolbar-action-stack" });
-    const actionGroup = actionStack.createDiv({ cls: "fishbone-toolbar-actions" });
+    const actionGroup = toolbar.createDiv({ cls: "fishbone-toolbar-actions" });
     const hasHiddenMainlines = mainlines.some((mainline) => mainline.visible === false);
     this.createToolbarButton(actionGroup, "模块管理", async () => {
       new DashboardModuleManagerModal(this.plugin, {
@@ -413,7 +412,7 @@ export class FishboneTimelineView extends ItemView {
     this.createToolbarButton(actionGroup, "刷新", async () => {
       await this.render();
     });
-    this.renderToolbarLocalTime(actionStack, newTaskButton);
+    this.renderToolbarLocalTime(toolbar, newTaskButton);
   }
 
   private createToolbarButton(parent: HTMLElement, text: string, onClick: () => Promise<void>, cta = false): HTMLButtonElement {
@@ -430,7 +429,8 @@ export class FishboneTimelineView extends ItemView {
     const now = new Date();
     const time = parent.createDiv({ cls: "fishbone-toolbar-local-time" });
     if (anchorButton) {
-      time.style.marginLeft = `${anchorButton.offsetLeft}px`;
+      time.style.left = `${anchorButton.offsetLeft}px`;
+      time.style.top = `${anchorButton.offsetTop + anchorButton.offsetHeight + 6}px`;
       time.style.width = `${anchorButton.offsetWidth}px`;
     }
     time.createSpan({ cls: "fishbone-toolbar-local-time-clock", text: formatCurrentTime(now) });

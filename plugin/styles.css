@@ -85,6 +85,7 @@
 }
 
 .fishbone-timeline-toolbar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -127,14 +128,6 @@
   min-width: 44px;
 }
 
-.fishbone-toolbar-action-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-}
-
 .fishbone-toolbar-actions {
   display: flex;
   align-items: center;
@@ -142,16 +135,17 @@
 }
 
 .fishbone-toolbar-local-time {
+  position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  align-self: flex-start;
   gap: 1px;
   pointer-events: none;
   border: 0;
   background: transparent;
   box-shadow: none;
   line-height: 1.15;
+  z-index: 2;
 }
 
 .fishbone-toolbar-local-time-clock {
@@ -2145,16 +2139,12 @@
   }
 
   .fishbone-viewport-controls,
-  .fishbone-toolbar-action-stack,
   .fishbone-toolbar-actions {
     width: 100%;
   }
 
-  .fishbone-toolbar-action-stack {
-    margin-left: 0;
-  }
-
   .fishbone-toolbar-actions {
     justify-content: center;
+    margin-left: 0;
   }
 }
