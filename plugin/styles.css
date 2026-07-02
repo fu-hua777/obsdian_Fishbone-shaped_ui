@@ -134,6 +134,40 @@
   margin-left: auto;
 }
 
+.fishbone-toolbar-actions button.fishbone-toolbar-task-time-button {
+  display: flex;
+  min-width: 96px;
+  min-height: 50px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.15;
+}
+
+.fishbone-toolbar-local-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.fishbone-toolbar-local-time-clock {
+  color: var(--text-normal);
+  font-size: 15px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.fishbone-toolbar-local-time-date {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
 .fishbone-timeline-warning {
   color: var(--text-muted);
   border: 1px dashed var(--background-modifier-border);
@@ -667,54 +701,6 @@
   flex: 1 1 0;
   min-width: 0;
   font-size: 12px;
-}
-
-.fishbone-time-weather-module {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "clock actions"
-    "date actions"
-    "weather weather";
-  align-items: center;
-  gap: 3px 7px;
-  min-height: 0;
-}
-
-.fishbone-time-weather-clock {
-  grid-area: clock;
-  font-size: 23px;
-  font-weight: 760;
-  line-height: 1;
-}
-
-.fishbone-time-weather-date {
-  grid-area: date;
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.fishbone-time-weather-summary {
-  grid-area: weather;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fishbone-time-weather-actions {
-  grid-area: actions;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.fishbone-time-weather-actions button {
-  min-width: 66px;
-  min-height: 24px;
-  padding: 2px 7px;
-  font-size: 11px;
 }
 
 .fishbone-workbench-panel {

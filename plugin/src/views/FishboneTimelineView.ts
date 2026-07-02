@@ -2,7 +2,7 @@ import { ItemView, Menu, Modal, Notice, setIcon, Setting, WorkspaceLeaf } from "
 import FishbonePlannerPlugin from "../main";
 import { buildDailySummaryMarkdown } from "../dashboard/dailySummary";
 import { DASHBOARD_MODULE_IDS, DEFAULT_DASHBOARD_MODULE_HEIGHTS, DashboardModuleId, getDashboardModuleTitle } from "../dashboard/dashboardModules";
-import { formatCurrentDate, formatCurrentTime, formatWeatherSummary, parseNetworkWeatherTime } from "../dashboard/timeWeather";
+import { formatCurrentDate, formatCurrentTime } from "../dashboard/toolbarTime";
 import { DashboardProgress, DashboardSummary, buildDashboardSummary } from "../dashboard/dashboardSummary";
 import { CreatePlanningTaskInput, TaskFieldPatch } from "../data/taskRepository";
 import { Mainline, PlanningTask, TaskPriority, TaskStatus } from "../data/taskTypes";
@@ -167,8 +167,7 @@ export class FishboneTimelineView extends ItemView {
     startBranchOffset: number;
     elementStartTop: number;
   } | null = null;
-  private timeWeatherTimer: number | null = null;
-  private timeWeatherSyncedOffsetMs: number | null = null;
+  private toolbarTimeTimer: number | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: FishbonePlannerPlugin) {
     super(leaf);
@@ -197,16 +196,16 @@ export class FishboneTimelineView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    if (this.timeWeatherTimer === null) {
-      this.timeWeatherTimer = window.setInterval(() => this.updateTimeWeatherClock(), 60000);
+    if (this.toolbarTimeTimer === null) {
+      this.toolbarTimeTimer = window.setInterval(() => this.updateToolbarLocalTime(), 60000);
     }
     await this.render();
   }
 
   async onClose(): Promise<void> {
-    if (this.timeWeatherTimer !== null) {
-      window.clearInterval(this.timeWeatherTimer);
-      this.timeWeatherTimer = null;
+    if (this.toolbarTimeTimer !== null) {
+      window.clearInterval(this.toolbarTimeTimer);
+      this.toolbarTimeTimer = null;
     }
   }
 
@@ -395,6 +394,8 @@ export class FishboneTimelineView extends ItemView {
     const newTaskButton = actionGroup.lastElementChild;
     if (newTaskButton instanceof HTMLButtonElement) {
       newTaskButton.textContent = "新建任务";
+      newTaskButton.addClass("fishbone-toolbar-task-time-button");
+      this.renderToolbarLocalTime(newTaskButton);
     }
     this.createToolbarButton(actionGroup, "新建主线", async () => {
       new MainlineEditorModal(this.plugin, {
@@ -427,6 +428,13 @@ export class FishboneTimelineView extends ItemView {
       void onClick();
     });
     return button;
+  }
+
+  private renderToolbarLocalTime(parent: HTMLElement): void {
+    const now = new Date();
+    const time = parent.createDiv({ cls: "fishbone-toolbar-local-time" });
+    time.createSpan({ cls: "fishbone-toolbar-local-time-clock", text: formatCurrentTime(now) });
+    time.createSpan({ cls: "fishbone-toolbar-local-time-date", text: formatCurrentDate(now) });
   }
 
   private async renderDiagnostics(container: Element, error: unknown): Promise<void> {
@@ -520,9 +528,6 @@ export class FishboneTimelineView extends ItemView {
         break;
       case "daily-summary":
         this.renderDailySummaryModule(section, moduleId, summary, tasks, mainlines);
-        break;
-      case "time-weather":
-        this.renderTimeWeatherModule(section, moduleId, summary);
         break;
     }
     this.renderDashboardModuleResizeHandle(section, moduleId);
@@ -682,72 +687,12 @@ export class FishboneTimelineView extends ItemView {
     });
   }
 
-  private renderTimeWeatherModule(section: HTMLElement, moduleId: DashboardModuleId, summary: DashboardSummary): void {
-    this.renderDashboardModuleHeader(section, moduleId, "时间 / 天气", "常显");
-    const body = section.createDiv({ cls: "fishbone-time-weather-module" });
+  private updateToolbarLocalTime(): void {
     const now = new Date();
-    const clock = body.createDiv({ cls: "fishbone-time-weather-clock", text: formatCurrentTime(now) });
-    const date = body.createDiv({ cls: "fishbone-time-weather-date", text: formatCurrentDate(now) });
-    const weather = body.createDiv({ cls: "fishbone-time-weather-summary", text: "读取天气缓存中..." });
-    const actions = body.createDiv({ cls: "fishbone-time-weather-actions" });
-    const latitude = Number(this.plugin.settings.weatherLatitude);
-    const longitude = Number(this.plugin.settings.weatherLongitude);
-    const locationName = this.plugin.settings.weatherLocationName.trim() || "当前位置";
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      weather.setText("请在设置中填写天气经纬度");
-      return;
-    }
-    weather.setText("读取天气缓存中...");
-    void this.plugin.weatherRepository.readCachedWeather(summary.today).then((cached) => {
-      if (cached) {
-        weather.setText(`${formatWeatherSummary(cached)} · ${cached.fetchedAt}`);
-      } else {
-        weather.setText("今日暂无天气缓存");
-      }
-    });
-    const sync = actions.createEl("button", { text: "同步" });
-    sync.addEventListener("click", async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      sync.disabled = true;
-      sync.setText("同步中");
-      weather.setText("正在联网同步...");
-      try {
-        const data = await this.plugin.weatherRepository.fetchAndCacheCurrentWeather(summary.today, {
-          locationName,
-          latitude,
-          longitude,
-          unit: this.plugin.settings.weatherUnit,
-          provider: this.plugin.settings.weatherOnlineProvider
-        });
-        const synced = updateTimeWeatherDisplay(clock, date, data.networkTime);
-        this.timeWeatherSyncedOffsetMs = synced ? synced.getTime() - Date.now() : null;
-        weather.setText(`${formatWeatherSummary(data)} · ${data.fetchedAt}`);
-        new Notice("时间和天气已同步");
-      } catch (error) {
-        weather.setText(`同步失败：${formatError(error)}`);
-        new Notice("联网同步失败，已保留本地缓存");
-      } finally {
-        sync.disabled = false;
-        sync.setText("同步");
-      }
-    });
-    const localTime = actions.createEl("button", { text: "本机时间" });
-    localTime.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.timeWeatherSyncedOffsetMs = null;
-      updateTimeWeatherDisplay(clock, date, null);
-      new Notice("已切换为本机时间");
-    });
-  }
-
-  private updateTimeWeatherClock(): void {
-    const now = new Date(Date.now() + (this.timeWeatherSyncedOffsetMs ?? 0));
-    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-time-weather-clock").forEach((clock) => {
+    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-toolbar-local-time-clock").forEach((clock) => {
       clock.setText(formatCurrentTime(now));
     });
-    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-time-weather-date").forEach((date) => {
+    this.containerEl.querySelectorAll<HTMLElement>(".fishbone-toolbar-local-time-date").forEach((date) => {
       date.setText(formatCurrentDate(now));
     });
   }
@@ -3475,14 +3420,6 @@ function formatError(error: unknown): string {
 function formatLocalDateTimeForSummary(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function updateTimeWeatherDisplay(clock: HTMLElement, date: HTMLElement, networkTime: string | null): Date | null {
-  const synced = parseNetworkWeatherTime(networkTime);
-  const displayDate = synced ?? new Date();
-  clock.setText(formatCurrentTime(displayDate));
-  date.setText(formatCurrentDate(displayDate));
-  return synced;
 }
 
 function clampIsoDate(date: string, startDate: string, endDate: string): string {

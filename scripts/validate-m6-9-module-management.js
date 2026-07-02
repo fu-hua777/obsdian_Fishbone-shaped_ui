@@ -32,8 +32,7 @@ function main() {
     "DASHBOARD_MODULE_IDS",
     "DEFAULT_DASHBOARD_MODULE_HEIGHTS",
     "getDashboardModuleTitle",
-    "daily-summary",
-    "time-weather"
+    "daily-summary"
   ]);
 
   requireText("plugin/src/settings.ts", [
@@ -64,7 +63,9 @@ function main() {
   ]);
 
   const view = read("plugin/src/views/FishboneTimelineView.ts");
+  const modules = read("plugin/src/dashboard/dashboardModules.ts");
   assert(!view.includes("折叠模块"), "Module manager should not render a second collapse-toggle column.");
+  assert(!modules.includes("time-weather"), "Closed weather module should not appear in module management.");
 
   console.log("M6.9 module management validation passed.");
 }
