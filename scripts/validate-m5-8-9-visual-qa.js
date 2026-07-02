@@ -30,8 +30,8 @@ function main() {
   assert(view.includes("this.setBranchVisualActive(branch.id, true)"), "拖拽开始必须高亮对应分支");
   assert(view.includes("this.setBranchVisualActive(drag.branch.id, false)"), "拖拽结束必须清除分支高亮");
 
-  assert(view.includes("const tailX = branch.xEnd - left"), "单一 SVG path 必须延伸到分支结束位置");
-  assert(view.includes("L ${tailX} ${endY}"), "单一 SVG path 必须包含横向分支段");
+  assert(!view.includes("const tailX = branch.xEnd - left"), "SVG 连接线不能延伸到分支结束位置，避免和真实分支主线重复");
+  assert(!view.includes("L ${tailX} ${endY}"), "SVG path 不能再包含横向分支段");
   assert(!view.includes("spine.createDiv({ cls: \"fishbone-branch-mainline-line\" })"), "不能再创建 DOM 分支横线");
   assert(!styles.includes(".fishbone-branch-mainline-line"), "不能保留旧 DOM 分支横线样式");
   assert(!styles.includes(".fishbone-branch-mainline-junction"), "不能保留旧接头点样式");

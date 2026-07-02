@@ -31,8 +31,8 @@ function requireBranchConnectorContinuity() {
   assert(method.includes("const startY = branch.parentY - top"), "分支连接线起点必须落在父主线 y");
   assert(method.includes("const endX = branch.xStart - left"), "分支连接线终点必须落在分支线起点 x，避免断开");
   assert(method.includes("const endY = branch.y - top"), "分支连接线终点必须落在分支线 y");
-  assert(method.includes("const tailX = branch.xEnd - left"), "单一 SVG 分支线必须延伸到短期主线末端");
-  assert(method.includes("L ${tailX} ${endY}"), "单一 SVG path 必须同时包含曲线和分支横线，避免两套线条错位");
+  assert(!method.includes("const tailX = branch.xEnd - left"), "SVG 连接线不能再延伸到短期主线末端，否则会和真实分支主线形成双线");
+  assert(!method.includes("L ${tailX} ${endY}"), "SVG path 只能负责弯曲接入，分支水平线由 .fishbone-branch-mainline 渲染");
   assert(!method.includes("branch.xStart + 32 - left"), "分支连接线不能停在分支线附近而不是分支线本体");
   assert(!method.includes("endX + 56"), "分支连接线不能只使用固定短尾巴");
   assert(!content.includes("spine.createDiv({ cls: \"fishbone-branch-mainline-line\" })"), "不能再用 DOM 额外渲染第二条分支横线");

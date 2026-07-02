@@ -3618,6 +3618,96 @@
   transform: none;
 }
 
+/* M8.23 branch line and compact viewport fixes */
+.fishbone-dashboard-modules {
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
+}
+
+.fishbone-dashboard-panel {
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 1700px), (max-height: 960px) {
+  .fishbone-timeline-view {
+    gap: 6px;
+    padding: 6px 8px 8px;
+  }
+
+  .fishbone-timeline-toolbar {
+    column-gap: 8px;
+    row-gap: 5px;
+  }
+
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    gap: 4px;
+  }
+
+  .fishbone-toolbar-button,
+  .fishbone-viewport-controls button,
+  .fishbone-toolbar-actions button,
+  .fishbone-segmented-control button {
+    min-height: 26px;
+    padding: 2px 7px;
+    font-size: 11px;
+  }
+
+  .fishbone-top-meta-row {
+    min-height: 30px;
+    margin-bottom: 0;
+  }
+
+  .fishbone-timeline-summary {
+    gap: 4px;
+  }
+
+  .fishbone-timeline-summary span {
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+
+  .fishbone-workspace {
+    gap: 8px;
+    height: calc(100vh - 150px);
+    min-height: 520px;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 28vw);
+  }
+
+  .fishbone-canvas-shell {
+    min-width: 0;
+  }
+
+  .fishbone-dashboard-panel {
+    width: min(300px, 28vw) !important;
+    min-width: 240px;
+  }
+
+  .fishbone-dashboard-section {
+    padding: 8px 9px;
+  }
+
+  .fishbone-dashboard-section-header {
+    min-height: 26px;
+  }
+
+  .fishbone-workbench-panel {
+    padding: 8px;
+  }
+
+  .fishbone-workbench-task {
+    min-height: 28px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .fishbone-quick-input {
+    bottom: 12px;
+    width: min(520px, calc(100% - 40px));
+  }
+}
+
 /* M8.16 right progress modules polish */
 .fishbone-dashboard-progress-overview {
   gap: 8px;
