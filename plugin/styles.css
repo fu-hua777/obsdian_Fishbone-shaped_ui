@@ -2334,7 +2334,7 @@
 /* M8.6 top chrome overlap guard */
 .fishbone-timeline-toolbar {
   row-gap: 8px;
-  padding-bottom: 36px;
+  padding-bottom: 0;
 }
 
 .fishbone-title-group {
@@ -3205,5 +3205,102 @@
   .fishbone-toolbar-actions {
     justify-content: center;
     margin-left: 0;
+  }
+}
+
+/* M8.11 top chrome separation */
+.fishbone-timeline-toolbar {
+  display: grid;
+  grid-template-columns: minmax(190px, 320px) minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 6px;
+  padding: 0;
+}
+
+.fishbone-title-group {
+  min-width: 0;
+  max-width: 320px;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.fishbone-timeline-title-input {
+  width: 100%;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none;
+  padding-left: 0;
+}
+
+.fishbone-timeline-title-input:hover,
+.fishbone-timeline-title-input:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-normal);
+}
+
+.fishbone-viewport-controls,
+.fishbone-toolbar-actions {
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  padding: 0;
+}
+
+.fishbone-viewport-controls {
+  justify-content: flex-end;
+}
+
+.fishbone-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.fishbone-toolbar-local-time {
+  position: static;
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  width: auto;
+  margin: -2px 8px 0 0;
+  padding: 0;
+  pointer-events: none;
+  z-index: auto;
+}
+
+.fishbone-toolbar-local-time-clock,
+.fishbone-toolbar-local-time-date {
+  white-space: nowrap;
+}
+
+.fishbone-timeline-summary {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .fishbone-timeline-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .fishbone-title-group {
+    max-width: min(320px, 100%);
+  }
+
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .fishbone-toolbar-local-time {
+    align-self: flex-start;
+    align-items: flex-start;
+    margin: 0;
   }
 }

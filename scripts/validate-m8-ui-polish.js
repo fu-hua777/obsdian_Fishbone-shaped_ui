@@ -33,6 +33,7 @@ function main() {
     "M8 UI visual polish",
     "M8.2 interaction detail polish",
     "M8.6 top chrome overlap guard",
+    "M8.11 top chrome separation",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-timeline-summary span",
@@ -92,8 +93,10 @@ function main() {
   assert(styles.includes(".fishbone-lane-icon svg"), "Canvas mainline icon badge should style SVG icons.");
   assert(styles.includes(".fishbone-dashboard-task {") && styles.includes("border-left: 2px solid"), "Dashboard task rows should have a mainline color stripe.");
   assert(styles.includes(".fishbone-zoom-control .fishbone-toolbar-button-label") && styles.includes("display: none"), "Zoom stepper buttons should stay compact.");
-  assert(styles.includes("padding-bottom: 36px"), "Toolbar should reserve vertical space for the local time readout.");
-  assert(styles.includes("backdrop-filter: none"), "Top toolbar containers should be borderless/light enough to avoid title overlap.");
+  assert(view.includes("this.renderToolbarLocalTime(container)") && !view.includes("renderToolbarLocalTime(toolbar"), "Local time should render as an independent static view element, not an absolutely positioned toolbar child.");
+  assert(styles.includes("grid-template-columns: minmax(190px, 320px) minmax(0, 1fr) auto"), "Top toolbar should use stable columns to prevent title/control overlap.");
+  assert(styles.includes("position: static") && styles.includes("align-items: flex-end"), "Local time readout should be static and right aligned.");
+  assert(styles.includes("border: 0 !important") && styles.includes("background: transparent !important"), "Top title/control containers should be borderless enough to avoid title overlap.");
   assert(view.includes("data-task-status") && view.includes("data-task-priority"), "Task nodes should expose stable status/priority attributes for visual polish.");
   assert(view.includes("fishbone-task-checkbox"), "Task checkbox should have a stable class for status styling.");
   assert(styles.includes(".fishbone-task-done::before") && styles.includes(".fishbone-task-blocked::before"), "Task status styling should distinguish done and blocked tasks.");
@@ -109,6 +112,11 @@ function main() {
   assert(styles.includes(".fishbone-workbench-columns") && styles.includes("height: 100%"), "Workbench columns should use the vertical space freed by removing the header.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
+  assert(view.includes("function formatStatus(status: TaskStatus): string"), "Visible task statuses should be localized through a single helper.");
+  assert(view.includes("dropdown.addOption(status, formatStatus(status))"), "Task status dropdowns should display localized labels while keeping original values.");
+  assert(view.includes("select.createEl(\"option\", { text: formatStatus(status), value: status })"), "Dashboard status select should localize labels without changing values.");
+  assert(view.includes("formatStatus(candidate.status)") && view.includes("formatStatus(task.status)"), "Quick input and task views should not expose raw status labels.");
+  assert(view.includes("状态：${formatStatus(status)}") && view.includes("任务状态已更新为 ${formatStatus(status)}"), "Context menus and notifications should localize status labels.");
 
   console.log("M8 UI polish validation passed.");
 }

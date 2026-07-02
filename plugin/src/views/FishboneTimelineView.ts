@@ -242,6 +242,7 @@ export class FishboneTimelineView extends ItemView {
       titleGroup.createDiv({ cls: "fishbone-toolbar-subtitle", text: `${formatMode(this.viewport.timeAxisMode)} · 中心 ${this.viewport.centerDate}` });
       this.renderViewportControls(toolbar, tasks, dateRange);
       this.renderMainlineControls(toolbar, mainlines);
+      this.renderToolbarLocalTime(container);
 
       const summary = container.createDiv({ cls: "fishbone-timeline-summary" });
       summary.createSpan({ text: `任务 ${tasks.length}` });
@@ -426,7 +427,7 @@ export class FishboneTimelineView extends ItemView {
         await this.render();
       }, false, "list-checks");
     }
-    const newTaskButton = this.createToolbarButton(actionGroup, "新建任务", async () => {
+    this.createToolbarButton(actionGroup, "新建任务", async () => {
       new NewTaskModal(this.plugin, mainlines, async (input) => {
         const file = await this.plugin.taskRepository.createTask(input);
         new Notice(`已创建任务：${input.title}`);
@@ -456,7 +457,6 @@ export class FishboneTimelineView extends ItemView {
     this.createToolbarButton(actionGroup, "刷新", async () => {
       await this.render();
     }, false, "refresh-cw");
-    this.renderToolbarLocalTime(toolbar, newTaskButton);
   }
 
   private createToolbarButton(parent: HTMLElement, text: string, onClick: () => Promise<void>, cta = false, icon?: string): HTMLButtonElement {
@@ -481,14 +481,9 @@ export class FishboneTimelineView extends ItemView {
     button.createSpan({ cls: "fishbone-toolbar-button-label", text });
   }
 
-  private renderToolbarLocalTime(parent: HTMLElement, anchorButton?: HTMLElement): void {
+  private renderToolbarLocalTime(parent: Element): void {
     const now = new Date();
     const time = parent.createDiv({ cls: "fishbone-toolbar-local-time" });
-    if (anchorButton) {
-      time.style.left = `${anchorButton.offsetLeft}px`;
-      time.style.top = `${anchorButton.offsetTop + anchorButton.offsetHeight + 6}px`;
-      time.style.width = `${anchorButton.offsetWidth}px`;
-    }
     time.createSpan({ cls: "fishbone-toolbar-local-time-clock", text: formatCurrentTime(now) });
     time.createSpan({ cls: "fishbone-toolbar-local-time-date", text: formatCurrentDate(now) });
   }
@@ -792,7 +787,7 @@ export class FishboneTimelineView extends ItemView {
   private renderDashboardStatusSelect(parent: HTMLElement, task: PlanningTask): void {
     const select = parent.createEl("select", { cls: "fishbone-dashboard-status-select" });
     for (const status of TASK_STATUSES) {
-      select.createEl("option", { text: status, value: status });
+      select.createEl("option", { text: formatStatus(status), value: status });
     }
     select.value = task.status;
     select.addEventListener("click", (event) => event.stopPropagation());
@@ -1079,7 +1074,7 @@ export class FishboneTimelineView extends ItemView {
     meta.createSpan({ text: candidate.date ?? "未定日期" });
     meta.createSpan({ text: candidate.mainline ?? "未分配" });
     meta.createSpan({ text: formatPriority(candidate.priority) });
-    meta.createSpan({ text: candidate.status });
+    meta.createSpan({ text: formatStatus(candidate.status) });
     for (const warning of candidate.warnings) {
       preview.createDiv({ cls: "fishbone-quick-input-warning", text: warning });
     }
@@ -2002,7 +1997,7 @@ export class FishboneTimelineView extends ItemView {
     node.style.width = `${taskNode.width}px`;
     node.style.minHeight = `${taskNode.height}px`;
     node.style.setProperty("--branch-index", String(taskNode.branchIndex));
-    node.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"} · ${task.status} · ${task.priority}`);
+    node.setAttr("title", `${task.title}\n${task.date ?? "无日期"} · ${task.mainline ?? "未分配"} · ${formatStatus(task.status)} · ${formatPriority(task.priority)}`);
     const header = node.createDiv({ cls: "fishbone-task-header" });
     const checkbox = header.createEl("input", {
       cls: "fishbone-task-checkbox",
@@ -2023,7 +2018,7 @@ export class FishboneTimelineView extends ItemView {
       event.stopPropagation();
       const status = await this.plugin.taskRepository.setTaskDone(task, checkbox.checked);
       if (status) {
-        new Notice(`任务状态已更新为 ${status}`);
+        new Notice(`任务状态已更新为 ${formatStatus(status)}`);
         await this.render();
       }
     });
@@ -2031,7 +2026,7 @@ export class FishboneTimelineView extends ItemView {
     header.createDiv({ cls: "fishbone-task-title", text: task.title });
     header.createSpan({ cls: "fishbone-task-priority", text: formatPriority(task.priority) });
     const meta = node.createDiv({ cls: "fishbone-task-meta" });
-    meta.createSpan({ cls: "fishbone-task-status", text: task.status });
+    meta.createSpan({ cls: "fishbone-task-status", text: formatStatus(task.status) });
     node.addEventListener("mouseenter", () => {
       this.showTaskTooltip(node, task, taskNode);
       const stage = parent.closest(".fishbone-canvas-stage") as HTMLElement | null;
@@ -2086,7 +2081,7 @@ export class FishboneTimelineView extends ItemView {
     if (taskNode?.effectiveDate && task.date && taskNode.effectiveDate !== task.date) {
       tooltip.createDiv({ text: `显示日期：${taskNode.effectiveDate}（已限制在分支范围内）` });
     }
-    tooltip.createDiv({ text: `状态：${task.status} · 优先级：${task.priority}` });
+    tooltip.createDiv({ text: `状态：${formatStatus(task.status)} · 优先级：${formatPriority(task.priority)}` });
     tooltip.createDiv({ text: `关系：${task.relations.length}` });
     if (task.sourceExcerpt) {
       tooltip.createDiv({ cls: "fishbone-task-tooltip-excerpt", text: task.sourceExcerpt });
@@ -2133,7 +2128,7 @@ export class FishboneTimelineView extends ItemView {
       }
       for (const status of TASK_STATUSES) {
         menu.addItem((item) => {
-          item.setTitle(`状态：${status}`).onClick(async () => {
+          item.setTitle(`状态：${formatStatus(status)}`).onClick(async () => {
             await this.plugin.taskRepository.setTaskStatus(task, status);
             await this.render();
           });
@@ -3067,7 +3062,7 @@ class NewTaskModal extends Modal {
       .setName("状态")
       .addDropdown((dropdown) => {
         for (const status of TASK_STATUSES) {
-          dropdown.addOption(status, status);
+          dropdown.addOption(status, formatStatus(status));
         }
         dropdown.setValue(this.status).onChange((value) => {
           this.status = value as TaskStatus;
@@ -3212,7 +3207,7 @@ class TaskEditorModal extends Modal {
       .setName("状态")
       .addDropdown((dropdown) => {
         for (const status of TASK_STATUSES) {
-          dropdown.addOption(status, status);
+          dropdown.addOption(status, formatStatus(status));
         }
         dropdown.setValue(this.status).onChange((value) => {
           this.status = value as TaskStatus;
@@ -3275,6 +3270,25 @@ function formatPriority(priority: PlanningTask["priority"]): string {
       return "低";
     default:
       return priority;
+  }
+}
+
+function formatStatus(status: TaskStatus): string {
+  switch (status) {
+    case "todo":
+      return "待办";
+    case "doing":
+      return "进行";
+    case "done":
+      return "完成";
+    case "blocked":
+      return "阻塞";
+    case "canceled":
+      return "取消";
+    case "inbox":
+      return "收件";
+    default:
+      return status;
   }
 }
 
