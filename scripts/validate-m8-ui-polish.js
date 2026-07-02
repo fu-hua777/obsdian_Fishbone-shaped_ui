@@ -104,6 +104,9 @@ function main() {
   assert(view.includes("fishbone-dashboard-module-icon-button") && view.includes("chevron-up") && view.includes("chevron-down") && view.includes("eye-off"), "Dashboard module header actions should be icon buttons.");
   assert(!view.includes("createEl(\"button\", { text: this.dashboardModuleCollapsed") && !view.includes("createEl(\"button\", { text: \"隐藏\" })"), "Dashboard module header should not use old text action buttons.");
   assert(styles.includes(".fishbone-dashboard-module-count") && styles.includes("border-radius: 999px"), "Dashboard module counts should render as compact pills.");
+  assert(view.includes("panel.setAttr(\"aria-label\", \"状态工作台\")"), "Workbench should keep semantic labeling after removing the visible explanatory header.");
+  assert(!view.includes("fishbone-workbench-title") && !view.includes("待办、进行中、已完成与鱼骨任务状态同步"), "Workbench should not render the old bulky visible header/subtitle.");
+  assert(styles.includes(".fishbone-workbench-columns") && styles.includes("height: 100%"), "Workbench columns should use the vertical space freed by removing the header.");
   assert(!view.includes("renderTimeWeatherModule"), "M8 should not reintroduce the removed weather module.");
   assert(view.includes("renderQuickInput(canvasShell"), "Quick note input should remain on the canvas.");
 

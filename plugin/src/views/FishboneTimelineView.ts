@@ -1009,13 +1009,10 @@ export class FishboneTimelineView extends ItemView {
 
   private renderWorkbenchPanel(parent: HTMLElement, summary: DashboardSummary, mainlines: Mainline[]): void {
     const panel = parent.createDiv({ cls: "fishbone-workbench-panel" });
+    panel.setAttr("aria-label", "状态工作台");
     panel.style.height = `${this.workbenchHeight}px`;
     const resizer = panel.createDiv({ cls: "fishbone-workbench-resizer" });
     this.bindWorkbenchResize(resizer, panel);
-
-    const header = panel.createDiv({ cls: "fishbone-workbench-header" });
-    header.createDiv({ cls: "fishbone-workbench-title", text: "状态工作台" });
-    header.createDiv({ cls: "fishbone-workbench-subtitle", text: "待办、进行中、已完成与鱼骨任务状态同步" });
 
     const columns = panel.createDiv({ cls: "fishbone-workbench-columns" });
     columns.addEventListener("dragover", (event) => {
