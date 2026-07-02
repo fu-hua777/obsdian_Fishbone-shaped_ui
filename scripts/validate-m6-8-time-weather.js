@@ -35,7 +35,8 @@ function main() {
   requireText("plugin/src/views/FishboneTimelineView.ts", [
     "renderToolbarLocalTime",
     "this.createToolbarButton(actionGroup, \"新建任务\"",
-    "this.renderToolbarLocalTime(container)",
+    "const topMetaRow = container.createDiv({ cls: \"fishbone-top-meta-row\" })",
+    "this.renderToolbarLocalTime(topMetaRow)",
     "toolbar.createDiv({ cls: \"fishbone-toolbar-actions\" })",
     "fishbone-toolbar-local-time-clock",
     "fishbone-toolbar-local-time-date",
@@ -48,6 +49,8 @@ function main() {
     "position: relative",
     "position: static",
     "M8.11 top chrome separation",
+    "M8.15 top chrome flow guard",
+    ".fishbone-top-meta-row",
     ".fishbone-toolbar-local-time",
     ".fishbone-toolbar-local-time-clock",
     ".fishbone-toolbar-local-time-date"
@@ -66,7 +69,7 @@ function main() {
   assert(!view.includes("fishbone-toolbar-task-time-button"), "Local time should not be rendered inside the task button.");
   assert(!view.includes("fishbone-toolbar-action-stack"), "Toolbar action stack should not affect the original top toolbar layout.");
   assert(!view.includes("renderToolbarLocalTime(toolbar") && !view.includes("anchorButton.offsetLeft"), "Local time should no longer depend on absolute positioning inside the toolbar.");
-  assert(view.indexOf("this.renderToolbarLocalTime(container)") > view.indexOf("this.renderMainlineControls(toolbar, mainlines)"), "Local time should render after toolbar controls as an independent view element.");
+  assert(view.indexOf("this.renderToolbarLocalTime(topMetaRow)") > view.indexOf("this.renderMainlineControls(toolbar, mainlines)"), "Local time should render after toolbar controls as an independent view element.");
 
   console.log("M6.8 toolbar local time validation passed.");
 }

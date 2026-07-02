@@ -3376,6 +3376,132 @@
   background: color-mix(in srgb, var(--text-error) 13%, transparent);
 }
 
+/* M8.15 top chrome flow guard */
+.fishbone-timeline-view {
+  gap: 9px;
+}
+
+.fishbone-timeline-toolbar {
+  grid-template-columns: minmax(160px, 300px) minmax(320px, 1fr) max-content;
+  align-items: start;
+  min-width: 0;
+}
+
+.fishbone-title-group {
+  min-width: 0;
+  max-width: 300px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.fishbone-timeline-title-input {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-toolbar-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fishbone-viewport-controls,
+.fishbone-toolbar-actions {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.fishbone-top-meta-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  min-height: 32px;
+  margin: -2px 8px 1px 0;
+  pointer-events: none;
+}
+
+.fishbone-top-meta-row .fishbone-toolbar-local-time {
+  align-self: auto;
+  align-items: flex-end;
+  min-height: 28px;
+  margin: 0;
+}
+
+.fishbone-timeline-summary {
+  position: relative;
+  z-index: 2;
+  clear: both;
+  margin-top: 0;
+}
+
+@media (max-width: 1300px) {
+  .fishbone-timeline-toolbar {
+    grid-template-columns: minmax(150px, 260px) minmax(0, 1fr);
+  }
+
+  .fishbone-title-group {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .fishbone-viewport-controls {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .fishbone-toolbar-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 1100px) {
+  .fishbone-timeline-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .fishbone-title-group,
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .fishbone-title-group {
+    max-width: min(300px, 100%);
+  }
+
+  .fishbone-viewport-controls,
+  .fishbone-toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .fishbone-top-meta-row {
+    justify-content: flex-start;
+    min-height: 30px;
+    margin: 0;
+  }
+
+  .fishbone-top-meta-row .fishbone-toolbar-local-time {
+    align-items: flex-start;
+  }
+}
+
 .fishbone-dashboard-task-meta {
   gap: 5px;
   min-width: 0;

@@ -37,8 +37,10 @@ function main() {
     "M8.12 dashboard/workbench scan polish",
     "M8.13 canvas lane/date polish",
     "M8.14 canvas task focus polish",
+    "M8.15 top chrome flow guard",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
+    ".fishbone-top-meta-row",
     ".fishbone-timeline-summary span",
     ".fishbone-toolbar-actions",
     ".fishbone-toolbar-button",
@@ -101,9 +103,11 @@ function main() {
   assert(styles.includes(".fishbone-date-tick.is-center-date::before") && styles.includes(".fishbone-date-tick.is-today::before"), "Center/today date ticks should have anchor dots.");
   assert(styles.includes(".fishbone-dashboard-task {") && styles.includes("border-left: 2px solid"), "Dashboard task rows should have a mainline color stripe.");
   assert(styles.includes(".fishbone-zoom-control .fishbone-toolbar-button-label") && styles.includes("display: none"), "Zoom stepper buttons should stay compact.");
-  assert(view.includes("this.renderToolbarLocalTime(container)") && !view.includes("renderToolbarLocalTime(toolbar"), "Local time should render as an independent static view element, not an absolutely positioned toolbar child.");
+  assert(view.includes("const topMetaRow = container.createDiv({ cls: \"fishbone-top-meta-row\" })") && view.includes("this.renderToolbarLocalTime(topMetaRow)") && !view.includes("renderToolbarLocalTime(toolbar"), "Local time should render in its own top meta row, not as a toolbar child.");
   assert(styles.includes("grid-template-columns: minmax(190px, 320px) minmax(0, 1fr) auto"), "Top toolbar should use stable columns to prevent title/control overlap.");
+  assert(styles.includes("grid-template-columns: minmax(160px, 300px) minmax(320px, 1fr) max-content"), "M8.15 should tighten top toolbar columns so the title cannot collide with right controls.");
   assert(styles.includes("position: static") && styles.includes("align-items: flex-end"), "Local time readout should be static and right aligned.");
+  assert(styles.includes(".fishbone-top-meta-row") && styles.includes("min-height: 32px") && styles.includes("clear: both"), "Top meta row should reserve vertical space before summary chips.");
   assert(styles.includes("border: 0 !important") && styles.includes("background: transparent !important"), "Top title/control containers should be borderless enough to avoid title overlap.");
   assert(view.includes("data-task-status") && view.includes("data-task-priority"), "Task nodes should expose stable status/priority attributes for visual polish.");
   assert(view.includes("data-task-date"), "Task nodes should expose display date for visual focus states.");

@@ -242,7 +242,8 @@ export class FishboneTimelineView extends ItemView {
       titleGroup.createDiv({ cls: "fishbone-toolbar-subtitle", text: `${formatMode(this.viewport.timeAxisMode)} · 中心 ${this.viewport.centerDate}` });
       this.renderViewportControls(toolbar, tasks, dateRange);
       this.renderMainlineControls(toolbar, mainlines);
-      this.renderToolbarLocalTime(container);
+      const topMetaRow = container.createDiv({ cls: "fishbone-top-meta-row" });
+      this.renderToolbarLocalTime(topMetaRow);
 
       const summary = container.createDiv({ cls: "fishbone-timeline-summary" });
       summary.createSpan({ text: `任务 ${tasks.length}` });
