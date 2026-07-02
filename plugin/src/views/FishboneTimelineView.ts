@@ -946,8 +946,9 @@ export class FishboneTimelineView extends ItemView {
     const input = form.createEl("input", {
       type: "text",
       cls: "fishbone-quick-input-field",
-      placeholder: "输入一句自然语言，生成候选任务..."
+      placeholder: "格式：日期 主线 优先级 状态 标题，如：明天 项目 高优先级 todo 修复登录问题"
     });
+    input.setAttr("title", "可识别：今天/明天/后天/YYYY-MM-DD、主线名称、高/中/低优先级、todo/doing/done/blocked/inbox、任务标题");
     form.createEl("button", { text: "预览" });
     form.addEventListener("submit", (event) => {
       event.preventDefault();
