@@ -39,7 +39,7 @@ function validateSkillFiles() {
   for (const skill of skills) {
     assert(exists(`.agents/skills/${skill}/SKILL.md`), `${skill} 缺少 SKILL.md`);
     assert(exists(`.agents/skills/${skill}/agents/openai.yaml`), `${skill} 缺少 agents/openai.yaml`);
-    const skillMd = read(`.agents/skills/${skill}/SKILL.md`);
+    const skillMd = read(`.agents/skills/${skill}/SKILL.md`).replace(/\r\n/g, "\n");
     assert(skillMd.startsWith("---\nname: "), `${skill} frontmatter 格式异常`);
     assert(skillMd.includes(`name: ${skill}`), `${skill} frontmatter name 不匹配`);
     assert(skillMd.includes("description:"), `${skill} 缺少 description`);

@@ -360,3 +360,10 @@ M3 未做：
 - 读取天气缓存时只显示缓存天气，不再使用缓存中的 `networkTime` 偏移时钟；旧缓存不会污染当前本机时间。
 - 时间 / 天气模块新增“本机时间”按钮，可立即切回 Windows 本机时间，不触发联网请求。
 - M6.8 验收脚本和手动验收清单补充备用天气源、本机时间和缓存不校时约束。
+
+### M7：真实使用闭环验证
+- 新增 `PLANS/M7-real-use-loop.md`，明确真实 vault、真实插件安装、Local REST API 和 M7 测试任务的验收范围。
+- 新增 `scripts/validate-m7-real-loop.js`，校验真实 vault 插件产物 hash、Local REST API 配置存在性和 M7 测试任务 frontmatter；通过 `FISHBONE_VALIDATE_REST=1` 可额外验证 Obsidian REST 命令列表。
+- 新增 `tests/plugin/m7-real-use-loop-checklist.md`，记录真实 Obsidian 中的打开视图、刷新视图、创建任务、状态写回和 metadata 复核步骤。
+- 修复 `scripts/validate-m2-skills.js` 在 Windows CRLF 换行下误判 Skill frontmatter 的问题。
+- 已在真实 vault 中创建 `M7真实闭环测试任务` 并将状态更新为 `doing`，作为本阶段验收痕迹保留。
