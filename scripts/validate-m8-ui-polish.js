@@ -44,6 +44,7 @@ function main() {
     "M8.19 daily summary status card polish",
     "M8.20 top chrome borderless separation",
     "M8.21 bottom workbench board polish",
+    "M8.22 quick input candidate preview polish",
     ".fishbone-timeline-view",
     ".fishbone-timeline-toolbar",
     ".fishbone-top-meta-row",
@@ -93,7 +94,9 @@ function main() {
     ".fishbone-workbench-column.is-workbench-drop-target",
     ".fishbone-quick-input-form",
     ".fishbone-quick-input-submit",
-    ".fishbone-quick-input-submit-icon"
+    ".fishbone-quick-input-submit-icon",
+    ".fishbone-quick-input-preview-label",
+    ".fishbone-quick-input-action-icon"
   ]);
 
   assert(styles.includes("backdrop-filter: blur(14px)") || styles.includes("backdrop-filter: blur(12px)"), "M8 toolbar/panel polish should use subtle backdrop blur.");
@@ -142,6 +145,10 @@ function main() {
   assert(view.includes("fishbone-quick-input-submit") && view.includes("send-horizontal"), "Quick input submit action should use an icon button.");
   assert(!view.includes("form.createEl(\"button\", { text: \"预览\" })"), "Quick input should not render the old plain text preview button.");
   assert(styles.includes("width: 34px") && styles.includes("height: 34px"), "Quick input send button should keep a stable square size.");
+  assert(view.includes("fishbone-quick-input-preview-label") && view.includes("fishbone-quick-input-preview-close"), "Quick input candidate preview should have a compact icon header and icon close button.");
+  assert(view.includes("fishbone-quick-input-action is-primary") && view.includes("fishbone-quick-input-action-icon") && view.includes("\"check\"") && view.includes("\"pencil\""), "Quick input candidate actions should be iconized write/edit buttons.");
+  assert(!view.includes("createEl(\"button\", { text: \"确认写入\" })") && !view.includes("createEl(\"button\", { text: \"编辑后创建\" })"), "Quick input preview should not use old plain text action buttons.");
+  assert(styles.includes("M8.22 quick input candidate preview polish") && styles.includes(".fishbone-quick-input-action.is-primary"), "M8.22 should style compact quick input candidate actions.");
   assert(view.includes("fishbone-dashboard-module-icon-button") && view.includes("chevron-up") && view.includes("chevron-down") && view.includes("eye-off"), "Dashboard module header actions should be icon buttons.");
   assert(!view.includes("createEl(\"button\", { text: this.dashboardModuleCollapsed") && !view.includes("createEl(\"button\", { text: \"隐藏\" })"), "Dashboard module header should not use old text action buttons.");
   assert(styles.includes(".fishbone-dashboard-module-count") && styles.includes("border-radius: 999px"), "Dashboard module counts should render as compact pills.");

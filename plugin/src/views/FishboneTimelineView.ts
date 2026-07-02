@@ -1158,9 +1158,19 @@ export class FishboneTimelineView extends ItemView {
     const candidate = this.quickInputCandidate;
     const preview = wrapper.createDiv({ cls: "fishbone-quick-input-preview" });
     const top = preview.createDiv({ cls: "fishbone-quick-input-preview-top" });
-    top.createSpan({ text: "候选任务" });
-    const closeButton = top.createEl("button", { text: "×" });
-    closeButton.setAttr("title", "关闭候选预览");
+    const previewLabel = top.createSpan({ cls: "fishbone-quick-input-preview-label" });
+    const previewIcon = previewLabel.createSpan({ cls: "fishbone-quick-input-preview-label-icon" });
+    setIcon(previewIcon, "sparkles");
+    previewLabel.createSpan({ text: "候选任务" });
+    const closeButton = top.createEl("button", {
+      cls: "fishbone-quick-input-preview-close",
+      attr: {
+        type: "button",
+        "aria-label": "关闭候选预览",
+        title: "关闭候选预览"
+      }
+    });
+    setIcon(closeButton.createSpan({ cls: "fishbone-quick-input-action-icon" }), "x");
     closeButton.addEventListener("click", (event) => {
       event.preventDefault();
       this.quickInputCandidate = null;
@@ -1176,7 +1186,16 @@ export class FishboneTimelineView extends ItemView {
       preview.createDiv({ cls: "fishbone-quick-input-warning", text: warning });
     }
     const actions = preview.createDiv({ cls: "fishbone-quick-input-actions" });
-    const confirm = actions.createEl("button", { text: "确认写入" });
+    const confirm = actions.createEl("button", {
+      cls: "fishbone-quick-input-action is-primary",
+      attr: {
+        type: "button",
+        "aria-label": "确认写入快速输入候选任务",
+        title: "确认写入快速输入候选任务"
+      }
+    });
+    setIcon(confirm.createSpan({ cls: "fishbone-quick-input-action-icon" }), "check");
+    confirm.createSpan({ cls: "fishbone-quick-input-action-label", text: "写入" });
     confirm.addEventListener("click", async (event) => {
       event.preventDefault();
       confirm.disabled = true;
@@ -1199,7 +1218,16 @@ export class FishboneTimelineView extends ItemView {
       }
     });
 
-    const edit = actions.createEl("button", { text: "编辑后创建" });
+    const edit = actions.createEl("button", {
+      cls: "fishbone-quick-input-action",
+      attr: {
+        type: "button",
+        "aria-label": "编辑候选任务后创建",
+        title: "编辑候选任务后创建"
+      }
+    });
+    setIcon(edit.createSpan({ cls: "fishbone-quick-input-action-icon" }), "pencil");
+    edit.createSpan({ cls: "fishbone-quick-input-action-label", text: "编辑" });
     edit.addEventListener("click", (event) => {
       event.preventDefault();
       new NewTaskModal(this.plugin, mainlines, async (input) => {

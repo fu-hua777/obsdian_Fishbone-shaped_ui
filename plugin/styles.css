@@ -3502,6 +3502,122 @@
   }
 }
 
+/* M8.22 quick input candidate preview polish */
+.fishbone-quick-input-preview {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border-color: color-mix(in srgb, var(--interactive-accent) 38%, var(--background-modifier-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--interactive-accent) 10%, transparent), transparent 58%),
+    color-mix(in srgb, var(--background-secondary) 86%, transparent);
+}
+
+.fishbone-quick-input-preview-top {
+  min-height: 24px;
+}
+
+.fishbone-quick-input-preview-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: color-mix(in srgb, var(--text-normal) 82%, var(--text-muted));
+}
+
+.fishbone-quick-input-preview-label-icon,
+.fishbone-quick-input-action-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.fishbone-quick-input-preview-label-icon svg,
+.fishbone-quick-input-action-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.25;
+}
+
+.fishbone-quick-input-preview-close {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.fishbone-quick-input-preview-close:hover {
+  background: color-mix(in srgb, var(--background-modifier-border) 48%, transparent);
+  color: var(--text-normal);
+}
+
+.fishbone-quick-input-title {
+  margin-top: 0;
+  padding: 0 2px;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+
+.fishbone-quick-input-meta {
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin-top: 0;
+  overflow: hidden;
+}
+
+.fishbone-quick-input-meta span {
+  min-width: 0;
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 38%, transparent);
+  background: color-mix(in srgb, var(--background-primary) 42%, transparent);
+}
+
+.fishbone-quick-input-actions {
+  gap: 5px;
+  margin-top: 0;
+}
+
+.fishbone-quick-input-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fishbone-quick-input-action.is-primary {
+  border-color: color-mix(in srgb, var(--interactive-accent) 64%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  color: color-mix(in srgb, var(--interactive-accent) 24%, var(--text-normal));
+}
+
+.fishbone-quick-input-action:hover {
+  transform: translateY(-1px);
+}
+
+.fishbone-quick-input-action:disabled {
+  opacity: 0.56;
+  transform: none;
+}
+
 /* M8.16 right progress modules polish */
 .fishbone-dashboard-progress-overview {
   gap: 8px;
