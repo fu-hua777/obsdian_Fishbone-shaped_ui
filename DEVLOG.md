@@ -367,3 +367,10 @@ M3 未做：
 - 新增 `tests/plugin/m7-real-use-loop-checklist.md`，记录真实 Obsidian 中的打开视图、刷新视图、创建任务、状态写回和 metadata 复核步骤。
 - 修复 `scripts/validate-m2-skills.js` 在 Windows CRLF 换行下误判 Skill frontmatter 的问题。
 - 已在真实 vault 中创建 `M7真实闭环测试任务` 并将状态更新为 `doing`，作为本阶段验收痕迹保留。
+
+### M8.1：UI 视觉精修收口
+- 新增 `PLANS/M8-ui-polish.md`，将 M8 拆为视觉收口、交互细节和真实界面验收三段。
+- 新增 `scripts/validate-m8-ui-polish.js` 和 `tests/plugin/m8-ui-polish-checklist.md`，覆盖顶部工具栏、画布、日期轴、主线标签、任务节点、右侧模块、下方工作台和快速笔记。
+- 在 `plugin/styles.css` 追加 M8 视觉覆盖段：统一顶部工具栏玻璃感、统计 chip、深色画布层次、固定日期轴、主线标签、紧凑任务节点、关系线、分支主线、右侧模块、下方工作台和快速输入框。
+- 本阶段只改 UI 样式和验证资料，不改变任务 schema、任务写回、主线写回、relation 路由或真实 vault 数据结构。
+- 已同步 `styles.css` 到真实 vault 插件目录，并通过 Local REST API 刷新鱼骨视图。
