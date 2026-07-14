@@ -44,6 +44,12 @@
               "null"
             ]
           },
+          "end_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "mainline": {
             "type": [
               "string",

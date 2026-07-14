@@ -17,6 +17,7 @@ export interface PlanningTask {
   taskId: string;
   title: string;
   date: string | null;
+  endDate: string | null;
   mainline: string | null;
   branchMainline: string | null;
   branchMainlineId: string | null;

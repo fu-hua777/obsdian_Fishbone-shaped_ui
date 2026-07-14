@@ -9,6 +9,7 @@ type: planning-task
 task_id: task_20260629_001
 title: 通过 UI 创建第一条主线
 date: 2026-06-29
+end_date: 2026-07-02
 mainline: null
 status: inbox
 priority: medium
@@ -20,6 +21,7 @@ confidence: 1
 期望：
 
 - 解析为 planning task。
+- `date` 为 `2026-06-29`，`endDate` 为 `2026-07-02`。
 - `mainline` 为 `null`。
 - UI 显示为 `未分配`。
 - 状态为 `inbox`。

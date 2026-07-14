@@ -3503,6 +3503,12 @@
   }
 }
 
+/* M8.27 task date-range picker */
+.fishbone-task-date-input {
+  min-width: 148px;
+  color-scheme: light dark;
+}
+
 /* M8.22 quick input candidate preview polish */
 .fishbone-quick-input-preview {
   display: grid;

@@ -3130,6 +3130,7 @@ class NewTaskModal extends Modal {
   private onSubmit: (input: CreatePlanningTaskInput) => Promise<void>;
   private title = "";
   private date = getLocalDateString(new Date());
+  private endDate = getLocalDateString(new Date());
   private mainline = "";
   private status: TaskStatus = "todo";
   private priority: TaskPriority = "medium";
@@ -3148,6 +3149,7 @@ class NewTaskModal extends Modal {
     if (initial) {
       this.title = initial.title ?? this.title;
       this.date = initial.date ?? "";
+      this.endDate = initial.endDate ?? this.date;
       this.mainline = initial.mainline ?? "";
       this.status = initial.status ?? this.status;
       this.priority = initial.priority ?? this.priority;
@@ -3160,6 +3162,7 @@ class NewTaskModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", { text: "新建任务" });
+    let endDateInput: HTMLInputElement | null = null;
 
     new Setting(contentEl)
       .setName("标题")
@@ -3171,11 +3174,36 @@ class NewTaskModal extends Modal {
       });
 
     new Setting(contentEl)
-      .setName("日期")
-      .setDesc("留空时进入 inbox，不挂到具体日期。")
+      .setName("开始日期")
+      .setDesc("点击日历选择；留空时进入 inbox，不挂到具体日期。")
       .addText((text) => {
-        text.setPlaceholder("YYYY-MM-DD").setValue(this.date).onChange((value) => {
+        text.inputEl.type = "date";
+        text.inputEl.addClass("fishbone-task-date-input");
+        text.setValue(this.date).onChange((value) => {
           this.date = value.trim();
+          if (endDateInput) {
+            endDateInput.min = this.date;
+            if (!this.date) {
+              this.endDate = "";
+              endDateInput.value = "";
+            } else if (!this.endDate || this.endDate < this.date) {
+              this.endDate = this.date;
+              endDateInput.value = this.date;
+            }
+          }
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("结束日期")
+      .setDesc("单日任务可与开始日期相同。")
+      .addText((text) => {
+        endDateInput = text.inputEl;
+        text.inputEl.type = "date";
+        text.inputEl.min = this.date;
+        text.inputEl.addClass("fishbone-task-date-input");
+        text.setValue(this.endDate).onChange((value) => {
+          this.endDate = value.trim();
         });
       });
 
@@ -3232,18 +3260,21 @@ class NewTaskModal extends Modal {
           .onClick(async () => {
             const title = this.title.trim();
             const date = this.date.trim();
+            const endDate = this.endDate.trim();
             if (!title) {
               new Notice("任务标题不能为空");
               return;
             }
-            if (date && !parseDateString(date)) {
-              new Notice("日期格式应为 YYYY-MM-DD");
+            const dateError = validateTaskDateRange(date, endDate);
+            if (dateError) {
+              new Notice(dateError);
               return;
             }
             try {
               await this.onSubmit({
                 title,
                 date: date.length > 0 ? date : null,
+                endDate: date.length > 0 ? endDate || date : null,
                 mainline: this.mainline.length > 0 ? this.mainline : null,
                 status: this.status,
                 priority: this.priority,
@@ -3268,6 +3299,7 @@ class TaskEditorModal extends Modal {
   private onSubmit: (patch: TaskFieldPatch) => Promise<void>;
   private title: string;
   private date: string;
+  private endDate: string;
   private mainline: string;
   private branchMainlineId: string;
   private status: TaskStatus;
@@ -3284,6 +3316,7 @@ class TaskEditorModal extends Modal {
     this.onSubmit = onSubmit;
     this.title = task.title;
     this.date = task.date ?? "";
+    this.endDate = task.endDate ?? task.date ?? "";
     this.mainline = task.mainline ?? "";
     this.branchMainlineId = task.branchMainlineId ?? "";
     this.status = task.status;
@@ -3294,6 +3327,7 @@ class TaskEditorModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", { text: "编辑任务属性" });
+    let endDateInput: HTMLInputElement | null = null;
 
     new Setting(contentEl)
       .setName("标题")
@@ -3304,10 +3338,34 @@ class TaskEditorModal extends Modal {
       });
 
     new Setting(contentEl)
-      .setName("日期")
+      .setName("开始日期")
       .addText((text) => {
-        text.setPlaceholder("YYYY-MM-DD").setValue(this.date).onChange((value) => {
+        text.inputEl.type = "date";
+        text.inputEl.addClass("fishbone-task-date-input");
+        text.setValue(this.date).onChange((value) => {
           this.date = value.trim();
+          if (endDateInput) {
+            endDateInput.min = this.date;
+            if (!this.date) {
+              this.endDate = "";
+              endDateInput.value = "";
+            } else if (!this.endDate || this.endDate < this.date) {
+              this.endDate = this.date;
+              endDateInput.value = this.date;
+            }
+          }
+        });
+      });
+
+    new Setting(contentEl)
+      .setName("结束日期")
+      .addText((text) => {
+        endDateInput = text.inputEl;
+        text.inputEl.type = "date";
+        text.inputEl.min = this.date;
+        text.inputEl.addClass("fishbone-task-date-input");
+        text.setValue(this.endDate).onChange((value) => {
+          this.endDate = value.trim();
         });
       });
 
@@ -3372,11 +3430,17 @@ class TaskEditorModal extends Modal {
               new Notice("任务标题不能为空");
               return;
             }
+            const dateError = validateTaskDateRange(this.date, this.endDate);
+            if (dateError) {
+              new Notice(dateError);
+              return;
+            }
             const branch = this.mainlines.find((mainline) => mainline.id === this.branchMainlineId && mainline.type === "branch");
             const parent = branch ? this.mainlines.find((mainline) => mainline.id === branch.parentMainlineId) : null;
             await this.onSubmit({
               title,
               date: this.date.length > 0 ? this.date : null,
+              endDate: this.date.length > 0 ? this.endDate || this.date : null,
               mainline: branch ? parent?.name ?? this.mainline : this.mainline.length > 0 ? this.mainline : null,
               branchMainlineId: branch?.id ?? null,
               branchMainline: branch?.name ?? null,
@@ -3703,6 +3767,15 @@ function formatError(error: unknown): string {
 function formatLocalDateTimeForSummary(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function validateTaskDateRange(startDate: string, endDate: string): string | null {
+  if (!startDate && !endDate) return null;
+  if (!startDate) return "请先选择开始日期";
+  if (!parseDateString(startDate)) return "开始日期无效";
+  if (endDate && !parseDateString(endDate)) return "结束日期无效";
+  if (endDate && endDate < startDate) return "结束日期不能早于开始日期";
+  return null;
 }
 
 function clampIsoDate(date: string, startDate: string, endDate: string): string {

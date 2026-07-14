@@ -39,6 +39,7 @@ description: 将自然语言计划、笔记片段、快速输入和手动任务�
     {
       "title": "修复训练脚本 bug",
       "date": "2026-06-28",
+      "end_date": "2026-06-28",
       "mainline": "项目",
       "status": "todo",
       "priority": "high",
@@ -75,6 +76,7 @@ type: planning-task
 task_id: task_YYYYMMDD_001
 title: 任务标题
 date: YYYY-MM-DD
+end_date: YYYY-MM-DD
 mainline: 主线名称
 status: todo
 priority: medium
@@ -144,7 +146,7 @@ confidence: 0.8
 - `2026-07-03` 这类明确日期。
 - 无明确日期。
 
-相对日期以当前执行日期为基准解析；除非用户明确说明，否则不要用文件创建日期作为基准。如果日期不明确，设置 `date: null`，`review_status: pending`，降低置信度，并在 `questions` 中要求用户补充。
+相对日期以当前执行日期为基准解析；除非用户明确说明，否则不要用文件创建日期作为基准。`date` 表示开始日期，`end_date` 表示结束日期；单日任务两者相同，结束日期不得早于开始日期。如果日期不明确，设置 `date: null` 和 `end_date: null`，使用 `review_status: pending`，降低置信度，并在 `questions` 中要求用户补充。
 
 ## 优先级规则
 

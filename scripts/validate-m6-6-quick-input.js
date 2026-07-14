@@ -68,7 +68,7 @@ function main() {
   assert(view.includes("YYYY-MM-DD") || view.includes("\\d{4}-\\d{2}-\\d{2}"), "Quick input should recognize ISO dates.");
   assert(view.includes("明天") && view.includes("后天"), "Quick input should recognize relative Chinese dates.");
   assert(
-    view.includes("this.renderQuickInput(canvasShell, dashboardSummary, mainlines);\n      if (this.showDashboard)"),
+    /this\.renderQuickInput\(canvasShell, dashboardSummary, mainlines\);\r?\n\s+if \(this\.showDashboard\)/.test(view),
     "Quick input should stay on the canvas even when the workbench/dashboard is hidden."
   );
 

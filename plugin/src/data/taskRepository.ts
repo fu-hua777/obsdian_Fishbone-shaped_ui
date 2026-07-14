@@ -5,6 +5,7 @@ import { PlanningTask, TaskPriority, TaskStatus, nextStatus } from "./taskTypes"
 export interface TaskFieldPatch {
   title?: string;
   date?: string | null;
+  endDate?: string | null;
   mainline?: string | null;
   branchMainline?: string | null;
   branchMainlineId?: string | null;
@@ -15,6 +16,7 @@ export interface TaskFieldPatch {
 export interface CreatePlanningTaskInput {
   title: string;
   date: string | null;
+  endDate?: string | null;
   mainline: string | null;
   branchMainline?: string | null;
   branchMainlineId?: string | null;
@@ -81,7 +83,10 @@ export class TaskRepository {
   }
 
   async setTaskDate(task: PlanningTask, date: string | null): Promise<void> {
-    await this.updateTaskFields(task, { date });
+    await this.updateTaskFields(task, {
+      date,
+      endDate: shiftTaskEndDate(task.date, task.endDate, date)
+    });
   }
 
   async setTaskPriority(task: PlanningTask, priority: TaskPriority): Promise<void> {
@@ -97,18 +102,20 @@ export class TaskRepository {
     if (!title) {
       throw new Error("任务标题不能为空");
     }
+    const dateRange = normalizeTaskDateRange(input.date, input.endDate);
 
     const now = new Date();
     const created = formatLocalDateTime(now);
     const taskId = createTaskId(now);
-    const folderPath = normalizePath(input.date ? `${this.planningSystemPath}/Tasks/${input.date.slice(0, 4)}/${input.date.slice(5, 7)}` : `${this.planningSystemPath}/Tasks/inbox`);
+    const folderPath = normalizePath(dateRange.date ? `${this.planningSystemPath}/Tasks/${dateRange.date.slice(0, 4)}/${dateRange.date.slice(5, 7)}` : `${this.planningSystemPath}/Tasks/inbox`);
     await ensureFolder(this.app, folderPath);
 
-    const fileName = `${input.date ?? "inbox"}_${input.mainline ?? "未分配"}_${title}.md`;
+    const fileName = `${dateRange.date ?? "inbox"}_${input.mainline ?? "未分配"}_${title}.md`;
     const path = await getAvailableTaskPath(this.app, folderPath, fileName);
     const content = buildTaskMarkdown({
       ...input,
       title,
+      ...dateRange,
       taskId,
       created,
       updated: created
@@ -125,12 +132,27 @@ export class TaskRepository {
       return;
     }
 
+    if (typeof patch.date !== "undefined" && typeof patch.endDate === "undefined") {
+      patch.endDate = shiftTaskEndDate(task.date, task.endDate, patch.date);
+    }
+    if (typeof patch.date !== "undefined" || typeof patch.endDate !== "undefined") {
+      const dateRange = normalizeTaskDateRange(
+        typeof patch.date !== "undefined" ? patch.date : task.date,
+        typeof patch.endDate !== "undefined" ? patch.endDate : task.endDate
+      );
+      patch.date = dateRange.date;
+      patch.endDate = dateRange.endDate;
+    }
+
     await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
       if (typeof patch.title !== "undefined") {
         frontmatter.title = patch.title;
       }
       if (typeof patch.date !== "undefined") {
         frontmatter.date = patch.date;
+      }
+      if (typeof patch.endDate !== "undefined") {
+        frontmatter.end_date = patch.endDate;
       }
       if (typeof patch.mainline !== "undefined") {
         frontmatter.mainline = patch.mainline;
@@ -209,6 +231,7 @@ function buildTaskMarkdown(input: CreatePlanningTaskInput & { taskId: string; cr
     `task_id: ${input.taskId}`,
     `title: ${yamlString(input.title)}`,
     `date: ${input.date ?? "null"}`,
+    `end_date: ${input.endDate ?? input.date ?? "null"}`,
     `mainline: ${mainline}`,
     `branch_mainline: ${branchMainline}`,
     `branch_mainline_id: ${branchMainlineId}`,
@@ -266,9 +289,45 @@ function frontmatterKeyForPatch(key: string): string {
       return "branch_mainline";
     case "branchMainlineId":
       return "branch_mainline_id";
+    case "endDate":
+      return "end_date";
     default:
       return key;
   }
+}
+
+function shiftTaskEndDate(currentStart: string | null, currentEnd: string | null, nextStart: string | null): string | null {
+  if (!nextStart) return null;
+  if (!currentStart || !currentEnd) return nextStart;
+  const start = parseIsoDate(currentStart);
+  const end = parseIsoDate(currentEnd);
+  const next = parseIsoDate(nextStart);
+  if (!start || !end || !next || end < start) return nextStart;
+  const durationDays = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  next.setUTCDate(next.getUTCDate() + durationDays);
+  return formatIsoDate(next);
+}
+
+function normalizeTaskDateRange(date: string | null, endDate?: string | null): { date: string | null; endDate: string | null } {
+  if (!date) {
+    if (endDate) throw new Error("请先选择开始日期");
+    return { date: null, endDate: null };
+  }
+  if (!parseIsoDate(date)) throw new Error("开始日期无效");
+  const normalizedEndDate = endDate ?? date;
+  if (!parseIsoDate(normalizedEndDate)) throw new Error("结束日期无效");
+  if (normalizedEndDate < date) throw new Error("结束日期不能早于开始日期");
+  return { date, endDate: normalizedEndDate };
+}
+
+function parseIsoDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
+}
+
+function formatIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 function formatLocalDateTime(date: Date): string {
