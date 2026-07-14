@@ -11,6 +11,7 @@ export default class FishbonePlannerPlugin extends Plugin {
   taskRepository: TaskRepository;
   mainlineRepository: MainlineRepository;
   dailySummaryRepository: DailySummaryRepository;
+  private planningDataRefreshTimer: number | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -18,6 +19,7 @@ export default class FishbonePlannerPlugin extends Plugin {
 
     this.registerView(TASK_LIST_VIEW_TYPE, (leaf: WorkspaceLeaf) => new TaskListView(leaf, this));
     this.registerView(FISHBONE_TIMELINE_VIEW_TYPE, (leaf: WorkspaceLeaf) => new FishboneTimelineView(leaf, this));
+    this.registerPlanningDataRefresh();
 
     this.addRibbonIcon("list-checks", "打开 Fishbone Planner 任务列表", () => {
       void this.activateTaskListView();
@@ -96,6 +98,10 @@ export default class FishbonePlannerPlugin extends Plugin {
   }
 
   onunload(): void {
+    if (this.planningDataRefreshTimer !== null) {
+      window.clearTimeout(this.planningDataRefreshTimer);
+      this.planningDataRefreshTimer = null;
+    }
     this.app.workspace.detachLeavesOfType(TASK_LIST_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(FISHBONE_TIMELINE_VIEW_TYPE);
   }
@@ -123,6 +129,57 @@ export default class FishbonePlannerPlugin extends Plugin {
     this.taskRepository = new TaskRepository(this.app, this.settings.planningSystemPath);
     this.mainlineRepository = new MainlineRepository(this.app, this.settings.planningSystemPath);
     this.dailySummaryRepository = new DailySummaryRepository(this.app, this.settings.planningSystemPath);
+  }
+
+  private registerPlanningDataRefresh(): void {
+    this.registerEvent(this.app.vault.on("create", (file) => {
+      this.schedulePlanningDataRefresh(file.path);
+    }));
+    this.registerEvent(this.app.vault.on("modify", (file) => {
+      this.schedulePlanningDataRefresh(file.path);
+    }));
+    this.registerEvent(this.app.vault.on("delete", (file) => {
+      this.schedulePlanningDataRefresh(file.path);
+    }));
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+      if (this.isPlanningDataPath(file.path) || this.isPlanningDataPath(oldPath)) {
+        this.schedulePlanningDataRefresh(this.isPlanningDataPath(file.path) ? file.path : oldPath);
+      }
+    }));
+    this.registerEvent(this.app.metadataCache.on("changed", (file) => {
+      this.schedulePlanningDataRefresh(file.path);
+    }));
+  }
+
+  private schedulePlanningDataRefresh(path: string): void {
+    if (!this.isPlanningDataPath(path)) return;
+    if (this.planningDataRefreshTimer !== null) {
+      window.clearTimeout(this.planningDataRefreshTimer);
+    }
+    this.planningDataRefreshTimer = window.setTimeout(() => {
+      this.planningDataRefreshTimer = null;
+      void this.refreshPlanningViews();
+    }, 120);
+  }
+
+  private isPlanningDataPath(path: string): boolean {
+    const root = normalizePlanningPath(this.settings.planningSystemPath).replace(/\/+$/, "");
+    const normalizedPath = path.replace(/\\/g, "/").replace(/^\/+/, "");
+    return normalizedPath === `${root}/Mainlines/mainlines.json`
+      || normalizedPath === `${root}/Index/task-index.json`
+      || normalizedPath.startsWith(`${root}/Tasks/`);
+  }
+
+  private async refreshPlanningViews(): Promise<void> {
+    this.rebuildRepositories();
+    const renders: Promise<void>[] = [];
+    for (const leaf of this.app.workspace.getLeavesOfType(TASK_LIST_VIEW_TYPE)) {
+      if (leaf.view instanceof TaskListView) renders.push(leaf.view.render());
+    }
+    for (const leaf of this.app.workspace.getLeavesOfType(FISHBONE_TIMELINE_VIEW_TYPE)) {
+      if (leaf.view instanceof FishboneTimelineView) renders.push(leaf.view.render());
+    }
+    await Promise.all(renders);
   }
 
   async activateTaskListView(): Promise<void> {

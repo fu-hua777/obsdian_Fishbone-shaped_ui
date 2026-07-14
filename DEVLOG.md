@@ -1,5 +1,10 @@
 # DEVLOG
 
+### M8.25：规划数据与主线进度实时联动
+- 监听主线配置、任务目录和任务索引的创建、修改、删除与重命名事件；任务 Markdown 同时监听 frontmatter 缓存更新，并对连续事件做短延迟合并。
+- 数据变化后统一重新读取任务与主线，同时刷新鱼骨视图、右侧主线进度和任务列表，不再依赖手动刷新。
+- 清空真实 Vault 前已生成独立 ZIP 备份；任务文件、主线数组和任务索引按用户要求清空，未修改普通笔记与 Inbox。
+
 ### M8.24: branch connector continuity fix
 - Restored short-term branch rendering to one SVG path: the curve and horizontal branch segment now share the same coordinates, while the DOM branch element remains only as the hit area.
 - Hid the DOM branch pseudo-line to prevent the previous duplicate parallel branch line from returning.
