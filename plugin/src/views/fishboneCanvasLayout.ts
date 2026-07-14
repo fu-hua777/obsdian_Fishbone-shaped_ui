@@ -274,7 +274,7 @@ function buildCanvasLanes(
     .filter((mainline) => options.showHiddenMainlines || mainline.visible !== false)
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.order - b.order);
   const visibleNames = new Set(visibleMainlines.map((mainline) => mainline.name));
-  const hasUnassignedTask = mainlines.length === 0 || tasks.some((task) => !task.mainline || !allMainlineNames.has(task.mainline));
+  const hasUnassignedTask = tasks.some((task) => !task.mainline || !allMainlineNames.has(task.mainline));
 
   const laneSources = visibleMainlines.map((mainline) => ({
     id: mainline.id,

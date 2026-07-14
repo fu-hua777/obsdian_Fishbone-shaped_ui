@@ -143,7 +143,7 @@ function buildMainlineProgress(tasks: PlanningTask[], mainlines: Mainline[], tod
 
   const unassignedTasks = tasks.filter((task) => !task.mainline);
   const unassignedProgress = buildProgress(unassignedTasks);
-  if (unassignedProgress.total > 0 || groups.length === 0) {
+  if (unassignedProgress.total > 0) {
     groups.push({
       ...unassignedProgress,
       id: UNASSIGNED_MAINLINE_ID,
